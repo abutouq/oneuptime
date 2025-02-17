@@ -60,7 +60,7 @@ services:
         
 
     app:
-        image:  oneuptime/app:${APP_TAG}
+        image:  aabutouq/oneuptime-app:${APP_TAG}
         extends:
             file: ./docker-compose.base.yml
             service: app
@@ -96,16 +96,34 @@ services:
             service: home
 
     probe-1:   
-        image:  oneuptime/probe:${APP_TAG}
+        image:  aabutouq/oneuptime-probe:${APP_TAG}
         extends:
             file: ./docker-compose.base.yml
             service: probe-1
-        
-    probe-2:
-        image:  oneuptime/probe:${APP_TAG}   
+
+    probe-2:   
+        image:  aabutouq/oneuptime-probe:${APP_TAG}
         extends:
             file: ./docker-compose.base.yml
             service: probe-2
+
+    probe-3:   
+        image:  aabutouq/oneuptime-probe:${APP_TAG}
+        extends:
+            file: ./docker-compose.base.yml
+            service: probe-3
+
+    probe-4:   
+        image:  aabutouq/oneuptime-probe:${APP_TAG}
+        extends:
+            file: ./docker-compose.base.yml
+            service: probe-4
+
+    probe-5:   
+        image:  aabutouq/oneuptime-probe:${APP_TAG}
+        extends:
+            file: ./docker-compose.base.yml
+            service: probe-5
 
     probe-ingest:
         image:  oneuptime/probe-ingest:${APP_TAG}

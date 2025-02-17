@@ -366,6 +366,7 @@ services:
             PROBE_CUSTOM_CODE_MONITOR_SCRIPT_TIMEOUT_IN_MS: ${GLOBAL_PROBE_1_CUSTOM_CODE_MONITOR_SCRIPT_TIMEOUT_IN_MS}
             ONEUPTIME_URL: ${GLOBAL_PROBE_1_ONEUPTIME_URL}
             PROBE_MONITOR_FETCH_LIMIT: ${GLOBAL_PROBE_1_MONITOR_FETCH_LIMIT}
+            PROBE_APP_PORT: ${GLOBAL_PROBE_1_APP_PORT}
             DISABLE_TELEMETRY: ${DISABLE_TELEMETRY_FOR_PROBE}
         logging:
             driver: "local"
@@ -385,12 +386,72 @@ services:
             PROBE_SYNTHETIC_MONITOR_SCRIPT_TIMEOUT_IN_MS: ${GLOBAL_PROBE_2_SYNTHETIC_MONITOR_SCRIPT_TIMEOUT_IN_MS}
             PROBE_CUSTOM_CODE_MONITOR_SCRIPT_TIMEOUT_IN_MS: ${GLOBAL_PROBE_2_CUSTOM_CODE_MONITOR_SCRIPT_TIMEOUT_IN_MS}
             PROBE_MONITOR_FETCH_LIMIT: ${GLOBAL_PROBE_2_MONITOR_FETCH_LIMIT}
+            PROBE_APP_PORT: ${GLOBAL_PROBE_2_APP_PORT}
             DISABLE_TELEMETRY: ${DISABLE_TELEMETRY_FOR_PROBE}
         logging:
             driver: "local"
             options:
                 max-size: "1000m"
        
+    probe-3:
+        restart: always
+        network_mode: host
+        environment:
+            <<: *common-server-variables
+            PROBE_NAME: ${GLOBAL_PROBE_3_NAME}
+            PROBE_DESCRIPTION: ${GLOBAL_PROBE_3_DESCRIPTION}
+            PROBE_MONITORING_WORKERS: ${GLOBAL_PROBE_3_MONITORING_WORKERS}
+            PROBE_KEY: ${GLOBAL_PROBE_3_KEY}
+            ONEUPTIME_URL: ${GLOBAL_PROBE_3_ONEUPTIME_URL}
+            PROBE_SYNTHETIC_MONITOR_SCRIPT_TIMEOUT_IN_MS: ${GLOBAL_PROBE_3_SYNTHETIC_MONITOR_SCRIPT_TIMEOUT_IN_MS}
+            PROBE_CUSTOM_CODE_MONITOR_SCRIPT_TIMEOUT_IN_MS: ${GLOBAL_PROBE_3_CUSTOM_CODE_MONITOR_SCRIPT_TIMEOUT_IN_MS}
+            PROBE_MONITOR_FETCH_LIMIT: ${GLOBAL_PROBE_3_MONITOR_FETCH_LIMIT}
+            PROBE_APP_PORT: ${GLOBAL_PROBE_3_APP_PORT}
+            DISABLE_TELEMETRY: ${DISABLE_TELEMETRY_FOR_PROBE}
+        logging:
+            driver: "local"
+            options:
+                max-size: "1000m"
+
+    probe-4:
+        restart: always
+        network_mode: host
+        environment:
+            <<: *common-server-variables
+            PROBE_NAME: ${GLOBAL_PROBE_4_NAME}
+            PROBE_DESCRIPTION: ${GLOBAL_PROBE_4_DESCRIPTION}
+            PROBE_MONITORING_WORKERS: ${GLOBAL_PROBE_4_MONITORING_WORKERS}
+            PROBE_KEY: ${GLOBAL_PROBE_4_KEY}
+            ONEUPTIME_URL: ${GLOBAL_PROBE_4_ONEUPTIME_URL}
+            PROBE_SYNTHETIC_MONITOR_SCRIPT_TIMEOUT_IN_MS: ${GLOBAL_PROBE_4_SYNTHETIC_MONITOR_SCRIPT_TIMEOUT_IN_MS}
+            PROBE_CUSTOM_CODE_MONITOR_SCRIPT_TIMEOUT_IN_MS: ${GLOBAL_PROBE_4_CUSTOM_CODE_MONITOR_SCRIPT_TIMEOUT_IN_MS}
+            PROBE_MONITOR_FETCH_LIMIT: ${GLOBAL_PROBE_4_MONITOR_FETCH_LIMIT}
+            PROBE_APP_PORT: ${GLOBAL_PROBE_4_APP_PORT}
+            DISABLE_TELEMETRY: ${DISABLE_TELEMETRY_FOR_PROBE}
+        logging:
+            driver: "local"
+            options:
+                max-size: "1000m"
+
+    probe-5:
+        restart: always
+        network_mode: host
+        environment:
+            <<: *common-server-variables
+            PROBE_NAME: ${GLOBAL_PROBE_5_NAME}
+            PROBE_DESCRIPTION: ${GLOBAL_PROBE_5_DESCRIPTION}
+            PROBE_MONITORING_WORKERS: ${GLOBAL_PROBE_5_MONITORING_WORKERS}
+            PROBE_KEY: ${GLOBAL_PROBE_5_KEY}
+            ONEUPTIME_URL: ${GLOBAL_PROBE_5_ONEUPTIME_URL}
+            PROBE_SYNTHETIC_MONITOR_SCRIPT_TIMEOUT_IN_MS: ${GLOBAL_PROBE_5_SYNTHETIC_MONITOR_SCRIPT_TIMEOUT_IN_MS}
+            PROBE_CUSTOM_CODE_MONITOR_SCRIPT_TIMEOUT_IN_MS: ${GLOBAL_PROBE_5_CUSTOM_CODE_MONITOR_SCRIPT_TIMEOUT_IN_MS}
+            PROBE_MONITOR_FETCH_LIMIT: ${GLOBAL_PROBE_5_MONITOR_FETCH_LIMIT}
+            PROBE_APP_PORT: ${GLOBAL_PROBE_5_APP_PORT}
+            DISABLE_TELEMETRY: ${DISABLE_TELEMETRY_FOR_PROBE}
+        logging:
+            driver: "local"
+            options:
+                max-size: "1000m"
 
     otel-collector:
         networks:
