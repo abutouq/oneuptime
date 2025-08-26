@@ -1,4 +1,14 @@
 {
-    "watch": ["webpack.config.js"],
-    "exec": "export DEBUG=express:* && printenv > /usr/src/app/dev-env/.env && echo 'HOST=localhost' >> /usr/src/app/dev-env/.env && echo 'USE_HTTPS=false' >> /usr/src/app/dev-env/.env && webpack-dev-server --port=3105 --mode=development"
+    "watch": ["./*","../Common/UI", "../Common/Types", "../Common/Utils", "../Common/Models"],
+    "ext": "ts,json,tsx,env,js,jsx,hbs",
+    "ignore": [
+        "./public/**",
+        "./public/dist/**",
+        "./build/*",
+        "./build/**",
+        "./build/dist/*",
+        "./build/dist/**",
+        "../Common/Server/**"
+    ],
+    "exec": " npm run dev-build && npm run start"
 }

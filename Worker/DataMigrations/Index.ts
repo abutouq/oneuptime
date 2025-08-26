@@ -39,6 +39,20 @@ import AddDefaultAlertSeverityAndStateToExistingProjects from "./AddDefaultAlert
 import RefreshDefaultUserNotificationSetting from "./RefreshUserNotificationSetting";
 import AddServiceTypeColumnToMetricsTable from "./AddServiceTypeColumnToMetricTable";
 import AddIsSubscriptionConfirmedToSubscribers from "./AddIsSubscriptionConfirmedToSubscribers";
+import AddIncidentNumber from "./AddIncidentNumber";
+import RenameRuleTypeInUserNotificationRule from "./RenameRuleTypeInUserNotificationRule";
+import AddSubscriberFooterTextToStatusPage from "./AddSubscriberFooterTextToStatusPage";
+import AddAlertNumber from "./AddAlertNumber";
+import AddScheduledMaintenanceNumber from "./AddScheduledMaintenanceNumber";
+import RefreshProjectUsers from "./RefreshProjectUsers";
+import UpdateRemiderDateInScheduledEvents from "./UpdateRemiderDateInScheduledEvents";
+import AddAttributesColumnToTelemetryAttribute from "./AddAttributesColumnToTelemetryAttribute";
+import DeleteAllTelemetryAttributes from "./DeleteAllTelemetryAttributes";
+import DropDescriptionAndUnitColumnFromMetrics from "./DropDescriptionAndUnitColumnFromMetrics";
+import RefreshOnCallSchedulesToAddCurrentUserOnRoster from "./RefreshOnCallSchedulesToAddCurrentUserOnRoster";
+import AddOnCallNotificationForUsers from "./AddOnCallNotificationForUsers";
+import StartOnCallUserTimeLog from "./StartOnCallUserTimeLog";
+import LowercaseDomains from "./LowercaseDomains";
 
 // This is the order in which the migrations will be run. Add new migrations to the end of the array.
 
@@ -83,6 +97,20 @@ const DataMigrations: Array<DataMigrationBase> = [
   new RefreshDefaultUserNotificationSetting(),
   new AddServiceTypeColumnToMetricsTable(),
   new AddIsSubscriptionConfirmedToSubscribers(),
+  new AddIncidentNumber(),
+  new RenameRuleTypeInUserNotificationRule(),
+  new AddSubscriberFooterTextToStatusPage(),
+  new AddAlertNumber(),
+  new AddScheduledMaintenanceNumber(),
+  new RefreshProjectUsers(),
+  new UpdateRemiderDateInScheduledEvents(),
+  new AddAttributesColumnToTelemetryAttribute(),
+  new DeleteAllTelemetryAttributes(),
+  new DropDescriptionAndUnitColumnFromMetrics(),
+  new RefreshOnCallSchedulesToAddCurrentUserOnRoster(),
+  new AddOnCallNotificationForUsers(),
+  new StartOnCallUserTimeLog(),
+  new LowercaseDomains(),
 ];
 
 export default DataMigrations;

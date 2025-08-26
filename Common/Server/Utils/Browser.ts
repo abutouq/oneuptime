@@ -9,11 +9,13 @@ import BadDataException from "../../Types/Exception/BadDataException";
 import ScreenSizeType from "../../Types/ScreenSizeType";
 import BrowserType from "../../Types/BrowserType";
 import logger from "./Logger";
+import CaptureSpan from "./Telemetry/CaptureSpan";
 
 export type Page = PlaywrightPage;
 export type Browser = PlaywrightBrowser;
 
 export default class BrowserUtil {
+  @CaptureSpan()
   public static async convertHtmlToBase64Screenshot(data: {
     html: string;
   }): Promise<string | null> {
@@ -44,6 +46,7 @@ export default class BrowserUtil {
     }
   }
 
+  @CaptureSpan()
   public static async getPageByBrowserType(data: {
     browserType: BrowserType;
     screenSizeType: ScreenSizeType;
@@ -101,6 +104,7 @@ export default class BrowserUtil {
     };
   }
 
+  @CaptureSpan()
   public static getViewportHeightAndWidth(options: {
     screenSizeType: ScreenSizeType;
   }): {
@@ -132,6 +136,7 @@ export default class BrowserUtil {
     return { height: viewPortHeight, width: viewPortWidth };
   }
 
+  @CaptureSpan()
   public static async getChromeExecutablePath(): Promise<string> {
     const doesDirectoryExist: boolean = await LocalFile.doesDirectoryExist(
       "/root/.cache/ms-playwright",
@@ -162,6 +167,7 @@ export default class BrowserUtil {
     return `/root/.cache/ms-playwright/${chromeInstallationName}/chrome-linux/chrome`;
   }
 
+  @CaptureSpan()
   public static async getFirefoxExecutablePath(): Promise<string> {
     const doesDirectoryExist: boolean = await LocalFile.doesDirectoryExist(
       "/root/.cache/ms-playwright",

@@ -9,8 +9,9 @@ import Decimal from "../../Types/Decimal";
 import BadDataException from "../../Types/Exception/BadDataException";
 import ProductType from "../../Types/MeteredPlan/ProductType";
 import ObjectID from "../../Types/ObjectID";
-import Model from "Common/Models/DatabaseModels/TelemetryUsageBilling";
+import Model from "../../Models/DatabaseModels/TelemetryUsageBilling";
 import { IsBillingEnabled } from "../EnvironmentConfig";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export class Service extends DatabaseService<Model> {
   public constructor() {
@@ -20,6 +21,7 @@ export class Service extends DatabaseService<Model> {
     }
   }
 
+  @CaptureSpan()
   public async getUnreportedUsageBilling(data: {
     projectId: ObjectID;
     productType: ProductType;
@@ -45,6 +47,7 @@ export class Service extends DatabaseService<Model> {
     });
   }
 
+  @CaptureSpan()
   public async updateUsageBilling(data: {
     projectId: ObjectID;
     productType: ProductType;

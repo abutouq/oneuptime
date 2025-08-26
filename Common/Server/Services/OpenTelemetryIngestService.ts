@@ -1,19 +1,19 @@
-import OneUptimeDate from "Common/Types/Date";
-import { JSONArray, JSONObject } from "Common/Types/JSON";
-import JSONFunctions from "Common/Types/JSONFunctions";
-import ObjectID from "Common/Types/ObjectID";
+import OneUptimeDate from "../../Types/Date";
+import { JSONArray, JSONObject } from "../../Types/JSON";
+import ObjectID from "../../Types/ObjectID";
 import Metric, {
   AggregationTemporality,
-} from "Common/Models/AnalyticsModels/Metric";
-import Dictionary from "Common/Types/Dictionary";
-import ProductType from "Common/Types/MeteredPlan/ProductType";
-import { IsBillingEnabled } from "Common/Server/EnvironmentConfig";
-import TelemetryUsageBillingService from "Common/Server/Services/TelemetryUsageBillingService";
-import logger from "Common/Server/Utils/Logger";
-import TelemetryService from "Common/Models/DatabaseModels/TelemetryService";
-import TelemetryServiceService from "Common/Server/Services/TelemetryServiceService";
-import { DEFAULT_RETENTION_IN_DAYS } from "Common/Models/DatabaseModels/TelemetryUsageBilling";
-import TelemetryUtil from "Common/Server/Utils/Telemetry/Telemetry";
+} from "../../Models/AnalyticsModels/Metric";
+import Dictionary from "../../Types/Dictionary";
+import ProductType from "../../Types/MeteredPlan/ProductType";
+import { IsBillingEnabled } from "../../Server/EnvironmentConfig";
+import TelemetryUsageBillingService from "../../Server/Services/TelemetryUsageBillingService";
+import logger from "../../Server/Utils/Logger";
+import TelemetryService from "../../Models/DatabaseModels/TelemetryService";
+import TelemetryServiceService from "../../Server/Services/TelemetryServiceService";
+import { DEFAULT_RETENTION_IN_DAYS } from "../../Models/DatabaseModels/TelemetryUsageBilling";
+import TelemetryUtil from "../../Server/Utils/Telemetry/Telemetry";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export enum OtelAggregationTemporality {
   Cumulative = "AGGREGATION_TEMPORALITY_CUMULATIVE",
@@ -28,6 +28,7 @@ export interface TelemetryServiceDataIngested {
 }
 
 export default class OTelIngestService {
+  @CaptureSpan()
   public static async telemetryServiceFromName(data: {
     serviceName: string;
     projectId: ObjectID;
@@ -80,6 +81,7 @@ export default class OTelIngestService {
     };
   }
 
+  @CaptureSpan()
   public static async recordDataIngestedUsgaeBilling(data: {
     services: Dictionary<TelemetryServiceDataIngested>;
     projectId: ObjectID;
@@ -110,6 +112,7 @@ export default class OTelIngestService {
     }
   }
 
+  @CaptureSpan()
   public static getMetricFromDatapoint(data: {
     dbMetric: Metric;
     datapoint: JSONObject;
@@ -125,15 +128,19 @@ export default class OTelIngestService {
       Metric,
     ) as Metric;
 
-    newDbMetric.startTimeUnixNano = datapoint["startTimeUnixNano"] as number;
-    newDbMetric.startTime = OneUptimeDate.fromUnixNano(
-      datapoint["startTimeUnixNano"] as number,
-    );
+    if (datapoint["startTimeUnixNano"]) {
+      newDbMetric.startTimeUnixNano = datapoint["startTimeUnixNano"] as number;
+      newDbMetric.startTime = OneUptimeDate.fromUnixNano(
+        datapoint["startTimeUnixNano"] as number,
+      );
+    }
 
-    newDbMetric.timeUnixNano = datapoint["timeUnixNano"] as number;
-    newDbMetric.time = OneUptimeDate.fromUnixNano(
-      datapoint["timeUnixNano"] as number,
-    );
+    if (datapoint["timeUnixNano"]) {
+      newDbMetric.timeUnixNano = datapoint["timeUnixNano"] as number;
+      newDbMetric.time = OneUptimeDate.fromUnixNano(
+        datapoint["timeUnixNano"] as number,
+      );
+    }
 
     if (Object.keys(datapoint).includes("asInt")) {
       newDbMetric.value = datapoint["asInt"] as number;
@@ -162,19 +169,15 @@ export default class OTelIngestService {
       }
 
       newDbMetric.attributes = {
-        ...(newDbMetric.attributes || {}),
+        ...TelemetryUtil.getAttributesForServiceIdAndServiceName({
+          serviceId: data.telemetryServiceId,
+          serviceName: data.telemetryServiceName,
+        }),
         ...TelemetryUtil.getAttributes({
           items: datapoint["attributes"] as JSONArray,
-          telemetryServiceId: data.telemetryServiceId,
-          telemetryServiceName: data.telemetryServiceName,
+          prefixKeysWithString: "metricAttributes",
         }),
       };
-    }
-
-    if (newDbMetric.attributes) {
-      newDbMetric.attributes = JSONFunctions.flattenObject(
-        newDbMetric.attributes,
-      );
     }
 
     // aggregationTemporality

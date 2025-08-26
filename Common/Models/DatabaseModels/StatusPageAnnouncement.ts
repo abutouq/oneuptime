@@ -21,6 +21,7 @@ import TenantColumn from "../../Types/Database/TenantColumn";
 import IconProp from "../../Types/Icon/IconProp";
 import ObjectID from "../../Types/ObjectID";
 import Permission from "../../Types/Permission";
+import StatusPageSubscriberNotificationStatus from "../../Types/StatusPage/StatusPageSubscriberNotificationStatus";
 import {
   Column,
   Entity,
@@ -164,7 +165,12 @@ export default class StatusPageAnnouncement extends BaseModel {
       Permission.ProjectMember,
       Permission.ReadStatusPageAnnouncement,
     ],
-    update: [],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditStatusPageAnnouncement,
+    ],
   })
   @TableColumn({
     required: false,
@@ -313,7 +319,7 @@ export default class StatusPageAnnouncement extends BaseModel {
     required: true,
     type: TableColumnType.Markdown,
     title: "Announcement Description",
-    description: "Text of the announcement. This is in Markdown.",
+    description: "Text of the announcement. This can be in Markdown format.",
   })
   @Column({
     nullable: false,
@@ -400,6 +406,7 @@ export default class StatusPageAnnouncement extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -437,21 +444,71 @@ export default class StatusPageAnnouncement extends BaseModel {
   public deletedByUserId?: ObjectID = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateStatusPageAnnouncement,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
       Permission.ProjectMember,
       Permission.ReadStatusPageAnnouncement,
     ],
-    update: [],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditStatusPageAnnouncement,
+    ],
   })
-  @TableColumn({ isDefaultValueColumn: true, type: TableColumnType.Boolean })
+  @TableColumn({
+    isDefaultValueColumn: true,
+    computed: true,
+    hideColumnInDocumentation: true,
+    type: TableColumnType.ShortText,
+    defaultValue: StatusPageSubscriberNotificationStatus.Pending,
+  })
   @Column({
-    type: ColumnType.Boolean,
-    default: false,
+    type: ColumnType.ShortText,
+    default: StatusPageSubscriberNotificationStatus.Pending,
   })
-  public isStatusPageSubscribersNotified?: boolean = undefined;
+  public subscriberNotificationStatus?: StatusPageSubscriberNotificationStatus =
+    undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateStatusPageAnnouncement,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadStatusPageAnnouncement,
+    ],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditStatusPageAnnouncement,
+    ],
+  })
+  @TableColumn({
+    type: TableColumnType.VeryLongText,
+    title: "Notification Status Message",
+    description:
+      "Status message for subscriber notifications - includes success messages, failure reasons, or skip reasons",
+    required: false,
+  })
+  @Column({
+    type: ColumnType.VeryLongText,
+    nullable: true,
+  })
+  public subscriberNotificationStatusMessage?: string = undefined;
 
   @ColumnAccessControl({
     create: [
@@ -473,6 +530,7 @@ export default class StatusPageAnnouncement extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Should subscribers be notified?",
     description: "Should subscribers be notified about this announcement?",
+    defaultValue: true,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -498,10 +556,13 @@ export default class StatusPageAnnouncement extends BaseModel {
   @Index()
   @TableColumn({
     type: TableColumnType.Boolean,
+    computed: true,
+    hideColumnInDocumentation: true,
     required: true,
     isDefaultValueColumn: true,
     title: "Are Owners Notified",
     description: "Are owners notified of this announcement?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,

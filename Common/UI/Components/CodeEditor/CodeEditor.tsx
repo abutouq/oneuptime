@@ -1,9 +1,11 @@
 import Editor from "@monaco-editor/react";
-import CodeType from "Common/Types/Code/CodeType";
+import CodeType from "../../../Types/Code/CodeType";
+import MarkdownUtil from "../../Utils/Markdown";
 import React, {
   FunctionComponent,
   ReactElement,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -22,6 +24,7 @@ export interface ComponentProps {
   error?: string | undefined;
   value?: string | undefined;
   showLineNumbers?: boolean | undefined;
+  disableSpellCheck?: boolean | undefined;
 }
 
 const CodeEditor: FunctionComponent<ComponentProps> = (
@@ -30,7 +33,8 @@ const CodeEditor: FunctionComponent<ComponentProps> = (
   let className: string = "";
 
   const [placeholder, setPlaceholder] = useState<string>("");
-  const [helpText, setHelpText] = useState<string>("");
+  const [helpText, setHelpText] = useState<string | ReactElement>("");
+  const editorRef: React.MutableRefObject<any> = useRef<any>(null);
 
   useEffect(() => {
     let value: string | undefined = props.value;
@@ -45,7 +49,7 @@ const CodeEditor: FunctionComponent<ComponentProps> = (
   useEffect(() => {
     if (props.placeholder) {
       if (props.type === CodeType.Markdown) {
-        setHelpText(`${props.placeholder}. This is in Markdown`);
+        setHelpText(MarkdownUtil.getMarkdownCheatsheet(props.placeholder));
       }
 
       if (props.type === CodeType.HTML) {
@@ -87,6 +91,21 @@ const CodeEditor: FunctionComponent<ComponentProps> = (
 
   const [value, setValue] = useState<string>("");
 
+  // Handle spell check configuration for Monaco Editor
+  useEffect(() => {
+    if (editorRef.current && props.type === CodeType.Markdown) {
+      const editor: any = editorRef.current;
+      const domNode: HTMLElement | null = editor.getDomNode();
+      if (domNode) {
+        const textareaElement: HTMLTextAreaElement | null =
+          domNode.querySelector("textarea");
+        if (textareaElement) {
+          textareaElement.spellcheck = !props.disableSpellCheck;
+        }
+      }
+    }
+  }, [props.disableSpellCheck, props.type]);
+
   useEffect(() => {
     let initialValue: string | undefined = props.initialValue;
 
@@ -101,8 +120,12 @@ const CodeEditor: FunctionComponent<ComponentProps> = (
     <div
       data-testid={props.dataTestId}
       onClick={() => {
-        props.onClick && props.onClick();
-        props.onFocus && props.onFocus();
+        if (props.onClick) {
+          props.onClick();
+        }
+        if (props.onFocus) {
+          props.onFocus();
+        }
       }}
     >
       {helpText && (
@@ -122,14 +145,33 @@ const CodeEditor: FunctionComponent<ComponentProps> = (
           }
 
           setValue(code);
-          props.onBlur && props.onBlur();
-          props.onChange && props.onChange(code);
+          if (props.onBlur) {
+            props.onBlur();
+          }
+          if (props.onChange) {
+            props.onChange(code);
+          }
+        }}
+        onMount={(editor: any, _monaco: any) => {
+          editorRef.current = editor;
+
+          // Configure spell check for Markdown
+          if (props.type === CodeType.Markdown) {
+            const domNode: HTMLElement | null = editor.getDomNode();
+            if (domNode) {
+              const textareaElement: HTMLTextAreaElement | null =
+                domNode.querySelector("textarea");
+              if (textareaElement) {
+                textareaElement.spellcheck = !props.disableSpellCheck;
+              }
+            }
+          }
         }}
         defaultValue={value || placeholder || ""}
         className={className}
         options={{
-          acceptSuggestionOnCommitCharacter: true,
-          acceptSuggestionOnEnter: "on",
+          acceptSuggestionOnCommitCharacter: false,
+          acceptSuggestionOnEnter: "off",
           accessibilitySupport: "auto",
           fontSize: 14,
           automaticLayout: true,
@@ -157,7 +199,7 @@ const CodeEditor: FunctionComponent<ComponentProps> = (
           multiCursorModifier: "alt",
           overviewRulerBorder: true,
           overviewRulerLanes: 2,
-          quickSuggestions: true,
+          quickSuggestions: false,
           quickSuggestionsDelay: 100,
           readOnly: props.readOnly || false,
           renderControlCharacters: false,
@@ -165,6 +207,7 @@ const CodeEditor: FunctionComponent<ComponentProps> = (
             horizontal: "hidden",
           },
           renderLineHighlight: "all",
+          suggestOnTriggerCharacters: false,
           renderWhitespace: "none",
           revealHorizontalRightPadding: 30,
           roundedSelection: true,
@@ -177,9 +220,9 @@ const CodeEditor: FunctionComponent<ComponentProps> = (
           selectionHighlight: true,
           showFoldingControls: "mouseover",
           smoothScrolling: false,
-          suggestOnTriggerCharacters: true,
           wordBasedSuggestions: "off",
           wordWrap: props.type === CodeType.Markdown ? "on" : "off",
+          tabCompletion: "off",
         }}
       />
       {props.error && (

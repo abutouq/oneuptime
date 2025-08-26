@@ -11,11 +11,12 @@ import Sleep from "Common/Types/Sleep";
 import logger from "Common/Server/Utils/Logger";
 import ping from "ping";
 
-// TODO - make sure it  work for the IPV6
+// TODO - make sure it works for the IPV6
 export interface PingResponse {
   isOnline: boolean;
   responseTimeInMS?: PositiveNumber | undefined;
   failureCause: string;
+  isTimeout?: boolean | undefined;
 }
 
 export interface PingOptions {
@@ -135,7 +136,8 @@ export default class PingMonitor {
         );
 
         return {
-          isOnline: false,
+          isOnline: true,
+          isTimeout: true,
           failureCause:
             "Request was tried " +
             pingOptions.currentRetryCount +
@@ -143,7 +145,13 @@ export default class PingMonitor {
         };
       }
 
+      // if AggregateError is thrown, it means that the request failed
+      if ((err as any).toString().includes("AggregateError")) {
+        return null;
+      }
+
       return {
+        isTimeout: false,
         isOnline: false,
         failureCause: (err as any).toString(),
       };

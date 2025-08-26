@@ -26,10 +26,10 @@ import DashboardViewConfigUtil from "Common/Utils/Dashboard/DashboardViewConfig"
 import DefaultDashboardSize from "Common/Types/Dashboard/DashboardSize";
 import { PromiseVoidFunction, VoidFunction } from "Common/Types/FunctionTypes";
 import JSONFunctions from "Common/Types/JSONFunctions";
-import MetricNameAndUnit from "../Metrics/Types/MetricNameAndUnit";
 import MetricUtil from "../Metrics/Utils/Metrics";
-import DashboardStartAndEndDate from "./Types/DashboardStartAndEndDate";
-import DashboardStartAndEndDateRange from "./Types/DashboardStartAndEndDateRange";
+import RangeStartAndEndDateTime from "Common/Types/Time/RangeStartAndEndDateTime";
+import TimeRange from "Common/Types/Time/TimeRange";
+import MetricType from "Common/Models/DatabaseModels/MetricType";
 
 export interface ComponentProps {
   dashboardId: ObjectID;
@@ -43,8 +43,8 @@ const DashboardViewer: FunctionComponent<ComponentProps> = (
   );
 
   const [startAndEndDate, setStartAndEndDate] =
-    useState<DashboardStartAndEndDate>({
-      range: DashboardStartAndEndDateRange.PAST_ONE_HOUR,
+    useState<RangeStartAndEndDateTime>({
+      range: TimeRange.PAST_ONE_HOUR,
     });
 
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -60,20 +60,18 @@ const DashboardViewer: FunctionComponent<ComponentProps> = (
 
   const [telemetryAttributes, setTelemetryAttributes] = useState<string[]>([]);
 
-  const [metricNameAndUnits, setMetricNamesAndUnits] = useState<
-    MetricNameAndUnit[]
-  >([]);
+  const [metricTypes, setMetricTypes] = useState<MetricType[]>([]);
 
   const loadAllMetricsTypes: PromiseVoidFunction = async (): Promise<void> => {
     const {
-      metricNamesAndUnits,
+      metricTypes,
       telemetryAttributes,
     }: {
-      metricNamesAndUnits: Array<MetricNameAndUnit>;
+      metricTypes: Array<MetricType>;
       telemetryAttributes: Array<string>;
     } = await MetricUtil.loadAllMetricsTypes();
 
-    setMetricNamesAndUnits(metricNamesAndUnits);
+    setMetricTypes(metricTypes);
     setTelemetryAttributes(telemetryAttributes);
   };
 
@@ -183,7 +181,7 @@ const DashboardViewer: FunctionComponent<ComponentProps> = (
     useRef<HTMLDivElement>(null);
 
   if (error) {
-    return <ErrorMessage error={error} />;
+    return <ErrorMessage message={error} />;
   }
 
   if (isLoading) {
@@ -228,7 +226,7 @@ const DashboardViewer: FunctionComponent<ComponentProps> = (
         }}
         startAndEndDate={startAndEndDate}
         onStartAndEndDateChange={(
-          newStartAndEndDate: DashboardStartAndEndDate,
+          newStartAndEndDate: RangeStartAndEndDateTime,
         ) => {
           setStartAndEndDate(newStartAndEndDate);
         }}
@@ -291,7 +289,7 @@ const DashboardViewer: FunctionComponent<ComponentProps> = (
           currentTotalDashboardWidthInPx={dashboardTotalWidth}
           metrics={{
             telemetryAttributes,
-            metricNameAndUnits,
+            metricTypes,
           }}
         />
       </div>

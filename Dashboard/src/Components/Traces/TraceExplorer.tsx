@@ -2,7 +2,7 @@ import DashboardLogsViewer from "../Logs/LogsViewer";
 import SpanStatusElement from "../Span/SpanStatusElement";
 import SpanViewer from "../Span/SpanViewer";
 import TelemetryServiceElement from "..//TelemetryService/TelemetryServiceElement";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import SpanUtil, {
   DivisibilityFactor,
   IntervalUnit,
@@ -26,8 +26,8 @@ import PageLoader from "Common/UI/Components/Loader/PageLoader";
 import SideOver, { SideOverSize } from "Common/UI/Components/SideOver/SideOver";
 import API from "Common/UI/Utils/API/API";
 import AnalyticsModelAPI from "Common/UI/Utils/AnalyticsModelAPI/AnalyticsModelAPI";
-import ListResult from "Common/UI/Utils/BaseDatabase/ListResult";
-import Select from "Common/UI/Utils/BaseDatabase/Select";
+import ListResult from "Common/Types/BaseDatabase/ListResult";
+import Select from "Common/Types/BaseDatabase/Select";
 import ModelAPI from "Common/UI/Utils/ModelAPI/ModelAPI";
 import Span, { SpanStatus } from "Common/Models/AnalyticsModels/Span";
 import TelemetryService from "Common/Models/DatabaseModels/TelemetryService";
@@ -83,7 +83,7 @@ const TraceExplorer: FunctionComponent<ComponentProps> = (
       const telemetryServices: ListResult<TelemetryService> =
         await ModelAPI.getList<TelemetryService>({
           query: {
-            projectId: DashboardNavigation.getProjectId()!,
+            projectId: ProjectUtil.getCurrentProjectId()!,
           },
           limit: LIMIT_PER_PROJECT,
           skip: 0,
@@ -193,7 +193,7 @@ const TraceExplorer: FunctionComponent<ComponentProps> = (
               {SpanUtil.getSpanEndsAtAsString({
                 timelineStartTimeUnixNano,
                 divisibilityFactor: divisibilityFactor,
-                spanEndTimeUnixNano: span.startTimeUnixNano!,
+                spanEndTimeUnixNano: span.endTimeUnixNano!,
               })}
             </div>
           </div>
@@ -447,7 +447,7 @@ const TraceExplorer: FunctionComponent<ComponentProps> = (
   }
 
   if (error) {
-    return <ErrorMessage error={error} />;
+    return <ErrorMessage message={error} />;
   }
 
   return (
@@ -471,7 +471,7 @@ const TraceExplorer: FunctionComponent<ComponentProps> = (
             {ganttChart ? (
               <GanttChart chart={ganttChart} />
             ) : (
-              <ErrorMessage error={"No spans found"} />
+              <ErrorMessage message={"No spans found"} />
             )}
           </div>
         </Card>
@@ -482,6 +482,7 @@ const TraceExplorer: FunctionComponent<ComponentProps> = (
               id={"traces-logs-viewer"}
               noLogsMessage="No logs found for this trace."
               traceIds={[traceId]}
+              limit={LIMIT_PER_PROJECT}
               enableRealtime={false}
             />
           </div>

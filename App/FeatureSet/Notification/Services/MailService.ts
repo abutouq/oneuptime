@@ -1,10 +1,4 @@
 import {
-  InternalSmtpEmail,
-  InternalSmtpFromName,
-  InternalSmtpHost,
-  InternalSmtpPassword,
-  InternalSmtpPort,
-  InternalSmtpSecure,
   SendGridConfig,
   getEmailServerType,
   getGlobalSMTPConfig,
@@ -35,6 +29,99 @@ import fsp from "fs/promises";
 import Handlebars from "handlebars";
 import nodemailer, { Transporter } from "nodemailer";
 import Path from "path";
+import * as tls from "tls";
+
+// Connection pool for email transporters
+class TransporterPool {
+  private static pools: Map<string, Transporter> = new Map();
+  private static semaphore: Map<string, number> = new Map();
+  private static readonly MAX_CONCURRENT_CONNECTIONS = 100;
+
+  public static getTransporter(
+    emailServer: EmailServer,
+    options: { timeout?: number | undefined },
+  ): Transporter {
+    const key: string = `${emailServer.host.toString()}:${emailServer.port.toNumber()}:${emailServer.username || "noauth"}`;
+
+    if (!this.pools.has(key)) {
+      const transporter: Transporter = this.createTransporter(
+        emailServer,
+        options,
+      );
+      this.pools.set(key, transporter);
+      this.semaphore.set(key, 0);
+    }
+
+    return this.pools.get(key)!;
+  }
+
+  private static createTransporter(
+    emailServer: EmailServer,
+    options: { timeout?: number | undefined },
+  ): Transporter {
+    let tlsOptions: tls.ConnectionOptions | undefined = undefined;
+
+    if (!emailServer.secure) {
+      tlsOptions = {
+        rejectUnauthorized: false,
+      };
+    }
+
+    return nodemailer.createTransport({
+      host: emailServer.host.toString(),
+      port: emailServer.port.toNumber(),
+      secure: emailServer.secure,
+      tls: tlsOptions,
+      auth:
+        emailServer.username && emailServer.password
+          ? {
+              user: emailServer.username,
+              pass: emailServer.password,
+            }
+          : undefined,
+      connectionTimeout: options.timeout || 60000,
+      pool: true, // Enable connection pooling
+      maxConnections: this.MAX_CONCURRENT_CONNECTIONS,
+    });
+  }
+
+  public static async acquireConnection(
+    emailServer: EmailServer,
+  ): Promise<void> {
+    const key: string = `${emailServer.host.toString()}:${emailServer.port.toNumber()}:${emailServer.username || "noauth"}`;
+
+    while ((this.semaphore.get(key) || 0) >= this.MAX_CONCURRENT_CONNECTIONS) {
+      await new Promise<void>((resolve: () => void) => {
+        setTimeout(resolve, 100);
+      });
+    }
+
+    this.semaphore.set(key, (this.semaphore.get(key) || 0) + 1);
+  }
+
+  public static releaseConnection(emailServer: EmailServer): void {
+    const key: string = `${emailServer.host.toString()}:${emailServer.port.toNumber()}:${emailServer.username || "noauth"}`;
+    const current: number = this.semaphore.get(key) || 0;
+    this.semaphore.set(key, Math.max(0, current - 1));
+  }
+
+  public static async cleanup(): Promise<void> {
+    const closePromises: Promise<void>[] = [];
+
+    for (const [, transporter] of this.pools) {
+      closePromises.push(
+        new Promise<void>((resolve: () => void) => {
+          transporter.close();
+          resolve();
+        }),
+      );
+    }
+
+    await Promise.all(closePromises);
+    this.pools.clear();
+    this.semaphore.clear();
+  }
+}
 
 export default class MailService {
   public static isSMTPConfigValid(obj: JSONObject): boolean {
@@ -106,19 +193,6 @@ export default class MailService {
       fromName: obj["SMTP_FROM_NAME"]?.toString() as string,
       secure:
         obj["SMTP_IS_SECURE"] === "true" || obj["SMTP_IS_SECURE"] === true,
-    };
-  }
-
-  public static getInternalEmailServer(): EmailServer {
-    return {
-      id: undefined,
-      username: InternalSmtpEmail.toString(),
-      password: InternalSmtpPassword,
-      host: InternalSmtpHost,
-      port: InternalSmtpPort,
-      fromEmail: InternalSmtpEmail,
-      fromName: InternalSmtpFromName,
-      secure: InternalSmtpSecure,
     };
   }
 
@@ -204,21 +278,7 @@ export default class MailService {
       timeout?: number | undefined;
     },
   ): Transporter {
-    const privateMailer: Transporter = nodemailer.createTransport({
-      host: emailServer.host.toString(),
-      port: emailServer.port.toNumber(),
-      secure: emailServer.secure,
-      auth:
-        emailServer.username && emailServer.password
-          ? {
-              user: emailServer.username,
-              pass: emailServer.password,
-            }
-          : undefined,
-      connectionTimeout: options.timeout || undefined,
-    });
-
-    return privateMailer;
+    return TransporterPool.getTransporter(emailServer, options);
   }
 
   private static async transportMail(
@@ -232,12 +292,49 @@ export default class MailService {
     const mailer: Transporter = this.createMailer(options.emailServer, {
       timeout: options.timeout,
     });
-    await mailer.sendMail({
-      from: `${options.emailServer.fromName.toString()} <${options.emailServer.fromEmail.toString()}>`,
-      to: mail.toEmail.toString(),
-      subject: mail.subject,
-      html: mail.body,
-    });
+
+    let lastError: any;
+    const maxRetries: number = 3;
+
+    // Acquire connection slot to prevent overwhelming the server
+    await TransporterPool.acquireConnection(options.emailServer);
+
+    try {
+      for (let attempt: number = 1; attempt <= maxRetries; attempt++) {
+        try {
+          await mailer.sendMail({
+            from: `${options.emailServer.fromName.toString()} <${options.emailServer.fromEmail.toString()}>`,
+            to: mail.toEmail.toString(),
+            subject: mail.subject,
+            html: mail.body,
+          });
+          return; // Success, exit the function
+        } catch (error) {
+          lastError = error;
+          logger.error(`Email send attempt ${attempt} failed:`);
+          logger.error(error);
+
+          if (attempt === maxRetries) {
+            break; // Don't wait after the last attempt
+          }
+
+          // Wait before retrying with jitter to prevent thundering herd
+          const baseWaitTime: number = Math.pow(2, attempt - 1) * 1000;
+          const jitter: number = Math.random() * 1000; // Add up to 1 second of jitter
+          const waitTime: number = baseWaitTime + jitter;
+
+          await new Promise<void>((resolve: (value: void) => void) => {
+            setTimeout(resolve, waitTime);
+          });
+        }
+      }
+
+      // If we reach here, all retries failed
+      throw lastError;
+    } finally {
+      // Always release the connection slot
+      TransporterPool.releaseConnection(options.emailServer);
+    }
   }
 
   public static async send(
@@ -248,6 +345,18 @@ export default class MailService {
           emailServer?: EmailServer | undefined;
           userOnCallLogTimelineId?: ObjectID | undefined;
           timeout?: number | undefined;
+          incidentId?: ObjectID | undefined;
+          alertId?: ObjectID | undefined;
+          scheduledMaintenanceId?: ObjectID | undefined;
+          statusPageId?: ObjectID | undefined;
+          statusPageAnnouncementId?: ObjectID | undefined;
+          userId?: ObjectID | undefined;
+          // On-call policy related fields
+          onCallPolicyId?: ObjectID | undefined;
+          onCallPolicyEscalationRuleId?: ObjectID | undefined;
+          onCallDutyPolicyExecutionLogTimelineId?: ObjectID | undefined;
+          onCallScheduleId?: ObjectID | undefined;
+          teamId?: ObjectID | undefined;
         }
       | undefined,
   ): Promise<void> {
@@ -261,6 +370,48 @@ export default class MailService {
 
       if (options.emailServer?.id) {
         emailLog.projectSmtpConfigId = options.emailServer?.id;
+      }
+
+      if (options.incidentId) {
+        emailLog.incidentId = options.incidentId;
+      }
+
+      if (options.alertId) {
+        emailLog.alertId = options.alertId;
+      }
+
+      if (options.scheduledMaintenanceId) {
+        emailLog.scheduledMaintenanceId = options.scheduledMaintenanceId;
+      }
+
+      if (options.statusPageId) {
+        emailLog.statusPageId = options.statusPageId;
+      }
+
+      if (options.statusPageAnnouncementId) {
+        emailLog.statusPageAnnouncementId = options.statusPageAnnouncementId;
+      }
+
+      if (options.userId) {
+        emailLog.userId = options.userId;
+      }
+
+      if (options.teamId) {
+        emailLog.teamId = options.teamId;
+      }
+
+      // Set OnCall-related fields
+      if (options.onCallPolicyId) {
+        emailLog.onCallDutyPolicyId = options.onCallPolicyId;
+      }
+
+      if (options.onCallPolicyEscalationRuleId) {
+        emailLog.onCallDutyPolicyEscalationRuleId =
+          options.onCallPolicyEscalationRuleId;
+      }
+
+      if (options.onCallScheduleId) {
+        emailLog.onCallDutyPolicyScheduleId = options.onCallScheduleId;
       }
     }
 
@@ -424,17 +575,6 @@ export default class MailService {
         options.emailServer = globalEmailServer;
       }
 
-      if (
-        emailServerType === EmailServerType.Internal &&
-        (!options || !options.emailServer)
-      ) {
-        if (!options) {
-          options = {};
-        }
-
-        options.emailServer = this.getInternalEmailServer();
-      }
-
       if (options && options.emailServer && emailLog) {
         emailLog.fromEmail = options.emailServer.fromEmail;
       }
@@ -507,5 +647,9 @@ export default class MailService {
 
       throw err;
     }
+  }
+
+  public static async cleanup(): Promise<void> {
+    await TransporterPool.cleanup();
   }
 }

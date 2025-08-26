@@ -1,7 +1,8 @@
-import PullRequest from "Common/Types/CodeRepository/PullRequest";
-import PullRequestState from "Common/Types/CodeRepository/PullRequestState";
-import BadDataException from "Common/Types/Exception/BadDataException";
-import NotImplementedException from "Common/Types/Exception/NotImplementedException";
+import PullRequest from "../../../../Types/CodeRepository/PullRequest";
+import PullRequestState from "../../../../Types/CodeRepository/PullRequestState";
+import BadDataException from "../../../../Types/Exception/BadDataException";
+import NotImplementedException from "../../../../Types/Exception/NotImplementedException";
+import CaptureSpan from "../../Telemetry/CaptureSpan";
 
 export default class HostedCodeRepository {
   public constructor(data: { authToken: string; username: string }) {
@@ -21,6 +22,7 @@ export default class HostedCodeRepository {
   public authToken: string = "";
   public username: string = "";
 
+  @CaptureSpan()
   public async getPullRequests(_data: {
     pullRequestState: PullRequestState;
     baseBranchName?: string | undefined;
@@ -30,6 +32,7 @@ export default class HostedCodeRepository {
     throw new NotImplementedException();
   }
 
+  @CaptureSpan()
   public async createPullRequest(_data: {
     baseBranchName: string;
     headBranchName: string;
@@ -41,6 +44,7 @@ export default class HostedCodeRepository {
     throw new NotImplementedException();
   }
 
+  @CaptureSpan()
   public async pushChanges(_data: {
     branchName: string;
     organizationName: string;
@@ -49,6 +53,7 @@ export default class HostedCodeRepository {
     throw new NotImplementedException();
   }
 
+  @CaptureSpan()
   public async addRemote(_data: {
     remoteName: string;
     organizationName: string;

@@ -26,6 +26,18 @@ const OnCallDutyExecutionLogs: LazyExoticComponent<
 > = lazy(() => {
   return import("../Pages/OnCallDuty/OnCallDutyExecutionLogs");
 });
+
+const OnCallDutyUserOverrides: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/OnCallDuty/UserOverrides");
+});
+
+const OnCallDutyPolicyViewUserOverrides: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/OnCallDuty/OnCallDutyPolicy/UserOverrides");
+});
 const OnCallDutyPolicyExecutionLogTimeline: LazyExoticComponent<
   FunctionComponent<ComponentProps>
 > = lazy(() => {
@@ -36,6 +48,12 @@ const OnCallDutyPolicyView: LazyExoticComponent<
 > = lazy(() => {
   return import("../Pages/OnCallDuty/OnCallDutyPolicy/Index");
 });
+const OnCallDutyPolicyViewOwners: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/OnCallDuty/OnCallDutyPolicy/Owners");
+});
+
 const OnCallDutyPolicyViewDelete: LazyExoticComponent<
   FunctionComponent<ComponentProps>
 > = lazy(() => {
@@ -50,6 +68,12 @@ const OnCallDutyPolicyViewLogsView: LazyExoticComponent<
   FunctionComponent<ComponentProps>
 > = lazy(() => {
   return import("../Pages/OnCallDuty/OnCallDutyPolicy/ExecutionLogView");
+});
+
+const OnCallDutyPolicyViewNotificationLogs: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/OnCallDuty/OnCallDutyPolicy/NotificationLogs");
 });
 const OnCallDutyPolicyViewEscalation: LazyExoticComponent<
   FunctionComponent<ComponentProps>
@@ -84,6 +108,33 @@ const OnCallDutyScheduleViewLayers: LazyExoticComponent<
   return import("../Pages/OnCallDuty/OnCallDutySchedule/Layers");
 });
 
+const OnCallDutyScheduleViewNotificationLogs: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/OnCallDuty/OnCallDutySchedule/NotificationLogs");
+});
+
+// slack
+const WorkspaceConnectionSlack: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/OnCallDuty/WorkspaceConnectionSlack");
+});
+
+// Microsoft Teams
+const WorkspaceConnectionTeams: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/OnCallDuty/WorkspaceConnectionMicrosoftTeams");
+});
+
+// User Time Logs
+const OnCallDutyUserTimeLogs: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/OnCallDuty/OnCallDutyUserTimeLogs");
+});
+
 const OnCallDutyRoutes: FunctionComponent<ComponentProps> = (
   props: ComponentProps,
 ): ReactElement => {
@@ -101,6 +152,47 @@ const OnCallDutyRoutes: FunctionComponent<ComponentProps> = (
             </Suspense>
           }
         />
+
+        <PageRoute
+          path={
+            OnCallDutyRoutePath[
+              PageMap.ON_CALL_DUTY_WORKSPACE_CONNECTION_SLACK
+            ] || ""
+          }
+          element={
+            <Suspense fallback={Loader}>
+              <WorkspaceConnectionSlack
+                {...props}
+                pageRoute={
+                  RouteMap[
+                    PageMap.ON_CALL_DUTY_WORKSPACE_CONNECTION_SLACK
+                  ] as Route
+                }
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
+          path={
+            OnCallDutyRoutePath[
+              PageMap.ON_CALL_DUTY_WORKSPACE_CONNECTION_MICROSOFT_TEAMS
+            ] || ""
+          }
+          element={
+            <Suspense fallback={Loader}>
+              <WorkspaceConnectionTeams
+                {...props}
+                pageRoute={
+                  RouteMap[
+                    PageMap.ON_CALL_DUTY_WORKSPACE_CONNECTION_MICROSOFT_TEAMS
+                  ] as Route
+                }
+              />
+            </Suspense>
+          }
+        />
+
         <PageRoute
           path={OnCallDutyRoutePath[PageMap.ON_CALL_DUTY_POLICIES] || ""}
           element={
@@ -120,6 +212,23 @@ const OnCallDutyRoutes: FunctionComponent<ComponentProps> = (
                 {...props}
                 pageRoute={
                   RouteMap[PageMap.ON_CALL_DUTY_EXECUTION_LOGS] as Route
+                }
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
+          path={
+            OnCallDutyRoutePath[PageMap.ON_CALL_DUTY_POLICY_USER_OVERRIDES] ||
+            ""
+          }
+          element={
+            <Suspense fallback={Loader}>
+              <OnCallDutyUserOverrides
+                {...props}
+                pageRoute={
+                  RouteMap[PageMap.ON_CALL_DUTY_POLICY_USER_OVERRIDES] as Route
                 }
               />
             </Suspense>
@@ -152,6 +261,20 @@ const OnCallDutyRoutes: FunctionComponent<ComponentProps> = (
               <OnCallDutySchedules
                 {...props}
                 pageRoute={RouteMap[PageMap.ON_CALL_DUTY_SCHEDULES] as Route}
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
+          path={OnCallDutyRoutePath[PageMap.ON_CALLDUTY_USER_TIME_LOGS] || ""}
+          element={
+            <Suspense fallback={Loader}>
+              <OnCallDutyUserTimeLogs
+                {...props}
+                pageRoute={
+                  RouteMap[PageMap.ON_CALLDUTY_USER_TIME_LOGS] as Route
+                }
               />
             </Suspense>
           }
@@ -192,6 +315,22 @@ const OnCallDutyRoutes: FunctionComponent<ComponentProps> = (
 
         <PageRoute
           path={RouteUtil.getLastPathForKey(
+            PageMap.ON_CALL_DUTY_POLICY_VIEW_OWNERS,
+          )}
+          element={
+            <Suspense fallback={Loader}>
+              <OnCallDutyPolicyViewOwners
+                {...props}
+                pageRoute={
+                  RouteMap[PageMap.ON_CALL_DUTY_POLICY_VIEW_OWNERS] as Route
+                }
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
+          path={RouteUtil.getLastPathForKey(
             PageMap.ON_CALL_DUTY_POLICY_VIEW_ESCALATION,
           )}
           element={
@@ -200,6 +339,24 @@ const OnCallDutyRoutes: FunctionComponent<ComponentProps> = (
                 {...props}
                 pageRoute={
                   RouteMap[PageMap.ON_CALL_DUTY_POLICY_VIEW_ESCALATION] as Route
+                }
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
+          path={RouteUtil.getLastPathForKey(
+            PageMap.ON_CALL_DUTY_POLICY_VIEW_USER_OVERRIDES,
+          )}
+          element={
+            <Suspense fallback={Loader}>
+              <OnCallDutyPolicyViewUserOverrides
+                {...props}
+                pageRoute={
+                  RouteMap[
+                    PageMap.ON_CALL_DUTY_POLICY_VIEW_USER_OVERRIDES
+                  ] as Route
                 }
               />
             </Suspense>
@@ -260,6 +417,24 @@ const OnCallDutyRoutes: FunctionComponent<ComponentProps> = (
             </Suspense>
           }
         />
+
+        <PageRoute
+          path={RouteUtil.getLastPathForKey(
+            PageMap.ON_CALL_DUTY_POLICY_VIEW_NOTIFICATION_LOGS,
+          )}
+          element={
+            <Suspense fallback={Loader}>
+              <OnCallDutyPolicyViewNotificationLogs
+                {...props}
+                pageRoute={
+                  RouteMap[
+                    PageMap.ON_CALL_DUTY_POLICY_VIEW_NOTIFICATION_LOGS
+                  ] as Route
+                }
+              />
+            </Suspense>
+          }
+        />
       </PageRoute>
       <PageRoute
         path={OnCallDutyRoutePath[PageMap.ON_CALL_DUTY_SCHEDULE_VIEW] || ""}
@@ -305,6 +480,24 @@ const OnCallDutyRoutes: FunctionComponent<ComponentProps> = (
                 {...props}
                 pageRoute={
                   RouteMap[PageMap.ON_CALL_DUTY_SCHEDULE_VIEW_LAYERS] as Route
+                }
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
+          path={RouteUtil.getLastPathForKey(
+            PageMap.ON_CALL_DUTY_SCHEDULE_VIEW_NOTIFICATION_LOGS,
+          )}
+          element={
+            <Suspense fallback={Loader}>
+              <OnCallDutyScheduleViewNotificationLogs
+                {...props}
+                pageRoute={
+                  RouteMap[
+                    PageMap.ON_CALL_DUTY_SCHEDULE_VIEW_NOTIFICATION_LOGS
+                  ] as Route
                 }
               />
             </Suspense>

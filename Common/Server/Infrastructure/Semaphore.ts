@@ -1,10 +1,12 @@
 import Redis, { ClientType } from "./Redis";
 import { Mutex, LockOptions } from "redis-semaphore";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export type SemaphoreMutex = Mutex;
 
 export default class Semaphore {
   // returns the mutex id
+  @CaptureSpan()
   public static async lock(data: {
     key: string;
     namespace: string;
@@ -44,6 +46,7 @@ export default class Semaphore {
     return mutex;
   }
 
+  @CaptureSpan()
   public static async release(mutex: SemaphoreMutex): Promise<void> {
     await mutex.release();
   }

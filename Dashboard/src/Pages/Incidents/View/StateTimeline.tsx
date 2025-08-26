@@ -1,4 +1,3 @@
-import DashboardNavigation from "../../../Utils/Navigation";
 import PageComponentProps from "../../PageComponentProps";
 import Color from "Common/Types/Color";
 import OneUptimeDate from "Common/Types/Date";
@@ -17,12 +16,17 @@ import FieldType from "Common/UI/Components/Types/FieldType";
 import Navigation from "Common/UI/Utils/Navigation";
 import IncidentState from "Common/Models/DatabaseModels/IncidentState";
 import IncidentStateTimeline from "Common/Models/DatabaseModels/IncidentStateTimeline";
+import StatusPageSubscriberNotificationStatus from "Common/Types/StatusPage/StatusPageSubscriberNotificationStatus";
+import ModelAPI from "Common/UI/Utils/ModelAPI/ModelAPI";
+import SubscriberNotificationStatus from "../../../Components/StatusPageSubscribers/SubscriberNotificationStatus";
 import React, {
   Fragment,
   FunctionComponent,
   ReactElement,
   useState,
 } from "react";
+import SortOrder from "Common/Types/BaseDatabase/SortOrder";
+import ProjectUtil from "Common/UI/Utils/Project";
 
 const IncidentViewStateTimeline: FunctionComponent<PageComponentProps> = (
   props: PageComponentProps,
@@ -30,9 +34,28 @@ const IncidentViewStateTimeline: FunctionComponent<PageComponentProps> = (
   const modelId: ObjectID = Navigation.getLastParamAsObjectID(1);
   const [showViewLogsModal, setShowViewLogsModal] = useState<boolean>(false);
   const [logs, setLogs] = useState<string>("");
-
   const [showRootCause, setShowRootCause] = useState<boolean>(false);
   const [rootCause, setRootCause] = useState<string>("");
+  const [refreshToggle, setRefreshToggle] = useState<boolean>(false);
+
+  const handleResendNotification: (
+    item: IncidentStateTimeline,
+  ) => Promise<void> = async (item: IncidentStateTimeline): Promise<void> => {
+    try {
+      await ModelAPI.updateById({
+        modelType: IncidentStateTimeline,
+        id: item.id!,
+        data: {
+          subscriberNotificationStatus:
+            StatusPageSubscriberNotificationStatus.Pending,
+          subscriberNotificationStatusMessage: null,
+        },
+      });
+      setRefreshToggle(!refreshToggle);
+    } catch {
+      // Error resending notification: handle appropriately
+    }
+  };
 
   return (
     <Fragment>
@@ -40,19 +63,24 @@ const IncidentViewStateTimeline: FunctionComponent<PageComponentProps> = (
         modelType={IncidentStateTimeline}
         id="table-incident-status-timeline"
         name="Monitor > State Timeline"
+        userPreferencesKey="incident-status-timeline-table"
         isEditable={false}
         isDeleteable={true}
         isCreateable={true}
         isViewable={false}
         showViewIdButton={true}
+        refreshToggle={refreshToggle.toString()}
         query={{
           incidentId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         selectMoreFields={{
           stateChangeLog: true,
           rootCause: true,
+          subscriberNotificationStatusMessage: true,
         }}
+        sortBy="startsAt"
+        sortOrder={SortOrder.Descending}
         actionButtons={[
           {
             title: "View Cause",
@@ -123,6 +151,18 @@ const IncidentViewStateTimeline: FunctionComponent<PageComponentProps> = (
           },
           {
             field: {
+              startsAt: true,
+            },
+            title: "Starts At",
+            fieldType: FormFieldSchemaType.DateTime,
+            required: true,
+            placeholder: "Starts At",
+            getDefaultValue: () => {
+              return OneUptimeDate.getCurrentDate();
+            },
+          },
+          {
+            field: {
               shouldStatusPageSubscribersBeNotified: true,
             },
 
@@ -146,7 +186,7 @@ const IncidentViewStateTimeline: FunctionComponent<PageComponentProps> = (
             type: FieldType.Entity,
             filterEntityType: IncidentState,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -155,7 +195,7 @@ const IncidentViewStateTimeline: FunctionComponent<PageComponentProps> = (
           },
           {
             field: {
-              createdAt: true,
+              startsAt: true,
             },
             title: "Starts At",
             type: FieldType.Date,
@@ -194,7 +234,7 @@ const IncidentViewStateTimeline: FunctionComponent<PageComponentProps> = (
           },
           {
             field: {
-              createdAt: true,
+              startsAt: true,
             },
             title: "Starts At",
             type: FieldType.DateTime,
@@ -217,7 +257,7 @@ const IncidentViewStateTimeline: FunctionComponent<PageComponentProps> = (
               return (
                 <p>
                   {OneUptimeDate.differenceBetweenTwoDatesAsFromattedString(
-                    item["createdAt"] as Date,
+                    item["startsAt"] as Date,
                     (item["endsAt"] as Date) || OneUptimeDate.getCurrentDate(),
                   )}
                 </p>
@@ -226,10 +266,23 @@ const IncidentViewStateTimeline: FunctionComponent<PageComponentProps> = (
           },
           {
             field: {
-              shouldStatusPageSubscribersBeNotified: true,
+              subscriberNotificationStatus: true,
             },
-            title: "Subscribers Notified",
-            type: FieldType.Boolean,
+            title: "Subscriber Notification Status",
+            type: FieldType.Text,
+            getElement: (item: IncidentStateTimeline): ReactElement => {
+              return (
+                <SubscriberNotificationStatus
+                  status={item.subscriberNotificationStatus}
+                  subscriberNotificationStatusMessage={
+                    item.subscriberNotificationStatusMessage
+                  }
+                  onResendNotification={() => {
+                    return handleResendNotification(item);
+                  }}
+                />
+              );
+            },
           },
         ]}
       />

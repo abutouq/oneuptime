@@ -1,7 +1,8 @@
 import Route from "Common/Types/API/Route";
-import Link from "Common/UI/Components/Link/Link";
+import AppLink from "../AppLink/AppLink";
 import Team from "Common/Models/DatabaseModels/Team";
 import React, { FunctionComponent, ReactElement } from "react";
+import ProjectUtil from "Common/UI/Utils/Project";
 
 export interface ComponentProps {
   team: Team;
@@ -13,15 +14,21 @@ const TeamElement: FunctionComponent<ComponentProps> = (
 ): ReactElement => {
   if (
     props.team._id &&
-    (props.team.projectId || (props.team.project && props.team.project._id))
+    (props.team.projectId ||
+      (props.team.project && props.team.project._id) ||
+      ProjectUtil.getCurrentProjectId())
   ) {
-    const projectId: string | undefined = props.team.projectId
+    let projectId: string | undefined = props.team.projectId
       ? props.team.projectId.toString()
       : props.team.project
         ? props.team.project._id
         : "";
+
+    if (!projectId) {
+      projectId = ProjectUtil.getCurrentProjectId()?.toString();
+    }
     return (
-      <Link
+      <AppLink
         onNavigateComplete={props.onNavigateComplete}
         className="hover:underline"
         to={
@@ -29,7 +36,7 @@ const TeamElement: FunctionComponent<ComponentProps> = (
         }
       >
         <span>{props.team.name}</span>
-      </Link>
+      </AppLink>
     );
   }
 

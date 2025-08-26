@@ -8,13 +8,14 @@ import SortOrder from "../../Types/BaseDatabase/SortOrder";
 import LIMIT_MAX from "../../Types/Database/LimitMax";
 import BadDataException from "../../Types/Exception/BadDataException";
 import ObjectID from "../../Types/ObjectID";
-import Model from "Common/Models/DatabaseModels/IncidentSeverity";
-
+import Model from "../../Models/DatabaseModels/IncidentSeverity";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 export class Service extends DatabaseService<Model> {
   public constructor() {
     super(Model);
   }
 
+  @CaptureSpan()
   protected override async onBeforeCreate(
     createBy: CreateBy<Model>,
   ): Promise<OnCreate<Model>> {
@@ -38,6 +39,7 @@ export class Service extends DatabaseService<Model> {
     };
   }
 
+  @CaptureSpan()
   protected override async onBeforeDelete(
     deleteBy: DeleteBy<Model>,
   ): Promise<OnDelete<Model>> {
@@ -68,6 +70,7 @@ export class Service extends DatabaseService<Model> {
     };
   }
 
+  @CaptureSpan()
   protected override async onDeleteSuccess(
     onDelete: OnDelete<Model>,
     _itemIdsBeforeDelete: ObjectID[],
@@ -95,6 +98,7 @@ export class Service extends DatabaseService<Model> {
     };
   }
 
+  @CaptureSpan()
   protected override async onBeforeUpdate(
     updateBy: UpdateBy<Model>,
   ): Promise<OnUpdate<Model>> {

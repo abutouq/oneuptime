@@ -11,7 +11,7 @@ import React, {
 import MonitorsTable from "../../../Components/Monitor/MonitorTable";
 import { PromiseVoidFunction } from "Common/Types/FunctionTypes";
 import ModelAPI from "Common/UI/Utils/ModelAPI/ModelAPI";
-import ListResult from "Common/UI/Utils/BaseDatabase/ListResult";
+import ListResult from "Common/Types/BaseDatabase/ListResult";
 import { LIMIT_PER_PROJECT } from "Common/Types/Database/LimitMax";
 import API from "Common/UI/Utils/API/API";
 import ErrorMessage from "Common/UI/Components/ErrorMessage/ErrorMessage";
@@ -22,10 +22,10 @@ import Monitor from "Common/Models/DatabaseModels/Monitor";
 import ConfirmModal from "Common/UI/Components/Modal/ConfirmModal";
 import IconProp from "Common/Types/Icon/IconProp";
 import ModelFormModal from "Common/UI/Components/ModelFormModal/ModelFormModal";
-import DashboardNavigation from "../../../Utils/Navigation";
 import { FormType } from "Common/UI/Components/Forms/ModelForm";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
 import MonitorGroupResource from "Common/Models/DatabaseModels/MonitorGroupResource";
+import ProjectUtil from "Common/UI/Utils/Project";
 
 const ServiceCatalogMonitors: FunctionComponent<
   PageComponentProps
@@ -80,7 +80,7 @@ const ServiceCatalogMonitors: FunctionComponent<
   }, []);
 
   if (error) {
-    return <ErrorMessage error={error} />;
+    return <ErrorMessage message={error} />;
   }
 
   if (isLoading) {
@@ -204,7 +204,7 @@ const ServiceCatalogMonitors: FunctionComponent<
           }}
           onBeforeCreate={(monitorGroupMonitor: MonitorGroupResource) => {
             monitorGroupMonitor.monitorGroupId = modelId;
-            monitorGroupMonitor.projectId = DashboardNavigation.getProjectId()!;
+            monitorGroupMonitor.projectId = ProjectUtil.getCurrentProjectId()!;
             return Promise.resolve(monitorGroupMonitor);
           }}
           formProps={{

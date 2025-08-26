@@ -1,5 +1,5 @@
+import MarkdownUtil from "Common/UI/Utils/Markdown";
 import UserElement from "../../../Components/User/User";
-import DashboardNavigation from "../../../Utils/Navigation";
 import ProjectUser from "../../../Utils/ProjectUser";
 import PageComponentProps from "../../PageComponentProps";
 import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
@@ -30,6 +30,7 @@ import React, {
   ReactElement,
   useState,
 } from "react";
+import ProjectUtil from "Common/UI/Utils/Project";
 
 const ScheduledMaintenanceDelete: FunctionComponent<PageComponentProps> = (
   props: PageComponentProps,
@@ -121,6 +122,7 @@ const ScheduledMaintenanceDelete: FunctionComponent<PageComponentProps> = (
         modelType={ScheduledMaintenanceInternalNote}
         id="table-scheduled-maintenance-internal-note"
         name="Scheduled Maintenance Events > Internal Note"
+        userPreferencesKey="scheduled-maintenance-internal-note-table"
         isDeleteable={true}
         isCreateable={true}
         isEditable={true}
@@ -129,7 +131,7 @@ const ScheduledMaintenanceDelete: FunctionComponent<PageComponentProps> = (
         createEditModalWidth={ModalWidth.Large}
         query={{
           scheduledMaintenanceId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         showCreateForm={
           Object.keys(initialValuesForScheduledMaintenance).length > 0
@@ -171,8 +173,9 @@ const ScheduledMaintenanceDelete: FunctionComponent<PageComponentProps> = (
             title: "Private Scheduled Maintenance Note",
             fieldType: FormFieldSchemaType.Markdown,
             required: true,
-            description:
-              "Add a private note to this scheduled maintenance here. This is in Markdown.",
+            description: MarkdownUtil.getMarkdownCheatsheet(
+              "Add a private note to this scheduled maintenance here",
+            ),
           },
         ]}
         showRefreshButton={true}
@@ -188,7 +191,7 @@ const ScheduledMaintenanceDelete: FunctionComponent<PageComponentProps> = (
             filterEntityType: User,
             fetchFilterDropdownOptions: async () => {
               return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-                DashboardNavigation.getProjectId()!,
+                ProjectUtil.getCurrentProjectId()!,
               );
             },
             filterDropdownField: {

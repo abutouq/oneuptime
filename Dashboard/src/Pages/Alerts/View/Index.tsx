@@ -1,11 +1,7 @@
-import ChangeAlertState, {
-  AlertType,
-} from "../../../Components/Alert/ChangeState";
+import ChangeAlertState from "../../../Components/Alert/ChangeState";
 import LabelsElement from "../../../Components/Label/Labels";
 import OnCallDutyPoliciesView from "../../../Components/OnCallPolicy/OnCallPolicies";
-import EventName from "../../../Utils/EventName";
 import PageComponentProps from "../../PageComponentProps";
-import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
 import SortOrder from "Common/Types/BaseDatabase/SortOrder";
 import { Black } from "Common/Types/BrandColors";
 import { LIMIT_PER_PROJECT } from "Common/Types/Database/LimitMax";
@@ -23,7 +19,6 @@ import Pill from "Common/UI/Components/Pill/Pill";
 import ProbeElement from "Common/UI/Components/Probe/Probe";
 import FieldType from "Common/UI/Components/Types/FieldType";
 import BaseAPI from "Common/UI/Utils/API/API";
-import GlobalEvent from "Common/UI/Utils/GlobalEvents";
 import ModelAPI, { ListResult } from "Common/UI/Utils/ModelAPI/ModelAPI";
 import Navigation from "Common/UI/Utils/Navigation";
 import Alert from "Common/Models/DatabaseModels/Alert";
@@ -53,6 +48,7 @@ import HeaderAlert, {
 } from "Common/UI/Components/HeaderAlert/HeaderAlert";
 import IconProp from "Common/Types/Icon/IconProp";
 import ColorSwatch from "Common/Types/ColorSwatch";
+import AlertFeedElement from "../../../Components/Alert/AlertFeed";
 
 const AlertView: FunctionComponent<PageComponentProps> = (): ReactElement => {
   const modelId: ObjectID = Navigation.getLastParamAsObjectID();
@@ -148,7 +144,7 @@ const AlertView: FunctionComponent<PageComponentProps> = (): ReactElement => {
   }
 
   if (error) {
-    return <ErrorMessage error={error} />;
+    return <ErrorMessage message={error} />;
   }
 
   type GetAlertStateFunction = () => AlertState | undefined;
@@ -356,6 +352,20 @@ const AlertView: FunctionComponent<PageComponentProps> = (): ReactElement => {
           fields: [
             {
               field: {
+                alertNumber: true,
+              },
+              title: "Alert Number",
+              fieldType: FieldType.Element,
+              getElement: (item: Alert): ReactElement => {
+                if (!item.alertNumber) {
+                  return <>-</>;
+                }
+
+                return <>#{item.alertNumber}</>;
+              },
+            },
+            {
+              field: {
                 _id: true,
               },
               title: "Alert ID",
@@ -484,63 +494,15 @@ const AlertView: FunctionComponent<PageComponentProps> = (): ReactElement => {
                 return <LabelsElement labels={item["labels"] || []} />;
               },
             },
-            {
-              field: {
-                _id: true,
-              },
-              title: "Acknowledge Alert",
-              fieldType: FieldType.Element,
-              getElement: (
-                _item: Alert,
-                onBeforeFetchData: JSONObject | undefined,
-              ): ReactElement => {
-                return (
-                  <ChangeAlertState
-                    alertId={modelId}
-                    alertTimeline={
-                      onBeforeFetchData
-                        ? (onBeforeFetchData["data"] as Array<BaseModel>)
-                        : []
-                    }
-                    alertType={AlertType.Ack}
-                    onActionComplete={async () => {
-                      await fetchData();
-                    }}
-                  />
-                );
-              },
-            },
-            {
-              field: {
-                _id: true,
-              },
-              title: "Resolve Alert",
-              fieldType: FieldType.Element,
-              getElement: (
-                _item: Alert,
-                onBeforeFetchData: JSONObject | undefined,
-              ): ReactElement => {
-                return (
-                  <ChangeAlertState
-                    alertId={modelId}
-                    alertTimeline={
-                      onBeforeFetchData
-                        ? (onBeforeFetchData["data"] as Array<BaseModel>)
-                        : []
-                    }
-                    alertType={AlertType.Resolve}
-                    onActionComplete={async () => {
-                      GlobalEvent.dispatchEvent(
-                        EventName.ACTIVE_ALERTS_COUNT_REFRESH,
-                      );
-                      await fetchData();
-                    }}
-                  />
-                );
-              },
-            },
           ],
           modelId: modelId,
+        }}
+      />
+
+      <ChangeAlertState
+        alertId={modelId}
+        onActionComplete={async () => {
+          await fetchData();
         }}
       />
 
@@ -556,109 +518,6 @@ const AlertView: FunctionComponent<PageComponentProps> = (): ReactElement => {
           className="w-1/2"
         />
       </div>
-
-      <CardModelDetail
-        name="Alert Description"
-        cardProps={{
-          title: "Alert Description",
-          description:
-            "Description of this alert. This is visible on Status Page and is in markdown format.",
-        }}
-        editButtonText="Edit Alert Description"
-        isEditable={true}
-        formFields={[
-          {
-            field: {
-              description: true,
-            },
-            title: "Description",
-
-            fieldType: FormFieldSchemaType.Markdown,
-            required: false,
-            placeholder: "Description",
-          },
-        ]}
-        modelDetailProps={{
-          showDetailsInNumberOfColumns: 1,
-          modelType: Alert,
-          id: "model-detail-alert-description",
-          fields: [
-            {
-              field: {
-                description: true,
-              },
-              title: "Description",
-              fieldType: FieldType.Markdown,
-            },
-          ],
-          modelId: modelId,
-        }}
-      />
-
-      <CardModelDetail
-        name="Root Cause"
-        cardProps={{
-          title: "Root Cause",
-          description:
-            "Why did this alert happen? Here is the root cause of this alert.",
-        }}
-        isEditable={false}
-        modelDetailProps={{
-          showDetailsInNumberOfColumns: 1,
-          modelType: Alert,
-          id: "model-detail-alert-root-cause",
-          fields: [
-            {
-              field: {
-                rootCause: true,
-              },
-              title: "",
-              placeholder: "No root cause identified for this alert.",
-              fieldType: FieldType.Markdown,
-            },
-          ],
-          modelId: modelId,
-        }}
-      />
-
-      <CardModelDetail
-        name="Remediation Notes"
-        cardProps={{
-          title: "Remediation Notes",
-          description:
-            "What steps should be taken to resolve this alert? Here are the remediation notes.",
-        }}
-        editButtonText="Edit Remediation Notes"
-        isEditable={true}
-        formFields={[
-          {
-            field: {
-              remediationNotes: true,
-            },
-            title: "Remediation Notes",
-
-            fieldType: FormFieldSchemaType.Markdown,
-            required: true,
-            placeholder: "Remediation Notes",
-          },
-        ]}
-        modelDetailProps={{
-          showDetailsInNumberOfColumns: 1,
-          modelType: Alert,
-          id: "model-detail-alert-remediation-notes",
-          fields: [
-            {
-              field: {
-                remediationNotes: true,
-              },
-              title: "Remediation Notes",
-              placeholder: "No remediation notes added for this alert.",
-              fieldType: FieldType.Markdown,
-            },
-          ],
-          modelId: modelId,
-        }}
-      />
 
       {telemetryQuery &&
         telemetryQuery.telemetryType === TelemetryType.Log &&
@@ -718,6 +577,8 @@ const AlertView: FunctionComponent<PageComponentProps> = (): ReactElement => {
             />
           </Card>
         )}
+
+      <AlertFeedElement alertId={modelId} />
     </Fragment>
   );
 };

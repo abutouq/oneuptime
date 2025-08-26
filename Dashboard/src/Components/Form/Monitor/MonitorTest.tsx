@@ -26,6 +26,7 @@ import { MonitorStepProbeResponse } from "Common/Models/DatabaseModels/MonitorPr
 import SummaryInfo from "../../Monitor/SummaryView/SummaryInfo";
 
 export interface ComponentProps {
+  monitorId?: ObjectID | undefined;
   monitorSteps: MonitorSteps;
   monitorType: MonitorType;
   probes: Array<Probe>;
@@ -70,6 +71,9 @@ const MonitorTestForm: FunctionComponent<ComponentProps> = (
       monitorTestObj.probeId = probeId;
       monitorTestObj.monitorType = props.monitorType;
       monitorTestObj.isInQueue = true;
+      if (props.monitorId) {
+        monitorTestObj.monitorId = props.monitorId;
+      }
 
       // save the monitor test to the database.
 
@@ -188,7 +192,7 @@ const MonitorTestForm: FunctionComponent<ComponentProps> = (
           modalWidth={ModalWidth.Large}
         >
           <div>
-            {error && <ErrorMessage error={error} />}
+            {error && <ErrorMessage message={error} />}
             {isLoading && (
               <div className="w-full text-center mt-10 mb-10">
                 <Loader

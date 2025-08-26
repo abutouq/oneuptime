@@ -16,7 +16,7 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Preinstall 
         run: npm run prerun
@@ -31,7 +31,7 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Preinstall 
         run: npm run prerun
@@ -46,7 +46,7 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Preinstall 
         run: npm run prerun
@@ -61,7 +61,7 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Preinstall 
         run: npm run prerun
@@ -76,7 +76,7 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Preinstall 
         run: npm run prerun
@@ -91,7 +91,7 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Preinstall 
         run: npm run prerun
@@ -106,7 +106,7 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Preinstall 
         run: npm run prerun
@@ -122,7 +122,7 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Preinstall 
         run: npm run prerun
@@ -137,7 +137,7 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Preinstall 
         run: npm run prerun
@@ -154,7 +154,7 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Preinstall 
         run: npm run prerun
@@ -169,7 +169,7 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Preinstall 
         run: npm run prerun
@@ -185,7 +185,7 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Preinstall 
         run: npm run prerun
@@ -200,7 +200,7 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Preinstall 
         run: npm run prerun
@@ -209,29 +209,13 @@ jobs:
       - name: build docker image
         run: sudo docker build -f ./Dashboard/Dockerfile .
 
-  docker-build-haraka:
-    runs-on: ubuntu-latest
-    env:
-      CI_PIPELINE_ID: ${{github.run_number}}
-    steps:
-      - name: Checkout 
-        uses: actions/checkout@v2
-
-      - name: Preinstall 
-        run: npm run prerun
-        
-      # build images
-      - name: build docker image
-        run: sudo docker build -f ./Haraka/Dockerfile .
-
-
   docker-build-probe:
     runs-on: ubuntu-latest
     env:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       
       - name: Preinstall 
         run: npm run prerun
@@ -246,7 +230,7 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       
       - name: Preinstall 
         run: npm run prerun
@@ -255,13 +239,28 @@ jobs:
       - name: build docker image
         run: sudo docker build -f ./ProbeIngest/Dockerfile .
 
+  docker-build-server-monitor-ingest:
+    runs-on: ubuntu-latest
+    env:
+      CI_PIPELINE_ID: ${{github.run_number}}
+    steps:
+      - name: Checkout 
+        uses: actions/checkout@v4
+      
+      - name: Preinstall 
+        run: npm run prerun
+        
+      # build image probe api
+      - name: build docker image
+        run: sudo docker build -f ./ServerMonitorIngest/Dockerfile .
+
   docker-build-open-telemetry-ingest:
     runs-on: ubuntu-latest
     env:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       
       - name: Preinstall 
         run: npm run prerun
@@ -276,7 +275,7 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       
       - name: Preinstall 
         run: npm run prerun
@@ -291,7 +290,7 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       
       - name: Preinstall 
         run: npm run prerun
@@ -306,7 +305,7 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Preinstall 
         run: npm run prerun
@@ -321,7 +320,7 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
     steps:
       - name: Checkout 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Preinstall 
         run: npm run prerun

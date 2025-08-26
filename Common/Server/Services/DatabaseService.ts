@@ -31,8 +31,8 @@ import UpdateOneBy from "../Types/Database/UpdateOneBy";
 import Encryption from "../Utils/Encryption";
 import logger from "../Utils/Logger";
 import BaseService from "./BaseService";
-import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import { WorkflowRoute } from "Common/ServiceRoute";
+import BaseModel from "../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import { WorkflowRoute } from "../../ServiceRoute";
 import Protocol from "../../Types/API/Protocol";
 import Route from "../../Types/API/Route";
 import URL from "../../Types/API/URL";
@@ -56,12 +56,13 @@ import ObjectID from "../../Types/ObjectID";
 import PositiveNumber from "../../Types/PositiveNumber";
 import Text from "../../Types/Text";
 import Typeof from "../../Types/Typeof";
-import API from "Common/Utils/API";
-import Slug from "Common/Utils/Slug";
+import API from "../../Utils/API";
+import Slug from "../../Utils/Slug";
 import { DataSource, Repository, SelectQueryBuilder } from "typeorm";
 import { FindWhere } from "../../Types/BaseDatabase/Query";
 import Realtime from "../Utils/Realtime";
 import ModelEventType from "../../Types/Realtime/ModelEventType";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 class DatabaseService<TBaseModel extends BaseModel> extends BaseService {
   public modelType!: { new (): TBaseModel };
@@ -227,6 +228,11 @@ class DatabaseService<TBaseModel extends BaseModel> extends BaseService {
         }
 
         throw new BadDataException(`${requiredField} is required`);
+      } else if (
+        (data as any)[requiredField] === null &&
+        data.isDefaultValueColumn(requiredField)
+      ) {
+        delete (data as any)[requiredField];
       }
     }
 
@@ -483,6 +489,18 @@ class DatabaseService<TBaseModel extends BaseModel> extends BaseService {
                 (item as JSONObject)["_id"] as string
               ).toString();
               itemsArray.push(basemodelItem);
+            } else if (
+              item &&
+              typeof item === Typeof.Object &&
+              (item as JSONObject)["id"] &&
+              typeof (item as JSONObject)["id"] === Typeof.String
+            ) {
+              const basemodelItem: BaseModel =
+                new tableColumnMetadata.modelType();
+              basemodelItem._id = (
+                (item as JSONObject)["id"] as string
+              ).toString();
+              itemsArray.push(basemodelItem);
             } else if (item instanceof BaseModel) {
               itemsArray.push(item);
             }
@@ -515,6 +533,19 @@ class DatabaseService<TBaseModel extends BaseModel> extends BaseService {
       ) {
         (data as any)[columnName] = null;
       }
+
+      // if table columntype is file and file is base64 stirng then convert to buffer to save.
+      if (
+        tableColumnMetadata.type === TableColumnType.File &&
+        (data as any)[columnName] &&
+        typeof (data as any)[columnName] === Typeof.String
+      ) {
+        const fileBuffer: Buffer = Buffer.from(
+          (data as any)[columnName] as string,
+          "base64",
+        );
+        (data as any)[columnName] = fileBuffer;
+      }
     }
 
     // check createByUserId.
@@ -526,6 +557,7 @@ class DatabaseService<TBaseModel extends BaseModel> extends BaseService {
     return data;
   }
 
+  @CaptureSpan()
   public async onTriggerRealtime(
     modelId: ObjectID,
     projectId: ObjectID,
@@ -577,6 +609,7 @@ class DatabaseService<TBaseModel extends BaseModel> extends BaseService {
     }
   }
 
+  @CaptureSpan()
   public async onTriggerWorkflow(
     id: ObjectID,
     projectId: ObjectID,
@@ -609,6 +642,7 @@ class DatabaseService<TBaseModel extends BaseModel> extends BaseService {
     }
   }
 
+  @CaptureSpan()
   public async create(createBy: CreateBy<TBaseModel>): Promise<TBaseModel> {
     const onCreate: OnCreate<TBaseModel> = createBy.props.ignoreHooks
       ? { createBy, carryForward: [] }
@@ -829,6 +863,7 @@ class DatabaseService<TBaseModel extends BaseModel> extends BaseService {
     return Promise.resolve(createBy);
   }
 
+  @CaptureSpan()
   public async countBy({
     query,
     skip,
@@ -905,6 +940,7 @@ class DatabaseService<TBaseModel extends BaseModel> extends BaseService {
     }
   }
 
+  @CaptureSpan()
   public async deleteOneById(deleteById: DeleteById): Promise<number> {
     await ModelPermission.checkDeletePermissionByModel({
       modelType: this.modelType,
@@ -940,16 +976,19 @@ class DatabaseService<TBaseModel extends BaseModel> extends BaseService {
     });
   }
 
+  @CaptureSpan()
   public async deleteOneBy(
     deleteOneBy: DeleteOneBy<TBaseModel>,
   ): Promise<number> {
     return await this._deleteBy({ ...deleteOneBy, limit: 1, skip: 0 });
   }
 
+  @CaptureSpan()
   public async deleteBy(deleteBy: DeleteBy<TBaseModel>): Promise<number> {
     return await this._deleteBy(deleteBy);
   }
 
+  @CaptureSpan()
   public async hardDeleteBy(deleteBy: DeleteBy<TBaseModel>): Promise<number> {
     try {
       const onDelete: OnDelete<TBaseModel> = deleteBy.props.ignoreHooks
@@ -1125,6 +1164,7 @@ class DatabaseService<TBaseModel extends BaseModel> extends BaseService {
     }
   }
 
+  @CaptureSpan()
   public async findBy(findBy: FindBy<TBaseModel>): Promise<Array<TBaseModel>> {
     return await this._findBy(findBy);
   }
@@ -1293,6 +1333,7 @@ class DatabaseService<TBaseModel extends BaseModel> extends BaseService {
     return items;
   }
 
+  @CaptureSpan()
   public async findOneBy(
     findOneBy: FindOneBy<TBaseModel>,
   ): Promise<TBaseModel | null> {
@@ -1308,6 +1349,7 @@ class DatabaseService<TBaseModel extends BaseModel> extends BaseService {
     return null;
   }
 
+  @CaptureSpan()
   public async findOneById(
     findOneById: FindOneByID<TBaseModel>,
   ): Promise<TBaseModel | null> {
@@ -1468,16 +1510,19 @@ class DatabaseService<TBaseModel extends BaseModel> extends BaseService {
     return true;
   }
 
+  @CaptureSpan()
   public async updateOneBy(
     updateOneBy: UpdateOneBy<TBaseModel>,
   ): Promise<number> {
     return await this._updateBy({ ...updateOneBy, limit: 1, skip: 0 });
   }
 
+  @CaptureSpan()
   public async updateBy(updateBy: UpdateBy<TBaseModel>): Promise<number> {
     return await this._updateBy(updateBy);
   }
 
+  @CaptureSpan()
   public async updateOneById(
     updateById: UpdateByID<TBaseModel>,
   ): Promise<void> {
@@ -1519,6 +1564,7 @@ class DatabaseService<TBaseModel extends BaseModel> extends BaseService {
     });
   }
 
+  @CaptureSpan()
   public async updateOneByIdAndFetch(
     updateById: UpdateByIDAndFetch<TBaseModel>,
   ): Promise<TBaseModel | null> {
@@ -1530,6 +1576,7 @@ class DatabaseService<TBaseModel extends BaseModel> extends BaseService {
     });
   }
 
+  @CaptureSpan()
   public async searchBy({
     skip,
     limit,

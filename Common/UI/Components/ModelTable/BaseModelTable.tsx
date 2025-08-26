@@ -3,12 +3,11 @@ import { API_DOCS_URL, BILLING_ENABLED, getAllEnvVars } from "../../Config";
 import { GetReactElementFunction } from "../../Types/FunctionTypes";
 import SelectEntityField from "../../Types/SelectEntityField";
 import API from "../../Utils/API/API";
-import GroupBy from "../../Utils/BaseDatabase/GroupBy";
-import ListResult from "../../Utils/BaseDatabase/ListResult";
+
 import Query from "../../../Types/BaseDatabase/Query";
-import RequestOptions from "../../Utils/BaseDatabase/RequestOptions";
-import Select from "../../Utils/BaseDatabase/Select";
-import Sort from "../../Utils/BaseDatabase/Sort";
+import GroupBy from "../../../Types/BaseDatabase/GroupBy";
+import Sort from "../../../Types/BaseDatabase/Sort";
+import Select from "../../../Types/BaseDatabase/Select";
 import { Logger } from "../../Utils/Logger";
 import Navigation from "../../Utils/Navigation";
 import PermissionUtil from "../../Utils/Permission";
@@ -30,7 +29,7 @@ import Field from "../Detail/Field";
 import ErrorMessage from "../ErrorMessage/ErrorMessage";
 import ClassicFilterType from "../Filters/Types/Filter";
 import FilterData from "../Filters/Types/FilterData";
-import { FormProps } from "../Forms/BasicForm";
+import { FormProps, FormSummaryConfig } from "../Forms/BasicForm";
 import { ModelField } from "../Forms/ModelForm";
 import { FormStep } from "../Forms/Types/FormStep";
 import FormValues from "../Forms/Types/FormValues";
@@ -48,36 +47,36 @@ import ModelTableColumn from "./Column";
 import Columns from "./Columns";
 import AnalyticsBaseModel, {
   AnalyticsBaseModelType,
-} from "Common/Models/AnalyticsModels/AnalyticsBaseModel/AnalyticsBaseModel";
+} from "../../../Models/AnalyticsModels/AnalyticsBaseModel/AnalyticsBaseModel";
 import BaseModel, {
   DatabaseBaseModelType,
-} from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import Route from "Common/Types/API/Route";
-import URL from "Common/Types/API/URL";
-import { ColumnAccessControl } from "Common/Types/BaseDatabase/AccessControl";
-import InBetween from "Common/Types/BaseDatabase/InBetween";
-import Search from "Common/Types/BaseDatabase/Search";
-import SortOrder from "Common/Types/BaseDatabase/SortOrder";
+} from "../../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import Route from "../../../Types/API/Route";
+import URL from "../../../Types/API/URL";
+import { ColumnAccessControl } from "../../../Types/BaseDatabase/AccessControl";
+import InBetween from "../../../Types/BaseDatabase/InBetween";
+import Search from "../../../Types/BaseDatabase/Search";
+import SortOrder from "../../../Types/BaseDatabase/SortOrder";
 import SubscriptionPlan, {
   PlanType,
-} from "Common/Types/Billing/SubscriptionPlan";
-import { Yellow } from "Common/Types/BrandColors";
-import { LIMIT_PER_PROJECT } from "Common/Types/Database/LimitMax";
-import Dictionary from "Common/Types/Dictionary";
-import BadDataException from "Common/Types/Exception/BadDataException";
+} from "../../../Types/Billing/SubscriptionPlan";
+import { Yellow } from "../../../Types/BrandColors";
+import { LIMIT_PER_PROJECT } from "../../../Types/Database/LimitMax";
+import Dictionary from "../../../Types/Dictionary";
+import BadDataException from "../../../Types/Exception/BadDataException";
 import {
   ErrorFunction,
   PromiseVoidFunction,
   VoidFunction,
-} from "Common/Types/FunctionTypes";
-import IconProp from "Common/Types/Icon/IconProp";
-import { JSONObject } from "Common/Types/JSON";
-import ObjectID from "Common/Types/ObjectID";
+} from "../../../Types/FunctionTypes";
+import IconProp from "../../../Types/Icon/IconProp";
+import { JSONObject } from "../../../Types/JSON";
+import ObjectID from "../../../Types/ObjectID";
 import Permission, {
   PermissionHelper,
   UserPermission,
-} from "Common/Types/Permission";
-import Typeof from "Common/Types/Typeof";
+} from "../../../Types/Permission";
+import Typeof from "../../../Types/Typeof";
 import React, {
   MutableRefObject,
   ReactElement,
@@ -86,6 +85,11 @@ import React, {
 } from "react";
 import TableViewElement from "./TableView";
 import TableView from "../../../Models/DatabaseModels/TableView";
+import UserPreferences, {
+  UserPreferenceType,
+} from "../../../Utils/UserPreferences";
+import RequestOptions from "../../Utils/API/RequestOptions";
+import ListResult from "../../../Types/BaseDatabase/ListResult";
 
 export enum ShowAs {
   Table,
@@ -215,6 +219,15 @@ export interface BaseTableProps<
   initialFilterData?: FilterData<TBaseModel> | undefined;
 
   saveFilterProps?: SaveFilterProps | undefined;
+
+  onFilterApplied?: ((isFilterApplied: boolean) => void) | undefined;
+
+  formSummary?: FormSummaryConfig | undefined;
+
+  // this key is used to save table user preferences in local storage.
+  // If you provide this key, the table will save the user preferences in local storage.
+  // If you do not provide this key, the table will not save the user preferences in local storage.
+  userPreferencesKey: string;
 }
 
 export interface ComponentProps<
@@ -285,6 +298,21 @@ const BaseModelTable: <TBaseModel extends BaseModel | AnalyticsBaseModel>(
     }
   }, [props.modelType]);
 
+  const getItemsOnPage: () => number = (): number => {
+    if (props.userPreferencesKey) {
+      const itemsOnPage: number | null =
+        UserPreferences.getUserPreferenceByTypeAsNumber({
+          userPreferenceType: UserPreferenceType.BaseModelTablePageSize,
+          key: props.userPreferencesKey,
+        });
+      if (itemsOnPage) {
+        return itemsOnPage;
+      }
+    }
+
+    return props.initialItemsOnPage || 10;
+  };
+
   const [orderedStatesListNewItemOrder, setOrderedStatesListNewItemOrder] =
     useState<number | null>(null);
 
@@ -316,9 +344,18 @@ const BaseModelTable: <TBaseModel extends BaseModel | AnalyticsBaseModel>(
   const [currentDeleteableItem, setCurrentDeleteableItem] =
     useState<TBaseModel | null>(null);
 
-  const [itemsOnPage, setItemsOnPage] = useState<number>(
-    props.initialItemsOnPage || 10,
-  );
+  const [itemsOnPage, setItemsOnPage] = useState<number>(getItemsOnPage());
+
+  useEffect(() => {
+    // update items on page in localstorage.
+    if (itemsOnPage && props.userPreferencesKey) {
+      UserPreferences.saveUserPreferenceByTypeAsNumber({
+        userPreferenceType: UserPreferenceType.BaseModelTablePageSize,
+        key: props.userPreferencesKey,
+        value: itemsOnPage,
+      });
+    }
+  }, [itemsOnPage]);
 
   const [fields, setFields] = useState<Array<Field<TBaseModel>>>([]);
 
@@ -341,7 +378,7 @@ const BaseModelTable: <TBaseModel extends BaseModel | AnalyticsBaseModel>(
 
   useEffect(() => {
     if (!showModel) {
-      props.onCreateEditModalClose && props.onCreateEditModalClose();
+      props.onCreateEditModalClose?.();
     }
   }, [showModel]);
 
@@ -361,6 +398,7 @@ const BaseModelTable: <TBaseModel extends BaseModel | AnalyticsBaseModel>(
         colSpan: column.colSpan,
         contentClassName: column.contentClassName,
         alignItem: column.alignItem,
+        hideOnMobile: column.hideOnMobile, // Propagate hideOnMobile property
         getElement: column.getElement
           ? (item: TBaseModel): ReactElement => {
               return column.getElement!(item, onBeforeFetchData);
@@ -387,7 +425,7 @@ const BaseModelTable: <TBaseModel extends BaseModel | AnalyticsBaseModel>(
           (relationSelect as JSONObject)[key] = {
             file: true,
             _id: true,
-            type: true,
+            fileType: true,
             name: true,
           };
         } else if (key && model.isEntityColumn(key)) {
@@ -417,7 +455,7 @@ const BaseModelTable: <TBaseModel extends BaseModel | AnalyticsBaseModel>(
     try {
       await props.callbacks.deleteItem(item);
 
-      props.onItemDeleted && props.onItemDeleted(item);
+      props.onItemDeleted?.(item);
 
       if (data.length === 1 && currentPageNumber > 1) {
         setCurrentPageNumber(currentPageNumber - 1);
@@ -534,7 +572,10 @@ const BaseModelTable: <TBaseModel extends BaseModel | AnalyticsBaseModel>(
     if (User.isMasterAdmin()) {
       if (
         (props.actionButtons && props.actionButtons.length > 0) ||
-        props.showViewIdButton
+        props.showViewIdButton ||
+        props.isDeleteable ||
+        props.isEditable ||
+        props.isViewable
       ) {
         showActionsColumn = true;
       }
@@ -661,8 +702,8 @@ const BaseModelTable: <TBaseModel extends BaseModel | AnalyticsBaseModel>(
           | DatabaseBaseModelType
           | AnalyticsBaseModelType,
         query: {
-          ...query,
           ...props.query,
+          ...query,
         },
         limit: LIMIT_PER_PROJECT,
         skip: 0,
@@ -700,8 +741,8 @@ const BaseModelTable: <TBaseModel extends BaseModel | AnalyticsBaseModel>(
           | DatabaseBaseModelType
           | AnalyticsBaseModelType,
         query: {
-          ...query,
           ...props.query,
+          ...query,
         },
         groupBy: {
           ...props.groupBy,
@@ -1090,6 +1131,7 @@ const BaseModelTable: <TBaseModel extends BaseModel | AnalyticsBaseModel>(
       actionsSchema.push({
         title: "Show ID",
         buttonStyleType: ButtonStyleType.OUTLINE,
+        hideOnMobile: true,
         onClick: async (
           item: TBaseModel,
           onCompleteAction: VoidFunction,
@@ -1259,6 +1301,10 @@ const BaseModelTable: <TBaseModel extends BaseModel | AnalyticsBaseModel>(
         newQuery[key as keyof TBaseModel] = Boolean(filterData[key]);
       }
 
+      if (typeof filterData[key] === Typeof.Number) {
+        newQuery[key as keyof TBaseModel] = filterData[key];
+      }
+
       if (filterData[key] instanceof Date) {
         newQuery[key as keyof TBaseModel] = filterData[key];
       }
@@ -1355,6 +1401,20 @@ const BaseModelTable: <TBaseModel extends BaseModel | AnalyticsBaseModel>(
         onFilterChanged={(filterData: FilterData<TBaseModel>) => {
           onFilterChanged(filterData);
           setTableView(null);
+
+          // check if there's anything in the filter data and update the isFilterApplied prop.
+          let isFilterApplied: boolean = false;
+
+          for (const key in filterData) {
+            if (filterData[key]) {
+              isFilterApplied = true;
+              break;
+            }
+          }
+
+          if (props.onFilterApplied) {
+            props.onFilterApplied(isFilterApplied);
+          }
         }}
         filterData={filterData}
         className={
@@ -1713,7 +1773,7 @@ const BaseModelTable: <TBaseModel extends BaseModel | AnalyticsBaseModel>(
             >
               {tableColumns.length === 0 && props.columns.length > 0 ? (
                 <ErrorMessage
-                  error={`You are not authorized to view this table. You need any one of these permissions: ${PermissionHelper.getPermissionTitles(
+                  message={`You are not authorized to view this table. You need any one of these permissions: ${PermissionHelper.getPermissionTitles(
                     model.getReadPermissions(),
                   ).join(", ")}`}
                 />

@@ -1,14 +1,16 @@
 import { RedisHostname, RedisPassword, RedisPort } from "../EnvironmentConfig";
 import { QueueJob, QueueName } from "./Queue";
-import TimeoutException from "Common/Types/Exception/TimeoutException";
+import TimeoutException from "../../Types/Exception/TimeoutException";
 import {
   PromiseRejectErrorFunction,
   PromiseVoidFunction,
   VoidFunction,
-} from "Common/Types/FunctionTypes";
+} from "../../Types/FunctionTypes";
 import { Worker } from "bullmq";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export default class QueueWorker {
+  @CaptureSpan()
   public static getWorker(
     queueName: QueueName,
     onJobInQueue: (job: QueueJob) => Promise<void>,
@@ -30,6 +32,7 @@ export default class QueueWorker {
     return worker;
   }
 
+  @CaptureSpan()
   public static async runJobWithTimeout(
     timeoutInMS: number,
     jobCallback: PromiseVoidFunction,

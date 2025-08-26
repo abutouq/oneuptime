@@ -291,6 +291,7 @@ export default class ProjectCallSMSConfig extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -416,15 +417,46 @@ export default class ProjectCallSMSConfig extends BaseModel {
   })
   @TableColumn({
     type: TableColumnType.Phone,
-    title: "Twilio Phone Number",
-    description: "Phone Number for your Twilio account",
+    title: "Twilio Primary Phone Number",
+    description: "Primary Phone Number for your Twilio account",
   })
   @Column({
     type: ColumnType.Phone,
     length: ColumnLength.Phone,
     nullable: true,
-    unique: true,
+    unique: false,
     transformer: Phone.getDatabaseTransformer(),
   })
-  public twilioPhoneNumber?: Phone = undefined;
+  public twilioPrimaryPhoneNumber?: Phone = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.CreateProjectCallSMSConfig,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectCallSMSConfig,
+    ],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.EditProjectCallSMSConfig,
+    ],
+  })
+  @TableColumn({
+    type: TableColumnType.LongText,
+    title: "Twilio Secondary Phone Numbers",
+    description: "Secondary Phone Number for your Twilio account",
+  })
+  @Column({
+    type: ColumnType.LongText,
+    length: ColumnLength.LongText,
+    nullable: true,
+    unique: false,
+  })
+  public twilioSecondaryPhoneNumbers?: string = undefined; // phone numbers separated by comma
 }

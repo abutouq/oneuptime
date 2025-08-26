@@ -1,14 +1,17 @@
 import ComponentCode, { RunOptions, RunReturnType } from "../../ComponentCode";
-import HTTPErrorResponse from "Common/Types/API/HTTPErrorResponse";
-import HTTPResponse from "Common/Types/API/HTTPResponse";
-import URL from "Common/Types/API/URL";
-import APIException from "Common/Types/Exception/ApiException";
-import BadDataException from "Common/Types/Exception/BadDataException";
-import { JSONObject } from "Common/Types/JSON";
-import ComponentMetadata, { Port } from "Common/Types/Workflow/Component";
-import ComponentID from "Common/Types/Workflow/ComponentID";
-import SlackComponents from "Common/Types/Workflow/Components/Slack";
-import SlackUtil from "../../../../Utils/Slack";
+import HTTPErrorResponse from "../../../../../Types/API/HTTPErrorResponse";
+import HTTPResponse from "../../../../../Types/API/HTTPResponse";
+import URL from "../../../../../Types/API/URL";
+import APIException from "../../../../../Types/Exception/ApiException";
+import BadDataException from "../../../../../Types/Exception/BadDataException";
+import { JSONObject } from "../../../../../Types/JSON";
+import ComponentMetadata, {
+  Port,
+} from "../../../../../Types/Workflow/Component";
+import ComponentID from "../../../../../Types/Workflow/ComponentID";
+import SlackComponents from "../../../../../Types/Workflow/Components/Slack";
+import SlackUtil from "../../../../Utils/Workspace/Slack/Slack";
+import CaptureSpan from "../../../../Utils/Telemetry/CaptureSpan";
 
 export default class SendMessageToChannel extends ComponentCode {
   public constructor() {
@@ -27,6 +30,7 @@ export default class SendMessageToChannel extends ComponentCode {
     this.setMetadata(Component);
   }
 
+  @CaptureSpan()
   public override async run(
     args: JSONObject,
     options: RunOptions,
@@ -69,7 +73,7 @@ export default class SendMessageToChannel extends ComponentCode {
 
     try {
       // https://api.slack.com/messaging/webhooks#advanced_message_formatting
-      apiResult = await SlackUtil.sendMessageToChannel({
+      apiResult = await SlackUtil.sendMessageToChannelViaIncomingWebhook({
         url: args["webhook-url"] as URL,
         text: args["text"] as string,
       });

@@ -1,6 +1,5 @@
 import SelectFormFields from "../../Types/SelectEntityField";
 import API from "../../Utils/API/API";
-import Select from "../../Utils/BaseDatabase/Select";
 import ModelAPI, {
   ListResult,
   ModelAPIHttpResponse,
@@ -15,37 +14,38 @@ import {
 } from "../CategoryCheckbox/CategoryCheckboxTypes";
 import Loader, { LoaderType } from "../Loader/Loader";
 import Pill, { PillSize } from "../Pill/Pill";
-import { FormErrors, FormProps } from "./BasicForm";
+import { FormErrors, FormProps, FormSummaryConfig } from "./BasicForm";
 import BasicModelForm from "./BasicModelForm";
 import Field from "./Types/Field";
 import Fields from "./Types/Fields";
 import { FormStep } from "./Types/FormStep";
 import FormValues from "./Types/FormValues";
-import AnalyticsBaseModel from "Common/Models/AnalyticsModels/AnalyticsBaseModel/AnalyticsBaseModel";
-import AccessControlModel from "Common/Models/DatabaseModels/DatabaseBaseModel/AccessControlModel";
-import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import FileModel from "Common/Models/DatabaseModels/DatabaseBaseModel/FileModel";
-import URL from "Common/Types/API/URL";
-import { ColumnAccessControl } from "Common/Types/BaseDatabase/AccessControl";
-import { Black, VeryLightGray } from "Common/Types/BrandColors";
-import Color from "Common/Types/Color";
-import { getMaxLengthFromTableColumnType } from "Common/Types/Database/ColumnLength";
-import { LIMIT_PER_PROJECT } from "Common/Types/Database/LimitMax";
-import { TableColumnMetadata } from "Common/Types/Database/TableColumn";
-import TableColumnType from "Common/Types/Database/TableColumnType";
-import Dictionary from "Common/Types/Dictionary";
-import BadDataException from "Common/Types/Exception/BadDataException";
-import { PromiseVoidFunction } from "Common/Types/FunctionTypes";
-import GenericObject from "Common/Types/GenericObject";
-import { JSONObject } from "Common/Types/JSON";
-import ObjectID from "Common/Types/ObjectID";
+import AnalyticsBaseModel from "../../../Models/AnalyticsModels/AnalyticsBaseModel/AnalyticsBaseModel";
+import AccessControlModel from "../../../Models/DatabaseModels/DatabaseBaseModel/AccessControlModel";
+import BaseModel from "../../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import FileModel from "../../../Models/DatabaseModels/DatabaseBaseModel/FileModel";
+import URL from "../../../Types/API/URL";
+import { ColumnAccessControl } from "../../../Types/BaseDatabase/AccessControl";
+import { Black, VeryLightGray } from "../../../Types/BrandColors";
+import Color from "../../../Types/Color";
+import { getMaxLengthFromTableColumnType } from "../../../Types/Database/ColumnLength";
+import { LIMIT_PER_PROJECT } from "../../../Types/Database/LimitMax";
+import { TableColumnMetadata } from "../../../Types/Database/TableColumn";
+import TableColumnType from "../../../Types/Database/TableColumnType";
+import Dictionary from "../../../Types/Dictionary";
+import BadDataException from "../../../Types/Exception/BadDataException";
+import { PromiseVoidFunction } from "../../../Types/FunctionTypes";
+import GenericObject from "../../../Types/GenericObject";
+import { JSONObject } from "../../../Types/JSON";
+import ObjectID from "../../../Types/ObjectID";
 import Permission, {
   PermissionHelper,
   UserPermission,
-} from "Common/Types/Permission";
-import Typeof from "Common/Types/Typeof";
+} from "../../../Types/Permission";
+import Typeof from "../../../Types/Typeof";
 import React, { MutableRefObject, ReactElement, useState } from "react";
 import useAsyncEffect from "use-async-effect";
+import Select from "../../../Types/BaseDatabase/Select";
 
 export enum FormType {
   Create,
@@ -80,7 +80,12 @@ export interface ComponentProps<TBaseModel extends BaseModel> {
   footer?: ReactElement | undefined;
   onCancel?: undefined | (() => void);
   name?: string | undefined;
-  onChange?: undefined | ((values: FormValues<TBaseModel>) => void);
+  onChange?:
+    | undefined
+    | ((
+        values: FormValues<TBaseModel>,
+        setNewFormValues: (newValues: FormValues<TBaseModel>) => void,
+      ) => void);
   onSuccess?: undefined | ((data: TBaseModel, miscData?: JSONObject) => void);
   cancelButtonText?: undefined | string;
   maxPrimaryButtonWidth?: undefined | boolean;
@@ -101,6 +106,8 @@ export interface ComponentProps<TBaseModel extends BaseModel> {
   saveRequestOptions?: RequestOptions | undefined;
   doNotFetchExistingModel?: boolean | undefined;
   modelAPI?: typeof ModelAPI | undefined;
+  summary?: FormSummaryConfig | undefined;
+  values?: FormValues<TBaseModel> | undefined;
 }
 
 const ModelForm: <TBaseModel extends BaseModel>(
@@ -152,7 +159,7 @@ const ModelForm: <TBaseModel extends BaseModel>(
           (relationSelect as JSONObject)[key] = {
             file: true,
             _id: true,
-            type: true,
+            fileType: true,
             name: true,
           };
         } else if (key && model.isEntityColumn(key)) {
@@ -188,16 +195,7 @@ const ModelForm: <TBaseModel extends BaseModel>(
 
     userPermissions.push(Permission.Public);
 
-    const accessControl: Dictionary<ColumnAccessControl> =
-      model.getColumnAccessControlForAllColumns();
-
-    let fieldPermissions: Array<Permission> = [];
-
-    if (FormType.Create === props.formType) {
-      fieldPermissions = accessControl[fieldName]?.create || [];
-    } else {
-      fieldPermissions = accessControl[fieldName]?.update || [];
-    }
+    const fieldPermissions: Array<Permission> = getFieldPermissions(fieldName);
 
     if (
       fieldPermissions &&
@@ -210,6 +208,23 @@ const ModelForm: <TBaseModel extends BaseModel>(
     }
 
     return false;
+  };
+
+  const getFieldPermissions: (fieldName: string) => Array<Permission> = (
+    fieldName: string,
+  ): Array<Permission> => {
+    const accessControl: Dictionary<ColumnAccessControl> =
+      model.getColumnAccessControlForAllColumns();
+
+    let fieldPermissions: Array<Permission> = [];
+
+    if (FormType.Create === props.formType) {
+      fieldPermissions = accessControl[fieldName]?.create || [];
+    } else {
+      fieldPermissions = accessControl[fieldName]?.update || [];
+    }
+
+    return fieldPermissions;
   };
 
   const setFormFields: PromiseVoidFunction = async (): Promise<void> => {
@@ -277,6 +292,29 @@ const ModelForm: <TBaseModel extends BaseModel>(
     }
 
     fieldsToSet = await fetchDropdownOptions(fieldsToSet);
+
+    // if there are no fields to set, then show permission erorr. This is useful when there are no fields to show.
+    if (fieldsToSet.length === 0 && props.fields.length > 0) {
+      const field: ModelField<TBaseModel> | undefined = props.fields[0];
+
+      if (field) {
+        const fieldName: string | undefined = Object.keys(field.field || {})[0];
+
+        if (fieldName) {
+          const fieldPermisisons: Array<Permission> =
+            getFieldPermissions(fieldName);
+
+          const columnMetadata: TableColumnMetadata =
+            model.getTableColumnMetadata(fieldName);
+
+          setError(
+            `You don't have enough permissions to ${
+              props.formType === FormType.Create ? "create" : "edit"
+            } ${columnMetadata.title} on ${model.singularName}. You need one of the following permissions: ${fieldPermisisons.join(", ")}`,
+          );
+        }
+      }
+    }
 
     setFields(fieldsToSet);
   };
@@ -549,7 +587,7 @@ const ModelForm: <TBaseModel extends BaseModel>(
         await fetchItem();
       } catch (err) {
         setError(API.getFriendlyMessage(err));
-        props.onError && props.onError(API.getFriendlyMessage(err));
+        props.onError?.(API.getFriendlyMessage(err));
       }
 
       setLoading(false);
@@ -719,6 +757,7 @@ const ModelForm: <TBaseModel extends BaseModel>(
   return (
     <div>
       <BasicModelForm<TBaseModel>
+        values={props.values}
         title={props.title}
         description={props.description}
         disableAutofocus={props.disableAutofocus}
@@ -729,9 +768,12 @@ const ModelForm: <TBaseModel extends BaseModel>(
         onIsLastFormStep={props.onIsLastFormStep}
         fields={fields}
         steps={props.steps}
-        onChange={(values: FormValues<TBaseModel>) => {
+        onChange={(
+          values: FormValues<TBaseModel>,
+          setNewFormValues: (newValues: FormValues<TBaseModel>) => void,
+        ) => {
           if (!isLoading) {
-            props.onChange && props.onChange(values);
+            props.onChange?.(values, setNewFormValues);
           }
         }}
         showAsColumns={props.showAsColumns}
@@ -752,6 +794,7 @@ const ModelForm: <TBaseModel extends BaseModel>(
             | FormValues<TBaseModel>
             | undefined
         }
+        summary={props.summary}
       ></BasicModelForm>
     </div>
   );

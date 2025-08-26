@@ -25,6 +25,7 @@ import IconProp from "../../Types/Icon/IconProp";
 import { JSONObject } from "../../Types/JSON";
 import ObjectID from "../../Types/ObjectID";
 import Permission from "../../Types/Permission";
+import StatusPageSubscriberNotificationStatus from "../../Types/StatusPage/StatusPageSubscriberNotificationStatus";
 import {
   Column,
   Entity,
@@ -35,6 +36,7 @@ import {
   ManyToOne,
 } from "typeorm";
 import Recurring from "../../Types/Events/Recurring";
+import NotificationRuleWorkspaceChannel from "../../Types/Workspace/NotificationRules/NotificationRuleWorkspaceChannel";
 
 @EnableDocumentation()
 @AccessControlColumn("labels")
@@ -324,6 +326,7 @@ export default class ScheduledMaintenance extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -565,6 +568,7 @@ export default class ScheduledMaintenance extends BaseModel {
   @TableColumn({
     type: TableColumnType.ObjectID,
     required: true,
+    isDefaultValueColumn: true,
     title: "Current Scheduled Maintenance State ID",
     description:
       "Scheduled Maintenance State ID. The state the event currently is in.",
@@ -712,26 +716,74 @@ export default class ScheduledMaintenance extends BaseModel {
   public endsAt?: Date = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectScheduledMaintenance,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
       Permission.ProjectMember,
       Permission.ReadProjectScheduledMaintenance,
     ],
-    update: [],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditProjectScheduledMaintenance,
+    ],
   })
   @TableColumn({
     isDefaultValueColumn: true,
-    type: TableColumnType.Boolean,
-    title: "Status Page Subscribers Notified On Event Scheduled",
-    description: "Status Page Subscribers Notified On Event Scheduled",
+    computed: true,
+    hideColumnInDocumentation: true,
+    type: TableColumnType.ShortText,
+    title: "Subscriber Notification Status On Event Scheduled",
+    description:
+      "Status of notification sent to subscribers when event was scheduled",
+    defaultValue: StatusPageSubscriberNotificationStatus.Pending,
   })
   @Column({
-    type: ColumnType.Boolean,
-    default: false,
+    type: ColumnType.ShortText,
+    default: StatusPageSubscriberNotificationStatus.Pending,
   })
-  public isStatusPageSubscribersNotifiedOnEventScheduled?: boolean = undefined;
+  public subscriberNotificationStatusOnEventScheduled?: StatusPageSubscriberNotificationStatus =
+    undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateIncidentPublicNote,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectScheduledMaintenance,
+    ],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditProjectScheduledMaintenance,
+    ],
+  })
+  @TableColumn({
+    type: TableColumnType.VeryLongText,
+    title: "Notification Status Message On Event Scheduled",
+    description:
+      "Status message for subscriber notifications when event is scheduled - includes success messages, failure reasons, or skip reasons",
+    required: false,
+  })
+  @Column({
+    type: ColumnType.VeryLongText,
+    nullable: true,
+  })
+  public subscriberNotificationStatusMessage?: string = undefined;
 
   @ColumnAccessControl({
     create: [
@@ -753,6 +805,7 @@ export default class ScheduledMaintenance extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Should subscribers be notified when event is created?",
     description: "Should subscribers be notified about this event creation?",
+    defaultValue: true,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -782,6 +835,7 @@ export default class ScheduledMaintenance extends BaseModel {
     title: "Should subscribers be notified when event is changed to ongoing?",
     description:
       "Should subscribers be notified about this event event is changed to ongoing?",
+    defaultValue: true,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -811,6 +865,7 @@ export default class ScheduledMaintenance extends BaseModel {
     title: "Should subscribers be notified when event is changed to ended?",
     description:
       "Should subscribers be notified about this event event is changed to ended?",
+    defaultValue: true,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -853,12 +908,7 @@ export default class ScheduledMaintenance extends BaseModel {
   public customFields?: JSONObject = undefined;
 
   @ColumnAccessControl({
-    create: [
-      Permission.ProjectOwner,
-      Permission.ProjectAdmin,
-      Permission.ProjectMember,
-      Permission.CreateProjectScheduledMaintenance,
-    ],
+    create: [],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -870,10 +920,13 @@ export default class ScheduledMaintenance extends BaseModel {
   @Index()
   @TableColumn({
     type: TableColumnType.Boolean,
+    computed: true,
+    hideColumnInDocumentation: true,
     required: true,
     isDefaultValueColumn: true,
     title: "Are Owners Notified Of Resource Creation?",
     description: "Are owners notified of when this resource is created?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -917,6 +970,7 @@ export default class ScheduledMaintenance extends BaseModel {
   public sendSubscriberNotificationsOnBeforeTheEvent?: Array<Recurring> =
     undefined;
 
+  @Index()
   @ColumnAccessControl({
     create: [
       Permission.ProjectOwner,
@@ -950,4 +1004,87 @@ export default class ScheduledMaintenance extends BaseModel {
     nullable: true,
   })
   public nextSubscriberNotificationBeforeTheEventAt?: Date = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectScheduledMaintenance,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectScheduledMaintenance,
+    ],
+    update: [],
+  })
+  @Index()
+  @TableColumn({
+    isDefaultValueColumn: false,
+    required: false,
+    type: TableColumnType.Number,
+    computed: true,
+    title: "Scheduled Maintenance Number",
+    description: "Scheduled Maintenance Number",
+  })
+  @Column({
+    type: ColumnType.Number,
+    nullable: true,
+  })
+  public scheduledMaintenanceNumber?: number = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [],
+    update: [],
+  })
+  @TableColumn({
+    isDefaultValueColumn: false,
+    required: false,
+    type: TableColumnType.JSON,
+    title: "Post Updates To Workspace Channel Name",
+    description: "Post Updates To Workspace Channel Name",
+  })
+  @Column({
+    type: ColumnType.JSON,
+    nullable: true,
+  })
+  public postUpdatesToWorkspaceChannels?: Array<NotificationRuleWorkspaceChannel> =
+    undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectScheduledMaintenance,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectScheduledMaintenance,
+    ],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditProjectScheduledMaintenance,
+    ],
+  })
+  @TableColumn({
+    isDefaultValueColumn: true,
+    type: TableColumnType.Boolean,
+    title: "Should be visible on status page?",
+    description: "Should this incident be visible on the status page?",
+    defaultValue: true,
+  })
+  @Column({
+    type: ColumnType.Boolean,
+    default: true,
+    nullable: true,
+  })
+  public isVisibleOnStatusPage?: boolean = undefined;
 }

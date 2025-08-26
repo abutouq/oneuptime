@@ -325,6 +325,125 @@ export default class StatusPageSubscriber extends BaseModel {
       Permission.ProjectAdmin,
       Permission.ProjectMember,
       Permission.CreateStatusPageSubscriber,
+      Permission.Public,
+    ],
+    read: [],
+    update: [],
+  })
+  @TableColumn({
+    required: false,
+    type: TableColumnType.ShortURL,
+    title: "Slack Incoming Webhook URL",
+    description:
+      "Slack incoming webhook URL to send notifications to Slack channel",
+  })
+  @Column({
+    nullable: true,
+    type: ColumnType.ShortURL,
+    transformer: URL.getDatabaseTransformer(),
+  })
+  public slackIncomingWebhookUrl?: URL = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateStatusPageSubscriber,
+      Permission.Public,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadStatusPageSubscriber,
+    ],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditStatusPageSubscriber,
+    ],
+  })
+  @TableColumn({
+    required: false,
+    type: TableColumnType.ShortText,
+    title: "Slack Workspace Name",
+    description:
+      "Name of the Slack workspace for validation and identification",
+  })
+  @Column({
+    nullable: true,
+    type: ColumnType.ShortText,
+    length: ColumnLength.ShortText,
+  })
+  public slackWorkspaceName?: string = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateStatusPageSubscriber,
+      Permission.Public,
+    ],
+    read: [],
+    update: [],
+  })
+  @TableColumn({
+    required: false,
+    type: TableColumnType.LongURL,
+    title: "Microsoft Teams Incoming Webhook URL",
+    description:
+      "Microsoft Teams incoming webhook URL to send notifications to Teams channel",
+  })
+  @Column({
+    nullable: true,
+    type: ColumnType.LongURL,
+    transformer: URL.getDatabaseTransformer(),
+  })
+  public microsoftTeamsIncomingWebhookUrl?: URL = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateStatusPageSubscriber,
+      Permission.Public,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadStatusPageSubscriber,
+    ],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditStatusPageSubscriber,
+    ],
+  })
+  @TableColumn({
+    required: false,
+    type: TableColumnType.VeryLongText,
+    title: "Microsoft Teams Workspace Name",
+    description:
+      "Name of the Microsoft Teams workspace for validation and identification",
+  })
+  @Column({
+    nullable: true,
+    type: ColumnType.VeryLongText,
+  })
+  public microsoftTeamsWorkspaceName?: string = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateStatusPageSubscriber,
     ],
     read: [
       Permission.ProjectOwner,
@@ -398,6 +517,7 @@ export default class StatusPageSubscriber extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -461,6 +581,7 @@ export default class StatusPageSubscriber extends BaseModel {
     title: "Is Subscription Confirmed",
     description:
       "Has subscriber confirmed their subscription? (for example, by clicking on a confirmation link in an email)",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -517,6 +638,7 @@ export default class StatusPageSubscriber extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Is Unsubscribed",
     description: "Is Subscriber Unsubscribed?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -545,6 +667,7 @@ export default class StatusPageSubscriber extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Send You Have Subscribed Message",
     description: "Send You Have Subscribed Message when subscriber is created?",
+    defaultValue: true,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -579,6 +702,7 @@ export default class StatusPageSubscriber extends BaseModel {
     title: "Is Subscribed to All Resources",
     description:
       "Is Subscriber Subscribed to All Resources on this status page?",
+    defaultValue: true,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -613,6 +737,7 @@ export default class StatusPageSubscriber extends BaseModel {
     title: "Is Subscribed to All Event Types",
     description:
       "Is Subscriber Subscribed to All Event Types (like Incidents, Scheduled Events, Announcements) on this status page?",
+    defaultValue: true,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -702,4 +827,38 @@ export default class StatusPageSubscriber extends BaseModel {
     default: [],
   })
   public statusPageEventTypes?: Array<StatusPageEventType> = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateStatusPageSubscriber,
+      Permission.Public,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadStatusPageSubscriber,
+    ],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditStatusPageSubscriber,
+    ],
+  })
+  @TableColumn({
+    type: TableColumnType.Markdown,
+    title: "Notes",
+    description:
+      "Any notes or text you would like to add to this subscriber object. This is for internal use only.",
+  })
+  @Column({
+    type: ColumnType.Markdown,
+    nullable: true,
+    unique: false,
+  })
+  public internalNote?: string = undefined;
 }

@@ -24,7 +24,6 @@ import { ImageFunctions } from "Common/UI/Components/Image/Image";
 import PageLoader from "Common/UI/Components/Loader/PageLoader";
 import MasterPage from "Common/UI/Components/MasterPage/MasterPage";
 import JSONWebToken from "Common/UI/Utils/JsonWebToken";
-import LocalStorage from "Common/UI/Utils/LocalStorage";
 import Navigation from "Common/UI/Utils/Navigation";
 import File from "Common/Models/DatabaseModels/File";
 import React, {
@@ -34,6 +33,7 @@ import React, {
   useState,
 } from "react";
 import useAsyncEffect from "use-async-effect";
+import StatusPage from "Common/Models/DatabaseModels/StatusPage";
 
 export interface ComponentProps {
   children: ReactElement | Array<ReactElement>;
@@ -44,6 +44,7 @@ export interface ComponentProps {
   isPrivateStatusPage: boolean;
   enableEmailSubscribers: boolean;
   enableSMSSubscribers: boolean;
+  enableSlackSubscribers?: boolean;
 }
 
 const DashboardMasterPage: FunctionComponent<ComponentProps> = (
@@ -57,6 +58,8 @@ const DashboardMasterPage: FunctionComponent<ComponentProps> = (
 
   const [headerHtml, setHeaderHtml] = useState<null | string>(null);
   const [footerHtml, setFooterHTML] = useState<null | string>(null);
+
+  const [statusPage, setStatusPage] = useState<StatusPage | null>(null);
 
   const [hidePoweredByOneUptimeBranding, setHidePoweredByOneUptimeBranding] =
     useState<boolean>(false);
@@ -156,11 +159,13 @@ const DashboardMasterPage: FunctionComponent<ComponentProps> = (
   useAsyncEffect(async () => {
     try {
       setIsLoading(true);
+
       const id: ObjectID = await getId();
 
       setStatusPageId(id);
 
-      LocalStorage.setItem("statusPageId", id);
+      StatusPageUtil.setStatusPageId(id);
+
       const response: HTTPResponse<JSONObject> = await API.post<JSONObject>(
         URL.fromString(STATUS_PAGE_API_URL.toString()).addRoute(
           `/master-page/${id.toString()}`,
@@ -168,13 +173,19 @@ const DashboardMasterPage: FunctionComponent<ComponentProps> = (
         {},
         {},
       );
+
       setMasterPageData(response.data);
 
+      // set status page.
+      const statusPage: StatusPage = BaseModel.fromJSONObject(
+        (response.data["statusPage"] as JSONObject) || [],
+        StatusPage,
+      );
+
+      setStatusPage(statusPage);
+
       // setfavicon.
-      const favIcon: File | null = JSONFunctions.getJSONValueInPath(
-        response.data || {},
-        "statusPage.faviconFile",
-      ) as File | null;
+      const favIcon: File | undefined = statusPage.faviconFile;
       if (favIcon && favIcon.file) {
         const link: any = document.createElement("link");
         link.rel = "icon";
@@ -183,36 +194,23 @@ const DashboardMasterPage: FunctionComponent<ComponentProps> = (
       }
 
       // setcss.
-      const css: string | null = JSONFunctions.getJSONValueInPath(
-        response.data || {},
-        "statusPage.customCSS",
-      ) as string | null;
-
+      const css: string | null = statusPage.customCSS || null;
       if (css) {
         const style: any = document.createElement("style");
         style.innerText = css;
         (document as any).getElementsByTagName("head")[0].appendChild(style);
       }
 
-      const headHtml: string | null = JSONFunctions.getJSONValueInPath(
-        response.data || {},
-        "statusPage.headerHTML",
-      ) as string | null;
+      const headHtml: string | null = statusPage.headerHTML || null;
 
       const hidePoweredByOneUptimeBranding: boolean | null =
-        JSONFunctions.getJSONValueInPath(
-          response.data || {},
-          "statusPage.hidePoweredByOneUptimeBranding",
-        ) as boolean | null;
+        statusPage.hidePoweredByOneUptimeBranding || false;
 
       setHidePoweredByOneUptimeBranding(
         Boolean(hidePoweredByOneUptimeBranding),
       );
 
-      const footHTML: string | null = JSONFunctions.getJSONValueInPath(
-        response.data || {},
-        "statusPage.footerHTML",
-      ) as string | null;
+      const footHTML: string | null = statusPage.footerHTML || null;
 
       if (headHtml) {
         setHeaderHtml(headHtml);
@@ -238,14 +236,15 @@ const DashboardMasterPage: FunctionComponent<ComponentProps> = (
   }
 
   if (error) {
-    return <ErrorMessage error={error} />;
+    return <ErrorMessage message={error} />;
   }
 
   if (
     Navigation.getCurrentRoute().toString().includes("login") ||
     Navigation.getCurrentRoute().toString().includes("forgot-password") ||
     Navigation.getCurrentRoute().toString().includes("reset-password") ||
-    Navigation.getCurrentRoute().toString().includes("sso")
+    Navigation.getCurrentRoute().toString().includes("sso") ||
+    Navigation.getCurrentRoute().toString().includes("forbidden")
   ) {
     return <>{props.children}</>;
   }
@@ -270,7 +269,7 @@ const DashboardMasterPage: FunctionComponent<ComponentProps> = (
   });
 
   return (
-    <div className="max-w-5xl m-auto px-5">
+    <div className="max-w-5xl m-auto px-3 sm:px-5">
       {
         <div>
           <Banner
@@ -311,15 +310,28 @@ const DashboardMasterPage: FunctionComponent<ComponentProps> = (
           <NavBar
             isPrivateStatusPage={props.isPrivateStatusPage}
             show={true}
-            isPreview={true}
+            isPreview={props.isPreview}
             enableEmailSubscribers={props.enableEmailSubscribers}
             enableSMSSubscribers={props.enableSMSSubscribers}
+            enableSlackSubscribers={props.enableSlackSubscribers || false}
+            showIncidentsOnStatusPage={
+              statusPage?.showIncidentsOnStatusPage || false
+            }
+            showAnnouncementsOnStatusPage={
+              statusPage?.showAnnouncementsOnStatusPage || false
+            }
+            showScheduledMaintenanceEventsOnStatusPage={
+              statusPage?.showScheduledMaintenanceEventsOnStatusPage || false
+            }
+            showSubscriberPageOnStatusPage={
+              statusPage?.showSubscriberPageOnStatusPage || false
+            }
           />
           {props.children}
           {!footerHtml ? (
             <Footer
               hidePoweredByOneUptimeBranding={hidePoweredByOneUptimeBranding}
-              className="mx-auto w-full py-5 px-0 md:flex md:items-center md:justify-between lg:px-0"
+              className="mx-auto w-full py-3 px-0 sm:py-5 md:flex md:items-center md:justify-between lg:px-0"
               copyright={
                 (JSONFunctions.getJSONValueInPath(
                   masterPageData || {},

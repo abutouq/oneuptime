@@ -76,6 +76,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
 @Entity({
   name: "IncidentSeverity",
 })
+@Index(["projectId", "order"])
 export default class IncidentSeverity extends BaseModel {
   @ColumnAccessControl({
     create: [
@@ -192,6 +193,7 @@ export default class IncidentSeverity extends BaseModel {
     required: true,
     unique: true,
     type: TableColumnType.Slug,
+    computed: true,
     title: "Slug",
     description: "Friendly globally unique name for your object",
   })
@@ -314,6 +316,7 @@ export default class IncidentSeverity extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })

@@ -18,14 +18,14 @@ import {
   FluentIngestRoute,
   IncomingRequestIngestRoute,
   OpenTelemetryIngestRoute,
-} from "Common/ServiceRoute";
-import Hostname from "Common/Types/API/Hostname";
-import Protocol from "Common/Types/API/Protocol";
-import URL from "Common/Types/API/URL";
-import SubscriptionPlan from "Common/Types/Billing/SubscriptionPlan";
-import Dictionary from "Common/Types/Dictionary";
-import { JSONObject } from "Common/Types/JSON";
-import Version from "Common/Types/Version";
+} from "../ServiceRoute";
+import Hostname from "../Types/API/Hostname";
+import Protocol from "../Types/API/Protocol";
+import URL from "../Types/API/URL";
+import SubscriptionPlan from "../Types/Billing/SubscriptionPlan";
+import Dictionary from "../Types/Dictionary";
+import { JSONObject } from "../Types/JSON";
+import Version from "../Types/Version";
 
 type GetAllEnvVarsFunction = () => JSONObject;
 
@@ -48,6 +48,9 @@ export const HOST: string = env("HOST") || "";
 
 export const BILLING_ENABLED: boolean = env("BILLING_ENABLED") === "true";
 export const BILLING_PUBLIC_KEY: string = env("BILLING_PUBLIC_KEY") || "";
+
+// VAPID Configuration for Push Notifications
+export const VAPID_PUBLIC_KEY: string = env("VAPID_PUBLIC_KEY") || "";
 
 export const VERSION: Version = new Version(env("VERSION") || "1.0.0");
 
@@ -240,3 +243,6 @@ export const OpenTelemetryExporterOtlpHeaders: Dictionary<string> =
   getOpenTelemetryExporterOtlpHeaders();
 
 export const DisableTelemetry: boolean = env("DISABLE_TELEMETRY") === "true";
+
+export const SlackAppClientId: string | null =
+  env("SLACK_APP_CLIENT_ID") || null;

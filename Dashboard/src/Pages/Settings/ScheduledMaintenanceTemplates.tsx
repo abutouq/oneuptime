@@ -1,4 +1,4 @@
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import ProjectUser from "../../Utils/ProjectUser";
 import { RouteUtil } from "../../Utils/RouteMap";
 import PageComponentProps from "../PageComponentProps";
@@ -164,7 +164,7 @@ export const getTemplateFormFields: GetTemplateFormFieldsFunction = (data: {
         fieldType: FormFieldSchemaType.MultiSelectDropdown,
         fetchDropdownOptions: async () => {
           return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-            DashboardNavigation.getProjectId()!,
+            ProjectUtil.getCurrentProjectId()!,
           );
         },
         required: false,
@@ -400,6 +400,7 @@ const ScheduledMaintenanceTemplates: FunctionComponent<PageComponentProps> = (
       <ModelTable<ScheduledMaintenanceTemplate>
         modelType={ScheduledMaintenanceTemplate}
         id="Scheduled-Maintenance-templates-table"
+        userPreferencesKey="scheduled-maintenance-templates-table"
         name="Settings > Scheduled Maintenance Templates"
         isDeleteable={false}
         isEditable={false}
@@ -412,7 +413,7 @@ const ScheduledMaintenanceTemplates: FunctionComponent<PageComponentProps> = (
         }}
         noItemsMessage={"No Scheduled Maintenance templates found."}
         query={{
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         showViewIdButton={true}
         formSteps={getFormSteps({
@@ -436,7 +437,7 @@ const ScheduledMaintenanceTemplates: FunctionComponent<PageComponentProps> = (
               templateDescription: true,
             },
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
         ]}
         columns={[
@@ -452,7 +453,7 @@ const ScheduledMaintenanceTemplates: FunctionComponent<PageComponentProps> = (
               templateDescription: true,
             },
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
           {
             field: {

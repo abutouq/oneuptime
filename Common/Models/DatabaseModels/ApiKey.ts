@@ -201,6 +201,7 @@ export default class ApiKey extends BaseModel {
     required: true,
     unique: true,
     type: TableColumnType.Slug,
+    computed: true,
     title: "Slug",
     description: "Friendly globally unique name for your object",
   })
@@ -281,6 +282,7 @@ export default class ApiKey extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -347,11 +349,7 @@ export default class ApiKey extends BaseModel {
   public expiresAt?: Date = undefined;
 
   @ColumnAccessControl({
-    create: [
-      Permission.ProjectOwner,
-      Permission.ProjectAdmin,
-      Permission.ReadProjectApiKey,
-    ],
+    create: [],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -368,6 +366,7 @@ export default class ApiKey extends BaseModel {
     type: TableColumnType.ObjectID,
     isDefaultValueColumn: false,
     title: "API Key",
+    computed: true,
     description: "Secret API Key",
   })
   @Column({

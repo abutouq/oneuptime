@@ -4,13 +4,14 @@ import { OnDelete, OnFind, OnUpdate } from "../Types/Database/Hooks";
 import UpdateBy from "../Types/Database/UpdateBy";
 import DatabaseService from "./DatabaseService";
 import NotAuthorizedException from "../../Types/Exception/NotAuthorizedException";
-import File from "Common/Models/DatabaseModels/File";
-
+import File from "../../Models/DatabaseModels/File";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 export class Service extends DatabaseService<File> {
   public constructor() {
     super(File);
   }
 
+  @CaptureSpan()
   protected override async onBeforeUpdate(
     updateBy: UpdateBy<File>,
   ): Promise<OnUpdate<File>> {
@@ -21,6 +22,7 @@ export class Service extends DatabaseService<File> {
     return { updateBy, carryForward: null };
   }
 
+  @CaptureSpan()
   protected override async onBeforeDelete(
     deleteBy: DeleteBy<File>,
   ): Promise<OnDelete<File>> {
@@ -31,6 +33,7 @@ export class Service extends DatabaseService<File> {
     return { deleteBy, carryForward: null };
   }
 
+  @CaptureSpan()
   protected override async onBeforeFind(
     findBy: FindBy<File>,
   ): Promise<OnFind<File>> {

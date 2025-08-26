@@ -8,8 +8,16 @@ import { LIMIT_PER_PROJECT } from "../../Types/Database/LimitMax";
 import BadDataException from "../../Types/Exception/BadDataException";
 import Model, {
   InvoiceStatus,
-} from "Common/Models/DatabaseModels/BillingInvoice";
-import Project from "Common/Models/DatabaseModels/Project";
+} from "../../Models/DatabaseModels/BillingInvoice";
+import Project from "../../Models/DatabaseModels/Project";
+import SubscriptionStatus, {
+  SubscriptionStatusUtil,
+} from "../../Types/Billing/SubscriptionStatus";
+import ObjectID from "../../Types/ObjectID";
+import Semaphore, { SemaphoreMutex } from "../Infrastructure/Semaphore";
+import logger from "../Utils/Logger";
+import OneUptimeDate from "../../Types/Date";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export class Service extends DatabaseService<Model> {
   public constructor() {
@@ -17,6 +25,168 @@ export class Service extends DatabaseService<Model> {
     this.setDoNotAllowDelete(true);
   }
 
+  @CaptureSpan()
+  public async refreshSubscriptionStatus(data: {
+    projectId: ObjectID;
+  }): Promise<void> {
+    let mutex: SemaphoreMutex | null = null;
+
+    try {
+      mutex = await Semaphore.lock({
+        key: data.projectId.toString(),
+        namespace: "BillingInoviceService.refreshSubscriptionStatus",
+        lockTimeout: 15000,
+        acquireTimeout: 20000,
+      });
+      logger.debug(
+        "Mutex acquired - " +
+          data.projectId.toString() +
+          " at " +
+          OneUptimeDate.getCurrentDateAsFormattedString(),
+      );
+    } catch (err) {
+      logger.debug(
+        "Mutex acquire failed - " +
+          data.projectId.toString() +
+          " at " +
+          OneUptimeDate.getCurrentDateAsFormattedString(),
+      );
+      logger.error(err);
+    }
+
+    let project: Project | null = await ProjectService.findOneById({
+      id: data.projectId,
+      props: {
+        isRoot: true,
+      },
+      select: {
+        _id: true,
+        paymentProviderCustomerId: true,
+        paymentProviderSubscriptionId: true,
+        paymentProviderMeteredSubscriptionId: true,
+      },
+    });
+
+    // refresh the subscription status. This is a hack to ensure that the subscription status is always up to date.
+    // This is because the subscription status can change at any time and we need to ensure that the subscription status is always up to date.
+
+    if (!project) {
+      throw new BadDataException("Project not found");
+    }
+
+    if (!project.paymentProviderCustomerId) {
+      throw new BadDataException("Payment provider customer id not found.");
+    }
+
+    let subscriptionState: SubscriptionStatus =
+      await BillingService.getSubscriptionStatus(
+        project.paymentProviderSubscriptionId as string,
+      );
+
+    let meteredSubscriptionState: SubscriptionStatus =
+      await BillingService.getSubscriptionStatus(
+        project.paymentProviderMeteredSubscriptionId as string,
+      );
+
+    // update the project.
+
+    await ProjectService.updateOneById({
+      id: project.id!,
+      data: {
+        paymentProviderSubscriptionStatus: subscriptionState,
+        paymentProviderMeteredSubscriptionStatus: meteredSubscriptionState,
+      },
+      props: {
+        isRoot: true,
+        ignoreHooks: true,
+      },
+    });
+
+    if (
+      SubscriptionStatusUtil.isSubscriptionInactive(meteredSubscriptionState) ||
+      SubscriptionStatusUtil.isSubscriptionInactive(subscriptionState)
+    ) {
+      // check if all invoices are paid. If yes, then reactivate the subscription.
+
+      const invoices: Array<Invoice> = await BillingService.getInvoices(
+        project.paymentProviderCustomerId,
+      );
+
+      let allInvoicesPaid: boolean = true;
+
+      for (const invoice of invoices) {
+        if (
+          invoice.status === InvoiceStatus.Open ||
+          invoice.status === InvoiceStatus.Uncollectible
+        ) {
+          allInvoicesPaid = false;
+          break;
+        }
+      }
+
+      if (allInvoicesPaid) {
+        await ProjectService.reactiveSubscription(project.id!);
+        project = await ProjectService.findOneById({
+          id: data.projectId,
+          props: {
+            isRoot: true,
+          },
+          select: {
+            _id: true,
+            paymentProviderCustomerId: true,
+            paymentProviderSubscriptionId: true,
+            paymentProviderMeteredSubscriptionId: true,
+          },
+        });
+
+        if (!project) {
+          throw new BadDataException("Project not found");
+        }
+
+        subscriptionState = await BillingService.getSubscriptionStatus(
+          project.paymentProviderSubscriptionId as string,
+        );
+
+        meteredSubscriptionState = await BillingService.getSubscriptionStatus(
+          project.paymentProviderMeteredSubscriptionId as string,
+        );
+
+        await ProjectService.updateOneById({
+          id: project.id!,
+          data: {
+            paymentProviderSubscriptionStatus: subscriptionState,
+            paymentProviderMeteredSubscriptionStatus: meteredSubscriptionState,
+          },
+          props: {
+            isRoot: true,
+            ignoreHooks: true,
+          },
+        });
+      }
+    }
+
+    if (mutex) {
+      try {
+        await Semaphore.release(mutex);
+        logger.debug(
+          "Mutex released - " +
+            data.projectId.toString() +
+            " at " +
+            OneUptimeDate.getCurrentDateAsFormattedString(),
+        );
+      } catch (err) {
+        logger.debug(
+          "Mutex release failed - " +
+            data.projectId.toString() +
+            " at " +
+            OneUptimeDate.getCurrentDateAsFormattedString(),
+        );
+        logger.error(err);
+      }
+    }
+  }
+
+  @CaptureSpan()
   protected override async onBeforeFind(
     findBy: FindBy<Model>,
   ): Promise<OnFind<Model>> {
@@ -36,6 +206,11 @@ export class Service extends DatabaseService<Model> {
         paymentProviderCustomerId: true,
       },
     });
+
+    // refresh the subscription status. This is a hack to ensure that the subscription status is always up to date.
+    // This is because the subscription status can change at any time and we need to ensure that the subscription status is always up to date.
+
+    await this.refreshSubscriptionStatus({ projectId: findBy.props.tenantId! });
 
     if (!project) {
       throw new BadDataException("Project not found");

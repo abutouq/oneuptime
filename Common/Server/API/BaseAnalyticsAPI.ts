@@ -1,4 +1,4 @@
-import AggregateBy from "Common/Types/BaseDatabase/AggregateBy";
+import AggregateBy from "../../Types/BaseDatabase/AggregateBy";
 import UserMiddleware from "../Middleware/UserAuthorization";
 import AnalyticsDatabaseService from "../Services/AnalyticsDatabaseService";
 import CreateBy from "../Types/AnalyticsDatabase/CreateBy";
@@ -15,19 +15,20 @@ import Express, {
 } from "../Utils/Express";
 import Response from "../Utils/Response";
 import CommonAPI from "./CommonAPI";
-import AnalyticsDataModel from "Common/Models/AnalyticsModels/AnalyticsBaseModel/AnalyticsBaseModel";
-import DatabaseCommonInteractionProps from "Common/Types/BaseDatabase/DatabaseCommonInteractionProps";
+import AnalyticsDataModel from "../../Models/AnalyticsModels/AnalyticsBaseModel/AnalyticsBaseModel";
+import DatabaseCommonInteractionProps from "../../Types/BaseDatabase/DatabaseCommonInteractionProps";
 import {
   DEFAULT_LIMIT,
   LIMIT_PER_PROJECT,
-} from "Common/Types/Database/LimitMax";
-import BadRequestException from "Common/Types/Exception/BadRequestException";
-import { JSONObject } from "Common/Types/JSON";
-import JSONFunctions from "Common/Types/JSONFunctions";
-import ObjectID from "Common/Types/ObjectID";
-import { UserPermission } from "Common/Types/Permission";
-import PositiveNumber from "Common/Types/PositiveNumber";
-import AggregatedResult from "Common/Types/BaseDatabase/AggregatedResult";
+} from "../../Types/Database/LimitMax";
+import BadRequestException from "../../Types/Exception/BadRequestException";
+import { JSONObject } from "../../Types/JSON";
+import JSONFunctions from "../../Types/JSONFunctions";
+import ObjectID from "../../Types/ObjectID";
+import { UserPermission } from "../../Types/Permission";
+import PositiveNumber from "../../Types/PositiveNumber";
+import AggregatedResult from "../../Types/BaseDatabase/AggregatedResult";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export default class BaseAnalyticsAPI<
   TAnalyticsDataModel extends AnalyticsDataModel,
@@ -178,6 +179,7 @@ export default class BaseAnalyticsAPI<
     this.service = service;
   }
 
+  @CaptureSpan()
   public async getPermissionsForTenant(
     req: ExpressRequest,
   ): Promise<Array<UserPermission>> {
@@ -208,6 +210,7 @@ export default class BaseAnalyticsAPI<
     return null;
   }
 
+  @CaptureSpan()
   public async getList(
     req: ExpressRequest,
     res: ExpressResponse,
@@ -277,6 +280,7 @@ export default class BaseAnalyticsAPI<
     );
   }
 
+  @CaptureSpan()
   public async getAggregate(
     req: ExpressRequest,
     res: ExpressResponse,
@@ -319,6 +323,7 @@ export default class BaseAnalyticsAPI<
     });
   }
 
+  @CaptureSpan()
   public async count(req: ExpressRequest, res: ExpressResponse): Promise<void> {
     let query: Query<AnalyticsDataModel> = {};
 
@@ -341,6 +346,7 @@ export default class BaseAnalyticsAPI<
     });
   }
 
+  @CaptureSpan()
   public async getItem(
     req: ExpressRequest,
     res: ExpressResponse,
@@ -364,6 +370,7 @@ export default class BaseAnalyticsAPI<
     return Response.sendEntityResponse(req, res, item, this.entityType);
   }
 
+  @CaptureSpan()
   public async deleteItem(
     req: ExpressRequest,
     res: ExpressResponse,
@@ -381,6 +388,7 @@ export default class BaseAnalyticsAPI<
     return Response.sendEmptySuccessResponse(req, res);
   }
 
+  @CaptureSpan()
   public async updateItem(
     req: ExpressRequest,
     res: ExpressResponse,
@@ -411,6 +419,7 @@ export default class BaseAnalyticsAPI<
     return Response.sendEmptySuccessResponse(req, res);
   }
 
+  @CaptureSpan()
   public async createItem(
     req: ExpressRequest,
     res: ExpressResponse,

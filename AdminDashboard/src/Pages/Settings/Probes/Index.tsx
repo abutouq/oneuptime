@@ -54,9 +54,11 @@ const Settings: FunctionComponent = (): ReactElement => {
         title="Need help with setting up Global Probes?"
         description="Here is a guide which will help you get set up"
         link={Route.fromString("/docs/probe/custom-probe")}
+        hideOnMobile={true}
       />
 
       <ModelTable<Probe>
+        userPreferencesKey={"admin-probes-table"}
         modelType={Probe}
         id="probes-table"
         name="Settings > Global Probes"
@@ -151,7 +153,7 @@ const Settings: FunctionComponent = (): ReactElement => {
               description: true,
             },
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
         ]}
         columns={[
@@ -172,7 +174,8 @@ const Settings: FunctionComponent = (): ReactElement => {
             },
             noValueMessage: "-",
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
+            hideOnMobile: true,
           },
           {
             field: {
@@ -180,6 +183,7 @@ const Settings: FunctionComponent = (): ReactElement => {
             },
             title: "Status",
             type: FieldType.Text,
+
             getElement: (item: Probe): ReactElement => {
               if (
                 item &&

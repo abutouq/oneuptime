@@ -200,6 +200,7 @@ export default class TelemetryService extends BaseModel {
     required: true,
     unique: true,
     type: TableColumnType.Slug,
+    computed: true,
     title: "Slug",
     description: "Friendly globally unique name for your object",
   })
@@ -326,6 +327,7 @@ export default class TelemetryService extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -418,12 +420,7 @@ export default class TelemetryService extends BaseModel {
 
   // This field is deprecared and is no longer used.
   @ColumnAccessControl({
-    create: [
-      Permission.ProjectOwner,
-      Permission.ProjectAdmin,
-      Permission.ProjectMember,
-      Permission.CreateTelemetryService,
-    ],
+    create: [],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -442,6 +439,7 @@ export default class TelemetryService extends BaseModel {
   @TableColumn({
     type: TableColumnType.ObjectID,
     isDefaultValueColumn: false,
+    computed: true,
     title: "Service Token",
     description: "Service Token for this telemetry service",
   })

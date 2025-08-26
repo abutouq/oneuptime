@@ -1,5 +1,5 @@
 import TeamsElement from "../../Components/Team/TeamsElement";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageComponentProps from "../PageComponentProps";
 import URL from "Common/Types/API/URL";
 import DigestMethod from "Common/Types/SSO/DigestMethod";
@@ -8,7 +8,6 @@ import Banner from "Common/UI/Components/Banner/Banner";
 import { ButtonStyleType } from "Common/UI/Components/Button/Button";
 import Card from "Common/UI/Components/Card/Card";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
-import Link from "Common/UI/Components/Link/Link";
 import ConfirmModal from "Common/UI/Components/Modal/ConfirmModal";
 import CardModelDetail from "Common/UI/Components/ModelDetail/CardModelDetail";
 import ModelTable from "Common/UI/Components/ModelTable/ModelTable";
@@ -30,6 +29,7 @@ import React, {
   ReactElement,
   useState,
 } from "react";
+import Link from "Common/UI/Components/Link/Link";
 
 const SSOPage: FunctionComponent<PageComponentProps> = (
   props: PageComponentProps,
@@ -44,12 +44,14 @@ const SSOPage: FunctionComponent<PageComponentProps> = (
           title="Need help with configuring SSO?"
           description="Watch this 10 minute video which will help you get set up"
           link={URL.fromString("https://youtu.be/tq4WRgxbIwk")}
+          hideOnMobile={true}
         />
 
         <ModelTable<ProjectSSO>
           modelType={ProjectSSO}
+          userPreferencesKey={"project-sso-table"}
           query={{
-            projectId: DashboardNavigation.getProjectId()!,
+            projectId: ProjectUtil.getCurrentProjectId()!,
           }}
           id="sso-table"
           name="Settings > Project SSO"
@@ -121,6 +123,7 @@ const SSOPage: FunctionComponent<PageComponentProps> = (
                 "Members will be forwarded here when signing in to your organization",
               placeholder: "https://yourapp.example.com/apps/appId",
               stepId: "sign-on",
+              disableSpellCheck: true,
             },
             {
               field: {
@@ -133,6 +136,7 @@ const SSOPage: FunctionComponent<PageComponentProps> = (
               required: true,
               placeholder: "https://example.com",
               stepId: "sign-on",
+              disableSpellCheck: true,
             },
             {
               field: {
@@ -285,10 +289,10 @@ const SSOPage: FunctionComponent<PageComponentProps> = (
               <Link
                 openInNewTab={true}
                 to={URL.fromString(
-                  `${DASHBOARD_URL.toString()}/${DashboardNavigation.getProjectId()?.toString()}/sso`,
+                  `${DASHBOARD_URL.toString()}/${ProjectUtil.getCurrentProjectId()?.toString()}/sso`,
                 )}
               >
-                <span>{`${DASHBOARD_URL.toString()}/${DashboardNavigation.getProjectId()?.toString()}/sso`}</span>
+                <span>{`${DASHBOARD_URL.toString()}/${ProjectUtil.getCurrentProjectId()?.toString()}/sso`}</span>
               </Link>
             </span>
           }
@@ -328,7 +332,7 @@ const SSOPage: FunctionComponent<PageComponentProps> = (
                   "Please test SSO before you enable this feature. If SSO is not tested properly then you will be locked out of the project.",
               },
             ],
-            modelId: DashboardNavigation.getProjectId()!,
+            modelId: ProjectUtil.getCurrentProjectId()!,
           }}
         />
 

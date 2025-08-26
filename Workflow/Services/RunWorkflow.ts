@@ -107,8 +107,9 @@ export default class RunWorkflow {
         runLog.projectId = workflow.projectId!;
         runLog.workflowStatus = WorkflowStatus.Scheduled;
         runLog.logs =
-          OneUptimeDate.getCurrentDateAsFormattedString() +
-          `: Workflow ${runProps.workflowId.toString()} Scheduled.`;
+          OneUptimeDate.getCurrentDateAsFormattedString({
+            showSeconds: true,
+          }) + `: Workflow ${runProps.workflowId.toString()} Scheduled.`;
 
         runProps.workflowLogId = (
           await WorkflowLogService.create({
@@ -485,11 +486,17 @@ export default class RunWorkflow {
 
     if (typeof data === "string") {
       this.logs.push(
-        OneUptimeDate.getCurrentDateAsFormattedString() + ": " + data,
+        OneUptimeDate.getCurrentDateAsFormattedString({
+          showSeconds: true,
+        }) +
+          ": " +
+          data,
       );
     } else {
       this.logs.push(
-        OneUptimeDate.getCurrentDateAsFormattedString() +
+        OneUptimeDate.getCurrentDateAsFormattedString({
+          showSeconds: true,
+        }) +
           ": " +
           JSON.stringify(data),
       );

@@ -8,14 +8,17 @@ import { LIMIT_PER_PROJECT } from "../../Types/Database/LimitMax";
 import BadDataException from "../../Types/Exception/BadDataException";
 import NotificationRuleType from "../../Types/NotificationRule/NotificationRuleType";
 import ObjectID from "../../Types/ObjectID";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 import OnCallDutyExecutionLogTimelineStatus from "../../Types/OnCallDutyPolicy/OnCalDutyExecutionLogTimelineStatus";
 import PositiveNumber from "../../Types/PositiveNumber";
 import UserNotificationEventType from "../../Types/UserNotification/UserNotificationEventType";
 import UserNotificationExecutionStatus from "../../Types/UserNotification/UserNotificationExecutionStatus";
-import Incident from "Common/Models/DatabaseModels/Incident";
-import UserNotificationRule from "Common/Models/DatabaseModels/UserNotificationRule";
-import Model from "Common/Models/DatabaseModels/UserOnCallLog";
+import Incident from "../../Models/DatabaseModels/Incident";
+import UserNotificationRule from "../../Models/DatabaseModels/UserNotificationRule";
+import Model from "../../Models/DatabaseModels/UserOnCallLog";
 import { IsBillingEnabled } from "../EnvironmentConfig";
+import Alert from "../../Models/DatabaseModels/Alert";
+import AlertService from "./AlertService";
 
 export class Service extends DatabaseService<Model> {
   public constructor() {
@@ -25,6 +28,7 @@ export class Service extends DatabaseService<Model> {
     }
   }
 
+  @CaptureSpan()
   protected override async onBeforeCreate(
     createBy: CreateBy<Model>,
   ): Promise<OnCreate<Model>> {
@@ -36,6 +40,7 @@ export class Service extends DatabaseService<Model> {
     };
   }
 
+  @CaptureSpan()
   protected override async onUpdateSuccess(
     onUpdate: OnUpdate<Model>,
     _updatedItemIds: ObjectID[],
@@ -93,6 +98,7 @@ export class Service extends DatabaseService<Model> {
     return onUpdate;
   }
 
+  @CaptureSpan()
   protected override async onCreateSuccess(
     _onCreate: OnCreate<Model>,
     createdItem: Model,
@@ -111,19 +117,24 @@ export class Service extends DatabaseService<Model> {
     const notificationRuleType: NotificationRuleType =
       this.getNotificationRuleType(createdItem.userNotificationEventType!);
 
-    const incident: Incident | null = await IncidentService.findOneById({
-      id: createdItem.triggeredByIncidentId!,
-      props: {
-        isRoot: true,
-      },
-      select: {
-        incidentSeverityId: true,
-      },
-    });
+    let ruleCount: PositiveNumber = new PositiveNumber(0);
 
-    // Check if there are any rules .
-    const ruleCount: PositiveNumber = await UserNotificationRuleService.countBy(
-      {
+    let incident: Incident | null = null;
+    let alert: Alert | null = null;
+
+    if (createdItem.triggeredByIncidentId) {
+      incident = await IncidentService.findOneById({
+        id: createdItem.triggeredByIncidentId,
+        props: {
+          isRoot: true,
+        },
+        select: {
+          incidentSeverityId: true,
+        },
+      });
+
+      // Check if there are any rules .
+      ruleCount = await UserNotificationRuleService.countBy({
         query: {
           userId: createdItem.userId!,
           projectId: createdItem.projectId!,
@@ -135,8 +146,35 @@ export class Service extends DatabaseService<Model> {
         props: {
           isRoot: true,
         },
-      },
-    );
+      });
+    }
+
+    // get rule count for alerts.
+    if (createdItem.triggeredByAlertId) {
+      alert = await AlertService.findOneById({
+        id: createdItem.triggeredByAlertId,
+        props: {
+          isRoot: true,
+        },
+        select: {
+          alertSeverityId: true,
+        },
+      });
+
+      ruleCount = await UserNotificationRuleService.countBy({
+        query: {
+          userId: createdItem.userId!,
+          projectId: createdItem.projectId!,
+          ruleType: notificationRuleType,
+          alertSeverityId: alert?.alertSeverityId as ObjectID,
+        },
+        skip: 0,
+        limit: LIMIT_PER_PROJECT,
+        props: {
+          isRoot: true,
+        },
+      });
+    }
 
     if (ruleCount.toNumber() === 0) {
       // update this item to be processed.
@@ -145,7 +183,7 @@ export class Service extends DatabaseService<Model> {
         data: {
           status: UserNotificationExecutionStatus.Error, // now the worker will pick this up and complete this or mark this as failed.
           statusMessage:
-            "No notification rules found. Please add rules in User Settings > On-Call Rules.",
+            "No notification rules found for this user. User should add the rules in User Settings > On-Call Rules.",
         },
         props: {
           isRoot: true,
@@ -158,7 +196,7 @@ export class Service extends DatabaseService<Model> {
         data: {
           status: OnCallDutyExecutionLogTimelineStatus.Error,
           statusMessage:
-            "No notification rules found. Please add rules in User Settings > On-Call Rules.",
+            "No notification rules found for this user. User should add the rules in User Settings > On-Call Rules.",
         },
         props: {
           isRoot: true,
@@ -176,7 +214,14 @@ export class Service extends DatabaseService<Model> {
           projectId: createdItem.projectId!,
           notifyAfterMinutes: 0,
           ruleType: notificationRuleType,
-          incidentSeverityId: incident?.incidentSeverityId as ObjectID,
+          incidentSeverityId:
+            incident && incident.incidentSeverityId
+              ? (incident?.incidentSeverityId as ObjectID)
+              : undefined,
+          alertSeverityId:
+            alert && alert.alertSeverityId
+              ? (alert?.alertSeverityId as ObjectID)
+              : undefined,
         },
         select: {
           _id: true,
@@ -195,6 +240,7 @@ export class Service extends DatabaseService<Model> {
           userNotificationLogId: createdItem.id!,
           projectId: createdItem.projectId!,
           triggeredByIncidentId: createdItem.triggeredByIncidentId,
+          triggeredByAlertId: createdItem.triggeredByAlertId,
           userNotificationEventType: createdItem.userNotificationEventType!,
           onCallPolicyExecutionLogId:
             createdItem.onCallDutyPolicyExecutionLogId,
@@ -204,6 +250,7 @@ export class Service extends DatabaseService<Model> {
           userBelongsToTeamId: createdItem.userBelongsToTeamId,
           onCallDutyPolicyExecutionLogTimelineId:
             createdItem.onCallDutyPolicyExecutionLogTimelineId,
+          onCallScheduleId: createdItem.onCallDutyScheduleId,
         },
       );
     }
@@ -224,7 +271,7 @@ export class Service extends DatabaseService<Model> {
       id: createdItem.onCallDutyPolicyExecutionLogTimelineId!,
       data: {
         status: OnCallDutyExecutionLogTimelineStatus.NotificationSent,
-        statusMessage: "Initial notification sent to the user.",
+        statusMessage: "Alert Sent",
       },
       props: {
         isRoot: true,
@@ -238,12 +285,13 @@ export class Service extends DatabaseService<Model> {
     userNotificationEventType: UserNotificationEventType,
   ): NotificationRuleType {
     let notificationRuleType: NotificationRuleType =
-      NotificationRuleType.ON_CALL_INCIDENT_CREATED;
+      NotificationRuleType.ON_CALL_EXECUTED;
 
     if (
-      userNotificationEventType === UserNotificationEventType.IncidentCreated
+      userNotificationEventType === UserNotificationEventType.IncidentCreated ||
+      userNotificationEventType === UserNotificationEventType.AlertCreated
     ) {
-      notificationRuleType = NotificationRuleType.ON_CALL_INCIDENT_CREATED;
+      notificationRuleType = NotificationRuleType.ON_CALL_EXECUTED;
     } else {
       // Invalid user notification event type.
       throw new BadDataException("Invalid user notification event type.");

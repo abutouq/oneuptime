@@ -8,10 +8,11 @@ import DateFilter from "./DateFilter";
 import DropdownFilter from "./DropdownFilter";
 import EntityFilter from "./EntityFilter";
 import JSONFilter from "./JSONFilter";
+import NumberFilter from "./NumberFilter";
 import TextFilter from "./TextFilter";
 import Filter from "./Types/Filter";
 import FilterData from "./Types/FilterData";
-import GenericObject from "Common/Types/GenericObject";
+import GenericObject from "../../../Types/GenericObject";
 import React, { ReactElement } from "react";
 
 export interface ComponentProps<T extends GenericObject> {
@@ -104,6 +105,12 @@ const FiltersForm: FiltersFormFunction = <T extends GenericObject>(
                       onFilterChanged={changeFilterData}
                     />
 
+                    <NumberFilter
+                      filter={filter}
+                      filterData={props.filterData}
+                      onFilterChanged={changeFilterData}
+                    />
+
                     <JSONFilter
                       filter={filter}
                       filterData={props.filterData}
@@ -135,7 +142,7 @@ const FiltersForm: FiltersFormFunction = <T extends GenericObject>(
 
       {props.showFilter && props.filterError && (
         <ErrorMessage
-          error={props.filterError}
+          message={props.filterError}
           onRefreshClick={props.onFilterRefreshClick}
         />
       )}

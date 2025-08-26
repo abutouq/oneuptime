@@ -30,6 +30,16 @@ const ScheduledMaintenanceTemplates: LazyExoticComponent<
   return import("../Pages/Settings/ScheduledMaintenanceTemplates");
 });
 
+const SettingsUsers: LazyExoticComponent<FunctionComponent<ComponentProps>> =
+  lazy(() => {
+    return import("../Pages/Settings/Users");
+  });
+
+const SettingsUserView: LazyExoticComponent<FunctionComponent<ComponentProps>> =
+  lazy(() => {
+    return import("../Pages/Settings/UserView");
+  });
+
 const ScheduledMaintenanceTemplateView: LazyExoticComponent<
   FunctionComponent<ComponentProps>
 > = lazy(() => {
@@ -144,6 +154,19 @@ const IncidentTemplatesView: LazyExoticComponent<
 > = lazy(() => {
   return import("../Pages/Settings/IncidentTemplatesView");
 });
+
+const StatusPageAnnouncementTemplates: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/Settings/StatusPageAnnouncementTemplates");
+});
+
+const StatusPageAnnouncementTemplateView: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/Settings/StatusPageAnnouncementTemplateView");
+});
+
 const IncidentNoteTemplates: LazyExoticComponent<
   FunctionComponent<ComponentProps>
 > = lazy(() => {
@@ -173,18 +196,17 @@ const SettingsSSO: LazyExoticComponent<FunctionComponent<ComponentProps>> =
   lazy(() => {
     return import("../Pages/Settings/SSO");
   });
-const SettingsSmsLog: LazyExoticComponent<FunctionComponent<ComponentProps>> =
+
+const SettingsSCIM: LazyExoticComponent<FunctionComponent<ComponentProps>> =
   lazy(() => {
-    return import("../Pages/Settings/SmsLog");
+    return import("../Pages/Settings/SCIM");
   });
-const SettingsCallLog: LazyExoticComponent<FunctionComponent<ComponentProps>> =
-  lazy(() => {
-    return import("../Pages/Settings/CallLog");
-  });
-const SettingsEmailLog: LazyExoticComponent<FunctionComponent<ComponentProps>> =
-  lazy(() => {
-    return import("../Pages/Settings/EmailLog");
-  });
+
+const SettingsNotificationLogs: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/Settings/NotificationLogs");
+});
 const SettingsNotifications: LazyExoticComponent<
   FunctionComponent<ComponentProps>
 > = lazy(() => {
@@ -233,10 +255,22 @@ const ScheduledMaintenanceNoteTemplateView: LazyExoticComponent<
   return import("../Pages/Settings/ScheduledMaintenanceNoteTemplateView");
 });
 
+const SettingsMicrosoftTeamsIntegration: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/Settings/MicrosoftTeamsIntegration");
+});
+
 const SettingsUsageHistory: LazyExoticComponent<
   FunctionComponent<ComponentProps>
 > = lazy(() => {
   return import("../Pages/Settings/UsageHistory");
+});
+
+const SettingsSlackIntegration: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/Settings/SlackIntegration");
 });
 
 const SettingsRoutes: FunctionComponent<ComponentProps> = (
@@ -260,12 +294,14 @@ const SettingsRoutes: FunctionComponent<ComponentProps> = (
           }
         />
         <PageRoute
-          path={RouteUtil.getLastPathForKey(PageMap.SETTINGS_SMS_LOGS)}
+          path={RouteUtil.getLastPathForKey(PageMap.SETTINGS_NOTIFICATION_LOGS)}
           element={
             <Suspense fallback={Loader}>
-              <SettingsSmsLog
+              <SettingsNotificationLogs
                 {...props}
-                pageRoute={RouteMap[PageMap.SETTINGS_SMS_LOGS] as Route}
+                pageRoute={
+                  RouteMap[PageMap.SETTINGS_NOTIFICATION_LOGS] as Route
+                }
               />
             </Suspense>
           }
@@ -298,6 +334,43 @@ const SettingsRoutes: FunctionComponent<ComponentProps> = (
                 {...props}
                 pageRoute={
                   RouteMap[PageMap.SETTINGS_INCIDENT_TEMPLATES_VIEW] as Route
+                }
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
+          path={RouteUtil.getLastPathForKey(
+            PageMap.SETTINGS_STATUS_PAGE_ANNOUNCEMENT_TEMPLATES,
+          )}
+          element={
+            <Suspense fallback={Loader}>
+              <StatusPageAnnouncementTemplates
+                {...props}
+                pageRoute={
+                  RouteMap[
+                    PageMap.SETTINGS_STATUS_PAGE_ANNOUNCEMENT_TEMPLATES
+                  ] as Route
+                }
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
+          path={RouteUtil.getLastPathForKey(
+            PageMap.SETTINGS_STATUS_PAGE_ANNOUNCEMENT_TEMPLATES_VIEW,
+            2,
+          )}
+          element={
+            <Suspense fallback={Loader}>
+              <StatusPageAnnouncementTemplateView
+                {...props}
+                pageRoute={
+                  RouteMap[
+                    PageMap.SETTINGS_STATUS_PAGE_ANNOUNCEMENT_TEMPLATES_VIEW
+                  ] as Route
                 }
               />
             </Suspense>
@@ -471,30 +544,6 @@ const SettingsRoutes: FunctionComponent<ComponentProps> = (
         />
 
         <PageRoute
-          path={RouteUtil.getLastPathForKey(PageMap.SETTINGS_CALL_LOGS)}
-          element={
-            <Suspense fallback={Loader}>
-              <SettingsCallLog
-                {...props}
-                pageRoute={RouteMap[PageMap.SETTINGS_CALL_LOGS] as Route}
-              />
-            </Suspense>
-          }
-        />
-
-        <PageRoute
-          path={RouteUtil.getLastPathForKey(PageMap.SETTINGS_EMAIL_LOGS)}
-          element={
-            <Suspense fallback={Loader}>
-              <SettingsEmailLog
-                {...props}
-                pageRoute={RouteMap[PageMap.SETTINGS_EMAIL_LOGS] as Route}
-              />
-            </Suspense>
-          }
-        />
-
-        <PageRoute
           path={RouteUtil.getLastPathForKey(
             PageMap.SETTINGS_NOTIFICATION_SETTINGS,
           )}
@@ -529,6 +578,38 @@ const SettingsRoutes: FunctionComponent<ComponentProps> = (
               <SettingsIncidents
                 {...props}
                 pageRoute={RouteMap[PageMap.SETTINGS_INCIDENTS_STATE] as Route}
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
+          path={RouteUtil.getLastPathForKey(PageMap.SETTINGS_SLACK_INTEGRATION)}
+          element={
+            <Suspense fallback={Loader}>
+              <SettingsSlackIntegration
+                {...props}
+                pageRoute={
+                  RouteMap[PageMap.SETTINGS_SLACK_INTEGRATION] as Route
+                }
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
+          path={RouteUtil.getLastPathForKey(
+            PageMap.SETTINGS_MICROSOFT_TEAMS_INTEGRATION,
+          )}
+          element={
+            <Suspense fallback={Loader}>
+              <SettingsMicrosoftTeamsIntegration
+                {...props}
+                pageRoute={
+                  RouteMap[
+                    PageMap.SETTINGS_MICROSOFT_TEAMS_INTEGRATION
+                  ] as Route
+                }
               />
             </Suspense>
           }
@@ -571,6 +652,18 @@ const SettingsRoutes: FunctionComponent<ComponentProps> = (
               <SettingsSSO
                 {...props}
                 pageRoute={RouteMap[PageMap.SETTINGS_SSO] as Route}
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
+          path={RouteUtil.getLastPathForKey(PageMap.SETTINGS_SCIM)}
+          element={
+            <Suspense fallback={Loader}>
+              <SettingsSCIM
+                {...props}
+                pageRoute={RouteMap[PageMap.SETTINGS_SCIM] as Route}
               />
             </Suspense>
           }
@@ -848,12 +941,36 @@ const SettingsRoutes: FunctionComponent<ComponentProps> = (
         />
 
         <PageRoute
+          path={RouteUtil.getLastPathForKey(PageMap.SETTINGS_USERS)}
+          element={
+            <Suspense fallback={Loader}>
+              <SettingsUsers
+                {...props}
+                pageRoute={RouteMap[PageMap.SETTINGS_USERS] as Route}
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
           path={RouteUtil.getLastPathForKey(PageMap.SETTINGS_TEAM_VIEW, 2)}
           element={
             <Suspense fallback={Loader}>
               <SettingsTeamView
                 {...props}
                 pageRoute={RouteMap[PageMap.SETTINGS_TEAM_VIEW] as Route}
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
+          path={RouteUtil.getLastPathForKey(PageMap.SETTINGS_USER_VIEW, 2)}
+          element={
+            <Suspense fallback={Loader}>
+              <SettingsUserView
+                {...props}
+                pageRoute={RouteMap[PageMap.SETTINGS_USER_VIEW] as Route}
               />
             </Suspense>
           }

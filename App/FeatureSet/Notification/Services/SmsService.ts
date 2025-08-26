@@ -31,6 +31,18 @@ export default class SmsService {
       customTwilioConfig?: TwilioConfig | undefined;
       isSensitive?: boolean; // if true, message will not be logged
       userOnCallLogTimelineId?: ObjectID | undefined;
+      incidentId?: ObjectID | undefined;
+      alertId?: ObjectID | undefined;
+      scheduledMaintenanceId?: ObjectID | undefined;
+      statusPageId?: ObjectID | undefined;
+      statusPageAnnouncementId?: ObjectID | undefined;
+      userId?: ObjectID | undefined;
+      // On-call policy related fields
+      onCallPolicyId?: ObjectID | undefined;
+      onCallPolicyEscalationRuleId?: ObjectID | undefined;
+      onCallDutyPolicyExecutionLogTimelineId?: ObjectID | undefined;
+      onCallScheduleId?: ObjectID | undefined;
+      teamId?: ObjectID | undefined;
     },
   ): Promise<void> {
     let smsError: Error | null = null;
@@ -71,6 +83,48 @@ export default class SmsService {
         smsLog.projectId = options.projectId;
       }
 
+      if (options.incidentId) {
+        smsLog.incidentId = options.incidentId;
+      }
+
+      if (options.alertId) {
+        smsLog.alertId = options.alertId;
+      }
+
+      if (options.scheduledMaintenanceId) {
+        smsLog.scheduledMaintenanceId = options.scheduledMaintenanceId;
+      }
+
+      if (options.statusPageId) {
+        smsLog.statusPageId = options.statusPageId;
+      }
+
+      if (options.statusPageAnnouncementId) {
+        smsLog.statusPageAnnouncementId = options.statusPageAnnouncementId;
+      }
+
+      if (options.userId) {
+        smsLog.userId = options.userId;
+      }
+
+      if (options.teamId) {
+        smsLog.teamId = options.teamId;
+      }
+
+      // Set OnCall-related fields
+      if (options.onCallPolicyId) {
+        smsLog.onCallDutyPolicyId = options.onCallPolicyId;
+      }
+
+      if (options.onCallPolicyEscalationRuleId) {
+        smsLog.onCallDutyPolicyEscalationRuleId =
+          options.onCallPolicyEscalationRuleId;
+      }
+
+      if (options.onCallScheduleId) {
+        smsLog.onCallDutyPolicyScheduleId = options.onCallScheduleId;
+      }
+
       const twilioConfig: TwilioConfig | null =
         options.customTwilioConfig || (await getTwilioConfig());
 
@@ -83,7 +137,14 @@ export default class SmsService {
         twilioConfig.authToken,
       );
 
-      smsLog.fromNumber = twilioConfig.phoneNumber;
+      const fromNumber: Phone = Phone.pickPhoneNumberToSendSMSOrCallFrom({
+        to: to,
+        primaryPhoneNumberToPickFrom: twilioConfig.primaryPhoneNumber,
+        seocndaryPhoneNumbersToPickFrom:
+          twilioConfig.secondaryPhoneNumbers || [],
+      });
+
+      smsLog.fromNumber = fromNumber;
 
       let project: Project | null = null;
 
@@ -230,7 +291,7 @@ export default class SmsService {
       const twillioMessage: MessageInstance = await client.messages.create({
         body: message,
         to: to.toString(),
-        from: twilioConfig.phoneNumber.toString(), // From a valid Twilio number
+        from: fromNumber.toString(), // From a valid Twilio number
       });
 
       smsLog.status = SmsStatus.Success;

@@ -4,17 +4,23 @@ import "./Jobs/Announcement/SendNotificationToSubscribers";
 import "./Jobs/HardDelete/HardDeleteItemsInDatabase";
 // Incidents
 import "./Jobs/Incident/SendNotificationToSubscribers";
+import "./Jobs/Incident/KeepCurrentStateConsistent";
+
 // Incident Owners
 import "./Jobs/IncidentOwners/SendCreatedResourceNotification";
 import "./Jobs/IncidentOwners/SendNotePostedNotification";
 import "./Jobs/IncidentOwners/SendOwnerAddedNotification";
 import "./Jobs/IncidentOwners/SendStateChangeNotification";
 
+// Monitor Jobs.
+import "./Jobs/Monitor/KeepCurrentStateConsistent";
+
 // Alert Owners
 import "./Jobs/AlertOwners/SendCreatedResourceNotification";
 import "./Jobs/AlertOwners/SendNotePostedNotification";
 import "./Jobs/AlertOwners/SendOwnerAddedNotification";
 import "./Jobs/AlertOwners/SendStateChangeNotification";
+import "./Jobs/Alert/KeepCurrentStateConsistent";
 
 // Incident Notes
 import "./Jobs/IncidentPublicNote/SendNotificationToSubscribers";
@@ -40,6 +46,7 @@ import "./Jobs/ScheduledMaintenance/ChangeStateToOngoing";
 import "./Jobs/ScheduledMaintenance/SendNotificationToSubscribers";
 import "./Jobs/ScheduledMaintenance/ScheduleRecurringEvents";
 import "./Jobs/ScheduledMaintenance/SendSubscriberRemindersOnEventScheduled";
+import "./Jobs/ScheduledMaintenance/KeepCurrentStateConsistent";
 
 // Scheduled Event Owners
 import "./Jobs/ScheduledMaintenanceOwners/SendCreatedResourceNotification";
@@ -64,7 +71,7 @@ import "./Jobs/StatusPageOwners/SendCreatedResourceNotification";
 import "./Jobs/StatusPageOwners/SendOwnerAddedNotification";
 
 // Status Page Reports
-// import "./Jobs/StatusPage/SendReportsToSubscribers";
+import "./Jobs/StatusPage/SendReportsToSubscribers";
 
 // Telemetry Service
 import "./Jobs/TelemetryService/DeleteOldData";
@@ -89,6 +96,14 @@ import "./Jobs/Metrics/DeleteMonitorMetricsOlderThanXDays";
 import "./Jobs/Metrics/DeleteIncidentMetricOlderThanXDays";
 import "./Jobs/Metrics/DeleteAlertMetricOlderThanXDays";
 
+import "./Jobs/OnCallDutySchedule/RefreshHandoffTime";
+
+import "./Jobs/Monitor/DeleteMonitorLogOlderThan24Hours";
+
+import "./Jobs/OnCallPolicy/DeleteOldTimeLogs";
+
+import "./Jobs/PaymentProvider/SendDailyEmailsToOwnersIfSubscriptionIsOverdue";
+
 import AnalyticsTableManagement from "./Utils/AnalyticsDatabase/TableManegement";
 import RunDatabaseMigrations from "./Utils/DataMigration";
 import JobDictionary from "./Utils/JobDictionary";
@@ -97,9 +112,10 @@ import Queue, { QueueJob, QueueName } from "Common/Server/Infrastructure/Queue";
 import QueueWorker from "Common/Server/Infrastructure/QueueWorker";
 import FeatureSet from "Common/Server/Types/FeatureSet";
 import logger from "Common/Server/Utils/Logger";
+import { WORKER_CONCURRENCY } from "./Config";
+import MetricsAPI from "./API/Metrics";
 
 import Express, { ExpressApplication } from "Common/Server/Utils/Express";
-import ClusterKeyAuthorization from "Common/Server/Middleware/ClusterKeyAuthorization";
 
 const app: ExpressApplication = Express.getExpressApp();
 
@@ -107,11 +123,10 @@ const WorkersFeatureSet: FeatureSet = {
   init: async (): Promise<void> => {
     try {
       // attach bull board to the app
-      app.use(
-        Queue.getInspectorRoute(),
-        ClusterKeyAuthorization.isAuthorizedServiceMiddleware,
-        Queue.getQueueInspectorRouter(),
-      );
+      app.use(Queue.getInspectorRoute(), Queue.getQueueInspectorRouter());
+
+      // expose metrics endpoint used by KEDA
+      app.use(["/worker", "/"], MetricsAPI);
 
       // run async database migrations
       RunDatabaseMigrations().catch((err: Error) => {
@@ -139,7 +154,7 @@ const WorkersFeatureSet: FeatureSet = {
             await QueueWorker.runJobWithTimeout(timeoutInMs, funcToRun);
           }
         },
-        { concurrency: 100 },
+        { concurrency: WORKER_CONCURRENCY },
       );
     } catch (err) {
       logger.error("App Init Failed:");

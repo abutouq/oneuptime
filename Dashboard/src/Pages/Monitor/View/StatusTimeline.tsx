@@ -1,5 +1,4 @@
 import DisabledWarning from "../../../Components/Monitor/DisabledWarning";
-import DashboardNavigation from "../../../Utils/Navigation";
 import PageComponentProps from "../../PageComponentProps";
 import { Black } from "Common/Types/BrandColors";
 import OneUptimeDate from "Common/Types/Date";
@@ -18,12 +17,14 @@ import FieldType from "Common/UI/Components/Types/FieldType";
 import Navigation from "Common/UI/Utils/Navigation";
 import MonitorStatus from "Common/Models/DatabaseModels/MonitorStatus";
 import MonitorStatusTimeline from "Common/Models/DatabaseModels/MonitorStatusTimeline";
+import ProjectUtil from "Common/UI/Utils/Project";
 import React, {
   Fragment,
   FunctionComponent,
   ReactElement,
   useState,
 } from "react";
+import SortOrder from "Common/Types/BaseDatabase/SortOrder";
 
 const StatusTimeline: FunctionComponent<PageComponentProps> = (
   props: PageComponentProps,
@@ -43,6 +44,7 @@ const StatusTimeline: FunctionComponent<PageComponentProps> = (
         modelType={MonitorStatusTimeline}
         id="table-monitor-status-timeline"
         name="Monitor > Status Timeline"
+        userPreferencesKey="monitor-status-timeline-table"
         isDeleteable={true}
         showViewIdButton={true}
         isCreateable={true}
@@ -91,8 +93,10 @@ const StatusTimeline: FunctionComponent<PageComponentProps> = (
         ]}
         query={{
           monitorId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
+        sortBy="startsAt"
+        sortOrder={SortOrder.Descending}
         onBeforeCreate={(
           item: MonitorStatusTimeline,
         ): Promise<MonitorStatusTimeline> => {
@@ -123,6 +127,18 @@ const StatusTimeline: FunctionComponent<PageComponentProps> = (
               valueField: "_id",
             },
           },
+          {
+            field: {
+              startsAt: true,
+            },
+            title: "Starts At",
+            fieldType: FormFieldSchemaType.DateTime,
+            required: true,
+            placeholder: "Starts At",
+            getDefaultValue: () => {
+              return OneUptimeDate.getCurrentDate();
+            },
+          },
         ]}
         showRefreshButton={true}
         viewPageRoute={Navigation.getCurrentRoute()}
@@ -137,7 +153,7 @@ const StatusTimeline: FunctionComponent<PageComponentProps> = (
             type: FieldType.Entity,
             filterEntityType: MonitorStatus,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -146,7 +162,7 @@ const StatusTimeline: FunctionComponent<PageComponentProps> = (
           },
           {
             field: {
-              createdAt: true,
+              startsAt: true,
             },
             title: "Starts At",
             type: FieldType.Date,
@@ -185,7 +201,7 @@ const StatusTimeline: FunctionComponent<PageComponentProps> = (
           },
           {
             field: {
-              createdAt: true,
+              startsAt: true,
             },
             title: "Starts At",
             type: FieldType.DateTime,
@@ -208,7 +224,7 @@ const StatusTimeline: FunctionComponent<PageComponentProps> = (
               return (
                 <p>
                   {OneUptimeDate.differenceBetweenTwoDatesAsFromattedString(
-                    item["createdAt"] as Date,
+                    item["startsAt"] as Date,
                     (item["endsAt"] as Date) || OneUptimeDate.getCurrentDate(),
                   )}
                 </p>

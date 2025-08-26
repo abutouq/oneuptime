@@ -22,6 +22,10 @@ x-common-variables: &common-variables
     ANALYTICS_KEY: ${ANALYTICS_KEY}
     ANALYTICS_HOST: ${ANALYTICS_HOST}
 
+    # VAPID keys for Web Push Notifications
+    VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+    VAPID_SUBJECT: ${VAPID_SUBJECT}
+
     ALLOWED_ACTIVE_MONITOR_COUNT_IN_FREE_PLAN: ${ALLOWED_ACTIVE_MONITOR_COUNT_IN_FREE_PLAN}
 
     SERVER_ACCOUNTS_HOSTNAME: accounts
@@ -42,6 +46,7 @@ x-common-variables: &common-variables
     SERVER_WORKFLOW_HOSTNAME: workflow
     SERVER_API_REFERENCE_HOSTNAME: api-reference
     SERVER_DOCS_HOSTNAME: docs
+    SERVER_SERVER_MONITOR_INGEST_HOSTNAME: server-monitor-ingest
 
     #Ports. Usually they don't need to change. 
     APP_PORT: ${APP_PORT}
@@ -60,9 +65,12 @@ x-common-variables: &common-variables
     WORKFLOW_PORT: ${WORKFLOW_PORT}
     API_REFERENCE_PORT: ${API_REFERENCE_PORT}
     DOCS_PORT: ${DOCS_PORT}
+    SERVER_MONITOR_INGEST_PORT: ${SERVER_MONITOR_INGEST_PORT}
 
     OPENTELEMETRY_EXPORTER_OTLP_ENDPOINT: ${OPENTELEMETRY_EXPORTER_OTLP_ENDPOINT}
     OPENTELEMETRY_EXPORTER_OTLP_HEADERS: ${OPENTELEMETRY_EXPORTER_OTLP_HEADERS}
+
+    SLACK_APP_CLIENT_ID: ${SLACK_APP_CLIENT_ID}
 
 x-common-ui-variables: &common-ui-variables
     <<: *common-variables   
@@ -72,7 +80,7 @@ x-common-server-variables: &common-server-variables
     <<: *common-variables
     ONEUPTIME_SECRET: ${ONEUPTIME_SECRET}
 
-
+    VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
     DATABASE_PORT: ${DATABASE_PORT}
     DATABASE_USERNAME: ${DATABASE_USERNAME}
     DATABASE_PASSWORD: ${DATABASE_PASSWORD}
@@ -109,34 +117,22 @@ x-common-server-variables: &common-server-variables
     IS_SERVER: "true"
 
     WORKFLOW_SCRIPT_TIMEOUT_IN_MS: ${WORKFLOW_SCRIPT_TIMEOUT_IN_MS}
+    WORKFLOW_TIMEOUT_IN_MS: ${WORKFLOW_TIMEOUT_IN_MS}
 
     DISABLE_AUTOMATIC_INCIDENT_CREATION: ${DISABLE_AUTOMATIC_INCIDENT_CREATION}
 
     DISABLE_AUTOMATIC_ALERT_CREATION: ${DISABLE_AUTOMATIC_ALERT_CREATION}
 
     # Notification Webhooks
-    NOTIFICATION_WEBHOOK_ON_CREATED_USER: ${NOTIFICATION_WEBHOOK_ON_CREATED_USER}
+    NOTIFICATION_SLACK_WEBHOOK_ON_CREATED_USER: ${NOTIFICATION_SLACK_WEBHOOK_ON_CREATED_USER}
+    NOTIFICATION_SLACK_WEBHOOK_ON_CREATED_PROJECT: ${NOTIFICATION_SLACK_WEBHOOK_ON_CREATED_PROJECT}
+    NOTIFICATION_SLACK_WEBHOOK_ON_DELETED_PROJECT: ${NOTIFICATION_SLACK_WEBHOOK_ON_DELETED_PROJECT}
+    NOTIFICATION_SLACK_WEBHOOK_ON_SUBSCRIPTION_UPDATE: ${NOTIFICATION_SLACK_WEBHOOK_ON_SUBSCRIPTION_UPDATE}
 
+    SLACK_APP_CLIENT_SECRET: ${SLACK_APP_CLIENT_SECRET}
+    SLACK_APP_SIGNING_SECRET: ${SLACK_APP_SIGNING_SECRET}
 
 services:
-
-    
-    haraka:
-        networks:
-          - oneuptime
-        image:  oneuptime/haraka:${APP_TAG}
-        restart: always
-        environment:
-            SMTP_PASSWORD: ${INTERNAL_SMTP_PASSWORD}
-            SMTP_EMAIL: ${INTERNAL_SMTP_EMAIL}
-            DKIM_SELECTOR: oneuptime
-            DOMAIN: ${INTERNAL_SMTP_SENDING_DOMAIN}
-            DKIM_PRIVATE_KEY: ${INTERNAL_SMTP_DKIM_PRIVATE_KEY_AS_BASE64}
-            DKIM_PUBLIC_KEY: ${INTERNAL_SMTP_DKIM_PUBLIC_KEY_AS_BASE64}
-        logging:
-            driver: "local"
-            options:
-                max-size: "1000m"
 
     
     redis:
@@ -283,9 +279,6 @@ services:
             CALL_DEFAULT_COST_IN_CENTS_PER_MINUTE: ${CALL_DEFAULT_COST_IN_CENTS_PER_MINUTE}
             SMS_HIGH_RISK_COST_IN_CENTS: ${SMS_HIGH_RISK_COST_IN_CENTS}
             CALL_HIGH_RISK_COST_IN_CENTS_PER_MINUTE: ${CALL_HIGH_RISK_COST_IN_CENTS_PER_MINUTE}
-            INTERNAL_SMTP_EMAIL: ${INTERNAL_SMTP_EMAIL}
-            INTERNAL_SMTP_FROM_NAME: ${INTERNAL_SMTP_FROM_NAME}
-            INTERNAL_SMTP_PASSWORD: ${INTERNAL_SMTP_PASSWORD}
             DISABLE_TELEMETRY: ${DISABLE_TELEMETRY_FOR_APP}
         logging:
             driver: "local"
@@ -312,6 +305,7 @@ services:
             <<: *common-server-variables
             PORT: ${WORKER_PORT}
             DISABLE_TELEMETRY: ${DISABLE_TELEMETRY_FOR_WORKER}
+            WORKER_CONCURRENCY: ${WORKER_CONCURRENCY}
         logging:
             driver: "local"
             options:
@@ -367,6 +361,7 @@ services:
             ONEUPTIME_URL: ${GLOBAL_PROBE_1_ONEUPTIME_URL}
             PROBE_MONITOR_FETCH_LIMIT: ${GLOBAL_PROBE_1_MONITOR_FETCH_LIMIT}
             DISABLE_TELEMETRY: ${DISABLE_TELEMETRY_FOR_PROBE}
+            PORT: ${GLOBAL_PROBE_1_PORT}
         logging:
             driver: "local"
             options:
@@ -386,6 +381,7 @@ services:
             PROBE_CUSTOM_CODE_MONITOR_SCRIPT_TIMEOUT_IN_MS: ${GLOBAL_PROBE_2_CUSTOM_CODE_MONITOR_SCRIPT_TIMEOUT_IN_MS}
             PROBE_MONITOR_FETCH_LIMIT: ${GLOBAL_PROBE_2_MONITOR_FETCH_LIMIT}
             DISABLE_TELEMETRY: ${DISABLE_TELEMETRY_FOR_PROBE}
+            PORT: ${GLOBAL_PROBE_2_PORT}
         logging:
             driver: "local"
             options:
@@ -397,11 +393,17 @@ services:
           - oneuptime
         environment:
             <<: *common-variables
+            DISABLE_TELEMETRY: ${DISABLE_TELEMETRY_FOR_OTEL_COLLECTOR}
+            OPENTELEMETRY_COLLECTOR_SENDING_QUEUE_ENABLED: ${OPENTELEMETRY_COLLECTOR_SENDING_QUEUE_ENABLED}
+            OPENTELEMETRY_COLLECTOR_SENDING_QUEUE_SIZE: ${OPENTELEMETRY_COLLECTOR_SENDING_QUEUE_SIZE}
+            OPENTELEMETRY_COLLECTOR_SENDING_QUEUE_NUM_CONSUMERS: ${OPENTELEMETRY_COLLECTOR_SENDING_QUEUE_NUM_CONSUMERS}
         restart: always
         logging:
             driver: "local"
             options:
                 max-size: "1000m"
+        ports: 
+          - 13133:13133 # Otel Collector Health Check Endpoint at /heath/status
 
     fluentd:
         networks:
@@ -442,6 +444,7 @@ services:
             <<: *common-server-variables
             PORT: ${FLUENT_INGEST_PORT}
             DISABLE_TELEMETRY: ${DISABLE_TELEMETRY_FOR_FLUENT_INGEST}
+            FLUENT_INGEST_CONCURRENCY: ${FLUENT_INGEST_CONCURRENCY}
         logging:
             driver: "local"
             options:
@@ -455,6 +458,21 @@ services:
             <<: *common-server-variables
             PORT: ${PROBE_INGEST_PORT}
             DISABLE_TELEMETRY: ${DISABLE_TELEMETRY_FOR_PROBE_INGEST}
+            PROBE_INGEST_CONCURRENCY: ${PROBE_INGEST_CONCURRENCY}
+        logging:
+            driver: "local"
+            options:
+                max-size: "1000m"
+
+    server-monitor-ingest:
+        networks:
+          - oneuptime
+        restart: always
+        environment:
+            <<: *common-server-variables
+            PORT: ${SERVER_MONITOR_INGEST_PORT}
+            DISABLE_TELEMETRY: ${DISABLE_TELEMETRY_FOR_SERVER_MONITOR_INGEST}
+            SERVER_MONITOR_INGEST_CONCURRENCY: ${SERVER_MONITOR_INGEST_CONCURRENCY}
         logging:
             driver: "local"
             options:
@@ -468,6 +486,8 @@ services:
             <<: *common-server-variables
             PORT: ${OPEN_TELEMETRY_INGEST_PORT}
             DISABLE_TELEMETRY: ${DISABLE_TELEMETRY_FOR_OPEN_TELEMETRY_INGEST}
+            # Max concurrent telemetry jobs the worker will process
+            OPEN_TELEMETRY_INGEST_CONCURRENCY: ${OPEN_TELEMETRY_INGEST_CONCURRENCY}
         logging:
             driver: "local"
             options:
@@ -481,6 +501,7 @@ services:
             <<: *common-server-variables
             PORT: ${INCOMING_REQUEST_INGEST_PORT}
             DISABLE_TELEMETRY: ${DISABLE_TELEMETRY_FOR_INCOMING_REQUEST_INGEST}
+            INCOMING_REQUEST_INGEST_CONCURRENCY: ${INCOMING_REQUEST_INGEST_CONCURRENCY}
         logging:
             driver: "local"
             options:
@@ -526,6 +547,8 @@ services:
         environment:
             <<: *common-server-variables
             ONEUPTIME_HTTP_PORT: ${ONEUPTIME_HTTP_PORT}
+            NGINX_LISTEN_ADDRESS: ${NGINX_LISTEN_ADDRESS}
+            NGINX_LISTEN_OPTIONS: ${NGINX_LISTEN_OPTIONS}
             DISABLE_TELEMETRY: ${DISABLE_TELEMETRY_FOR_INGRESS}
         ports:
             - '${ONEUPTIME_HTTP_PORT}:7849'

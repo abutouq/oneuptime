@@ -1,5 +1,4 @@
 import ServiceCatalogElement from "../../../../Components/ServiceCatalog/ServiceElement";
-import DashboardNavigation from "../../../../Utils/Navigation";
 import PageComponentProps from "../../../PageComponentProps";
 import BadDataException from "Common/Types/Exception/BadDataException";
 import ObjectID from "Common/Types/ObjectID";
@@ -10,6 +9,7 @@ import Navigation from "Common/UI/Utils/Navigation";
 import ServiceCatalog from "Common/Models/DatabaseModels/ServiceCatalog";
 import ServiceCopilotCodeRepository from "Common/Models/DatabaseModels/ServiceCopilotCodeRepository";
 import React, { Fragment, FunctionComponent, ReactElement } from "react";
+import ProjectUtil from "Common/UI/Utils/Project";
 
 const ServiceCopilotCodeRepositoryPage: FunctionComponent<
   PageComponentProps
@@ -22,6 +22,7 @@ const ServiceCopilotCodeRepositoryPage: FunctionComponent<
         modelType={ServiceCopilotCodeRepository}
         id="table-service-repository-page"
         name="Code Repository > Service Repository"
+        userPreferencesKey="service-copilot-code-repositories-table"
         isDeleteable={true}
         createVerb={"Add"}
         isCreateable={true}
@@ -30,13 +31,13 @@ const ServiceCopilotCodeRepositoryPage: FunctionComponent<
         showViewIdButton={true}
         query={{
           codeRepositoryId: codeRepositoryId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(
           item: ServiceCopilotCodeRepository,
         ): Promise<ServiceCopilotCodeRepository> => {
           item.codeRepositoryId = codeRepositoryId;
-          item.projectId = DashboardNavigation.getProjectId()!;
+          item.projectId = ProjectUtil.getCurrentProjectId()!;
           return Promise.resolve(item);
         }}
         cardProps={{
@@ -111,7 +112,7 @@ const ServiceCopilotCodeRepositoryPage: FunctionComponent<
             title: "Service",
             filterEntityType: ServiceCatalog,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",

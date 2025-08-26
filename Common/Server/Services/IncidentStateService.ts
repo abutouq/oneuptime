@@ -9,13 +9,15 @@ import SortOrder from "../../Types/BaseDatabase/SortOrder";
 import LIMIT_MAX from "../../Types/Database/LimitMax";
 import BadDataException from "../../Types/Exception/BadDataException";
 import ObjectID from "../../Types/ObjectID";
-import IncidentState from "Common/Models/DatabaseModels/IncidentState";
+import IncidentState from "../../Models/DatabaseModels/IncidentState";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export class Service extends DatabaseService<IncidentState> {
   public constructor() {
     super(IncidentState);
   }
 
+  @CaptureSpan()
   protected override async onBeforeCreate(
     createBy: CreateBy<IncidentState>,
   ): Promise<OnCreate<IncidentState>> {
@@ -39,6 +41,7 @@ export class Service extends DatabaseService<IncidentState> {
     };
   }
 
+  @CaptureSpan()
   protected override async onBeforeDelete(
     deleteBy: DeleteBy<IncidentState>,
   ): Promise<OnDelete<IncidentState>> {
@@ -69,6 +72,7 @@ export class Service extends DatabaseService<IncidentState> {
     };
   }
 
+  @CaptureSpan()
   protected override async onDeleteSuccess(
     onDelete: OnDelete<IncidentState>,
     _itemIdsBeforeDelete: ObjectID[],
@@ -92,6 +96,7 @@ export class Service extends DatabaseService<IncidentState> {
     };
   }
 
+  @CaptureSpan()
   protected override async onBeforeUpdate(
     updateBy: UpdateBy<IncidentState>,
   ): Promise<OnUpdate<IncidentState>> {
@@ -152,6 +157,7 @@ export class Service extends DatabaseService<IncidentState> {
     }
   }
 
+  @CaptureSpan()
   public async getAllIncidentStates(data: {
     projectId: ObjectID;
     props: DatabaseCommonInteractionProps;
@@ -171,6 +177,7 @@ export class Service extends DatabaseService<IncidentState> {
         isAcknowledgedState: true,
         isCreatedState: true,
         order: true,
+        name: true,
       },
       props: data.props,
     });
@@ -178,6 +185,7 @@ export class Service extends DatabaseService<IncidentState> {
     return incidentStates;
   }
 
+  @CaptureSpan()
   public async getUnresolvedIncidentStates(
     projectId: ObjectID,
     props: DatabaseCommonInteractionProps,
@@ -201,6 +209,32 @@ export class Service extends DatabaseService<IncidentState> {
     return unresolvedIncidentStates;
   }
 
+  @CaptureSpan()
+  public async getResolvedIncidentState(data: {
+    projectId: ObjectID;
+    props: DatabaseCommonInteractionProps;
+  }): Promise<IncidentState> {
+    const incidentStates: Array<IncidentState> =
+      await this.getAllIncidentStates({
+        projectId: data.projectId,
+        props: data.props,
+      });
+
+    const resolvedIncidentState: IncidentState | undefined =
+      incidentStates.find((incidentState: IncidentState) => {
+        return incidentState?.isResolvedState;
+      });
+
+    if (!resolvedIncidentState) {
+      throw new BadDataException(
+        "Resolved Incident State not found for this project",
+      );
+    }
+
+    return resolvedIncidentState;
+  }
+
+  @CaptureSpan()
   public async getAcknowledgedIncidentState(data: {
     projectId: ObjectID;
     props: DatabaseCommonInteractionProps;

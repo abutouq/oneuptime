@@ -84,6 +84,83 @@ import { MigrationName1731435267537 } from "./1731435267537-MigrationName";
 import { MigrationName1731435514287 } from "./1731435514287-MigrationName";
 import { MigrationName1732553444010 } from "./1732553444010-MigrationName";
 import { MigrationName1734435866602 } from "./1734435866602-MigrationName";
+import { MigrationName1736364478985 } from "./1736364478985-MigrationName";
+import { MigrationName1736364957990 } from "./1736364957990-MigrationName";
+import { MigrationName1736365532085 } from "./1736365532085-MigrationName";
+import { MigrationName1736675947746 } from "./1736675947746-MigrationName";
+import { MigrationName1736703138918 } from "./1736703138918-MigrationName";
+import { MigrationName1736780194077 } from "./1736780194077-MigrationName";
+import { MigrationName1736780194078 } from "./1736780194078-MigrationName";
+import { MigrationName1736787495707 } from "./1736787495707-MigrationName";
+import { MigrationName1736787985322 } from "./1736787985322-MigrationName";
+import { MigrationName1736788706141 } from "./1736788706141-MigrationName";
+import { MigrationName1736856662868 } from "./1736856662868-MigrationName";
+import { MigrationName1737141420441 } from "./1737141420441-MigrationName";
+import { MigrationName1737713529424 } from "./1737713529424-MigrationName";
+import { MigrationName1737715240684 } from "./1737715240684-MigrationName";
+import { MigrationName1737997557974 } from "./1737997557974-MigrationName";
+import { MigrationName1739209832500 } from "./1739209832500-MigrationName";
+import { MigrationName1739210586538 } from "./1739210586538-MigrationName";
+import { MigrationName1739217257089 } from "./1739217257089-MigrationName";
+import { MigrationName1739282331053 } from "./1739282331053-MigrationName";
+import { MigrationName1739374537088 } from "./1739374537088-MigrationName";
+import { MigrationName1739569321582 } from "./1739569321582-MigrationName";
+import { MigrationName1740164199817 } from "./1740164199817-MigrationName";
+import { MigrationName1740419151825 } from "./1740419151825-MigrationName";
+import { MigrationName1740430229844 } from "./1740430229844-MigrationName";
+import { MigrationName1740597525803 } from "./1740597525803-MigrationName";
+import { MigrationName1740598793630 } from "./1740598793630-MigrationName";
+import { MigrationName1741031019972 } from "./1741031019972-MigrationName";
+import { MigrationName1741209339971 } from "./1741209339971-MigrationName";
+import { MigrationName1741904597606 } from "./1741904597606-MigrationName";
+import { MigrationName1741908200702 } from "./1741908200702-MigrationName";
+import { MigrationName1741955609393 } from "./1741955609393-MigrationName";
+import { MigrationName1741955752685 } from "./1741955752685-MigrationName";
+import { MigrationName1741957080431 } from "./1741957080431-MigrationName";
+import { MigrationName1741959216297 } from "./1741959216297-MigrationName";
+import { MigrationName1742302093234 } from "./1742302093234-MigrationName";
+import { MigrationName1742305668133 } from "./1742305668133-MigrationName";
+import { MigrationName1743005293206 } from "./1743005293206-MigrationName";
+import { MigrationName1743006662678 } from "./1743006662678-MigrationName";
+import { MigrationName1743186793413 } from "./1743186793413-MigrationName";
+import { MigrationName1743518485566 } from "./1743518485566-MigrationName";
+import { MigrationName1743521461137 } from "./1743521461137-MigrationName";
+import { MigrationName1743530326936 } from "./1743530326936-MigrationName";
+import { MigrationName1743538648415 } from "./1743538648415-MigrationName";
+import { MigrationName1743692467814 } from "./1743692467814-MigrationName";
+import { MigrationName1743714801105 } from "./1743714801105-MigrationName";
+import { MigrationName1744804990712 } from "./1744804990712-MigrationName";
+import { MigrationName1744809770336 } from "./1744809770336-MigrationName";
+import { MigrationName1747305098533 } from "./1747305098533-MigrationName";
+import { MigrationName1747674762672 } from "./1747674762672-MigrationName";
+import { MigrationName1748456937826 } from "./1748456937826-MigrationName";
+import { MigrationName1749065784320 } from "./1749065784320-MigrationName";
+import { MigrationName1749133333893 } from "./1749133333893-MigrationName";
+import { MigrationName1749813704371 } from "./1749813704371-MigrationName";
+import { MigrationName1750250435756 } from "./1750250435756-MigrationName";
+import { MigrationName1752659054949 } from "./1752659054949-MigrationName";
+import { MigrationName1752774923063 } from "./1752774923063-MigrationName";
+import { MigrationName1753109689244 } from "./1753109689244-MigrationName";
+import { AddEnableCustomSubscriberEmailNotificationFooterText1753131488925 } from "./1753131488925-AddEnableCustomSubscriberEmailNotificationFooterText";
+import { MigrationName1753343522987 } from "./1753343522987-MigrationName";
+import { MigrationName1753377161288 } from "./1753377161288-MigrationName";
+import { AddPerformanceIndexes1753378524062 } from "./1753378524062-AddPerformanceIndexes";
+import { MigrationName1753383711511 } from "./1753383711511-MigrationName";
+import { MigrationName1754304193228 } from "./1754304193228-MigrationName";
+import { MigrationName1754315774827 } from "./1754315774827-MigrationName";
+import { MigrationName1754384418632 } from "./1754384418632-MigrationName";
+import { MigrationName1754671483948 } from "./1754671483948-MigrationName";
+import { MigrationName1754776130988 } from "./1754776130988-MigrationName";
+import { MigrationName1754828812691 } from "./1754828812691-MigrationName";
+import { MigrationName1754910440587 } from "./1754910440587-MigrationName";
+import { MigrationName1755030730926 } from "./1755030730926-MigrationName";
+import { MigrationName1755088852971 } from "./1755088852971-MigrationName";
+import { MigrationName1755093133870 } from "./1755093133870-MigrationName";
+import { MigrationName1755109893911 } from "./1755109893911-MigrationName";
+import { MigrationName1755110936888 } from "./1755110936888-MigrationName";
+import { MigrationName1755775040650 } from "./1755775040650-MigrationName";
+import { MigrationName1755778495455 } from "./1755778495455-MigrationName";
+import { MigrationName1755778934927 } from "./1755778934927-MigrationName";
 
 export default [
   InitialMigration,
@@ -172,4 +249,81 @@ export default [
   MigrationName1731435514287,
   MigrationName1732553444010,
   MigrationName1734435866602,
+  MigrationName1736364478985,
+  MigrationName1736364957990,
+  MigrationName1736365532085,
+  MigrationName1736675947746,
+  MigrationName1736703138918,
+  MigrationName1736780194077,
+  MigrationName1736780194078,
+  MigrationName1736787495707,
+  MigrationName1736787985322,
+  MigrationName1736788706141,
+  MigrationName1736856662868,
+  MigrationName1737141420441,
+  MigrationName1737713529424,
+  MigrationName1737715240684,
+  MigrationName1737997557974,
+  MigrationName1739209832500,
+  MigrationName1739210586538,
+  MigrationName1739217257089,
+  MigrationName1739282331053,
+  MigrationName1739374537088,
+  MigrationName1739569321582,
+  MigrationName1740164199817,
+  MigrationName1740419151825,
+  MigrationName1740430229844,
+  MigrationName1740597525803,
+  MigrationName1740598793630,
+  MigrationName1741031019972,
+  MigrationName1741209339971,
+  MigrationName1741904597606,
+  MigrationName1741908200702,
+  MigrationName1741955609393,
+  MigrationName1741955752685,
+  MigrationName1741957080431,
+  MigrationName1741959216297,
+  MigrationName1742302093234,
+  MigrationName1742305668133,
+  MigrationName1743005293206,
+  MigrationName1743006662678,
+  MigrationName1743186793413,
+  MigrationName1743518485566,
+  MigrationName1743521461137,
+  MigrationName1743530326936,
+  MigrationName1743538648415,
+  MigrationName1743692467814,
+  MigrationName1743714801105,
+  MigrationName1744804990712,
+  MigrationName1744809770336,
+  MigrationName1747305098533,
+  MigrationName1747674762672,
+  MigrationName1748456937826,
+  MigrationName1749065784320,
+  MigrationName1749133333893,
+  MigrationName1749813704371,
+  MigrationName1750250435756,
+  MigrationName1752659054949,
+  MigrationName1752774923063,
+  MigrationName1753109689244,
+  AddEnableCustomSubscriberEmailNotificationFooterText1753131488925,
+  MigrationName1753343522987,
+  MigrationName1753377161288,
+  AddPerformanceIndexes1753378524062,
+  MigrationName1753383711511,
+  MigrationName1754304193228,
+  MigrationName1754315774827,
+  MigrationName1754384418632,
+  MigrationName1754671483948,
+  MigrationName1754776130988,
+  MigrationName1754828812691,
+  MigrationName1754910440587,
+  MigrationName1755030730926,
+  MigrationName1755088852971,
+  MigrationName1755093133870,
+  MigrationName1755109893911,
+  MigrationName1755110936888,
+  MigrationName1755775040650,
+  MigrationName1755778495455,
+  MigrationName1755778934927,
 ];

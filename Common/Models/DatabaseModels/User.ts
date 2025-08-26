@@ -105,7 +105,7 @@ class User extends UserModel {
 
   @Index()
   @ColumnAccessControl({
-    create: [Permission.User],
+    create: [],
     read: [],
     update: [],
   })
@@ -113,6 +113,7 @@ class User extends UserModel {
     required: true,
     unique: true,
     type: TableColumnType.Slug,
+    computed: true,
     title: "Slug",
     description: "Friendly globally unique name for your object",
   })
@@ -150,7 +151,11 @@ class User extends UserModel {
 
     update: [],
   })
-  @TableColumn({ isDefaultValueColumn: true, type: TableColumnType.Boolean })
+  @TableColumn({
+    isDefaultValueColumn: true,
+    type: TableColumnType.Boolean,
+    defaultValue: false,
+  })
   @Column({
     type: ColumnType.Boolean,
     default: false,
@@ -286,6 +291,7 @@ class User extends UserModel {
     required: true,
     type: TableColumnType.Boolean,
     canReadOnRelationQuery: true,
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -433,7 +439,10 @@ class User extends UserModel {
 
     update: [],
   })
-  @TableColumn({ type: TableColumnType.ShortText })
+  @TableColumn({
+    type: TableColumnType.ShortText,
+    hideColumnInDocumentation: true,
+  })
   @Column({
     type: ColumnType.ShortText,
     length: ColumnLength.ShortText,
@@ -452,6 +461,7 @@ class User extends UserModel {
     isDefaultValueColumn: true,
     required: true,
     type: TableColumnType.Boolean,
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -485,6 +495,7 @@ class User extends UserModel {
     isDefaultValueColumn: true,
     required: true,
     type: TableColumnType.Boolean,
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -504,6 +515,7 @@ class User extends UserModel {
     isDefaultValueColumn: true,
     required: true,
     type: TableColumnType.Boolean,
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -534,7 +546,10 @@ class User extends UserModel {
 
     update: [],
   })
-  @TableColumn({ type: TableColumnType.OTP })
+  @TableColumn({
+    type: TableColumnType.OTP,
+    computed: true,
+  })
   @Column({
     type: ColumnType.OTP,
     length: ColumnLength.OTP,
@@ -548,7 +563,10 @@ class User extends UserModel {
     read: [],
     update: [],
   })
-  @TableColumn({ type: TableColumnType.LongText })
+  @TableColumn({
+    type: TableColumnType.LongText,
+    hideColumnInDocumentation: true,
+  })
   @Column({
     type: ColumnType.LongText,
     length: ColumnLength.LongText,
@@ -562,7 +580,10 @@ class User extends UserModel {
     read: [],
     update: [],
   })
-  @TableColumn({ type: TableColumnType.LongText })
+  @TableColumn({
+    type: TableColumnType.LongText,
+    hideColumnInDocumentation: true,
+  })
   @Column({
     type: ColumnType.LongText,
     length: ColumnLength.LongText,
@@ -576,7 +597,10 @@ class User extends UserModel {
     read: [],
     update: [],
   })
-  @TableColumn({ type: TableColumnType.LongText })
+  @TableColumn({
+    type: TableColumnType.LongText,
+    hideColumnInDocumentation: true,
+  })
   @Column({
     type: ColumnType.LongText,
     length: ColumnLength.LongText,
@@ -590,7 +614,10 @@ class User extends UserModel {
     read: [],
     update: [],
   })
-  @TableColumn({ type: TableColumnType.LongText })
+  @TableColumn({
+    type: TableColumnType.LongText,
+    hideColumnInDocumentation: true,
+  })
   @Column({
     type: ColumnType.LongText,
     length: ColumnLength.LongText,
@@ -604,7 +631,10 @@ class User extends UserModel {
     read: [],
     update: [],
   })
-  @TableColumn({ type: TableColumnType.LongText })
+  @TableColumn({
+    type: TableColumnType.LongText,
+    hideColumnInDocumentation: true,
+  })
   @Column({
     type: ColumnType.LongText,
     length: ColumnLength.LongText,
@@ -618,7 +648,10 @@ class User extends UserModel {
     read: [],
     update: [],
   })
-  @TableColumn({ type: TableColumnType.LongText })
+  @TableColumn({
+    type: TableColumnType.LongText,
+    hideColumnInDocumentation: true,
+  })
   @Column({
     type: ColumnType.LongText,
     length: ColumnLength.LongText,
@@ -665,6 +698,7 @@ class User extends UserModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -711,6 +745,7 @@ class User extends UserModel {
     description: "Is two factor authentication enabled?",
     isDefaultValueColumn: true,
     type: TableColumnType.Boolean,
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,

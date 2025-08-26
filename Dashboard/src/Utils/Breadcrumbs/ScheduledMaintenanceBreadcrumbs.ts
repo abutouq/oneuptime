@@ -19,6 +19,18 @@ export function getScheduleMaintenanceBreadcrumbs(
         "Ongoing Scheduled Maintenance",
       ],
     ),
+    ...BuildBreadcrumbLinksByTitles(
+      PageMap.SCHEDULED_MAINTENANCE_EVENTS_WORKSPACE_CONNECTION_SLACK,
+      ["Project", "Scheduled Maintenance Events", "Slack Workspace Connection"],
+    ),
+    ...BuildBreadcrumbLinksByTitles(
+      PageMap.SCHEDULED_MAINTENANCE_EVENT_CREATE,
+      [
+        "Project",
+        "Scheduled Maintenance Events",
+        "New Scheduled Maintenance Event",
+      ],
+    ),
     ...BuildBreadcrumbLinksByTitles(PageMap.SCHEDULED_MAINTENANCE_VIEW, [
       "Project",
       "Scheduled Maintenance Events",
@@ -63,12 +75,30 @@ export function getScheduleMaintenanceBreadcrumbs(
         "Custom Fields",
       ],
     ),
+    ...BuildBreadcrumbLinksByTitles(
+      PageMap.SCHEDULED_MAINTENANCE_VIEW_SETTINGS,
+      [
+        "Project",
+        "Scheduled Maintenance Events",
+        "View Scheduled Maintenance Event",
+        "Settings",
+      ],
+    ),
     ...BuildBreadcrumbLinksByTitles(PageMap.SCHEDULED_MAINTENANCE_VIEW_DELETE, [
       "Project",
       "Scheduled Maintenance Events",
       "View Scheduled Maintenance Event",
-      "Delete Scheduled Maintenance",
+      "Delete",
     ]),
+    ...BuildBreadcrumbLinksByTitles(
+      PageMap.SCHEDULED_MAINTENANCE_VIEW_DESCRIPTION,
+      [
+        "Project",
+        "Scheduled Maintenance Events",
+        "View Scheduled Maintenance Event",
+        "Description",
+      ],
+    ),
   };
   return breadcrumpLinksMap[path];
 }

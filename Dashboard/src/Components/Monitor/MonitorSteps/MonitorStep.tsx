@@ -10,6 +10,7 @@ import FieldType from "Common/UI/Components/Types/FieldType";
 import IncidentSeverity from "Common/Models/DatabaseModels/IncidentSeverity";
 import MonitorStatus from "Common/Models/DatabaseModels/MonitorStatus";
 import OnCallDutyPolicy from "Common/Models/DatabaseModels/OnCallDutyPolicy";
+import ProjectUtil from "Common/UI/Utils/Project";
 import React, {
   FunctionComponent,
   ReactElement,
@@ -21,9 +22,8 @@ import ErrorMessage from "Common/UI/Components/ErrorMessage/ErrorMessage";
 import TelemetryService from "Common/Models/DatabaseModels/TelemetryService";
 import { JSONObject } from "Common/Types/JSON";
 import { PromiseVoidFunction } from "Common/Types/FunctionTypes";
-import ListResult from "Common/UI/Utils/BaseDatabase/ListResult";
+import ListResult from "Common/Types/BaseDatabase/ListResult";
 import ModelAPI from "Common/UI/Utils/ModelAPI/ModelAPI";
-import DashboardNavigation from "../../../Utils/Navigation";
 import { LIMIT_PER_PROJECT } from "Common/Types/Database/LimitMax";
 import SortOrder from "Common/Types/BaseDatabase/SortOrder";
 import HTTPErrorResponse from "Common/Types/API/HTTPErrorResponse";
@@ -117,7 +117,7 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
         await ModelAPI.getList<TelemetryService>({
           modelType: TelemetryService,
           query: {
-            projectId: DashboardNavigation.getProjectId()!,
+            projectId: ProjectUtil.getCurrentProjectId()!,
             _id: new Includes(telemetryServiceIds),
           },
           limit: LIMIT_PER_PROJECT,
@@ -164,7 +164,7 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
   }
 
   if (error) {
-    return <ErrorMessage error={error} />;
+    return <ErrorMessage message={error} />;
   }
 
   if (props.monitorType === MonitorType.API) {

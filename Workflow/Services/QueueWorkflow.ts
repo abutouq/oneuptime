@@ -100,8 +100,9 @@ export default class QueueWorkflow {
       runLog.projectId = workflow.projectId;
       runLog.workflowStatus = WorkflowStatus.WorkflowCountExceeded;
       runLog.logs =
-        OneUptimeDate.getCurrentDateAsFormattedString() +
-        ": Workflow cannot run because subscription is unpaid.";
+        OneUptimeDate.getCurrentDateAsFormattedString({
+          showSeconds: true,
+        }) + ": Workflow cannot run because subscription is unpaid.";
 
       await WorkflowLogService.create({
         data: runLog,
@@ -135,7 +136,9 @@ export default class QueueWorkflow {
         runLog.projectId = workflow.projectId;
         runLog.workflowStatus = WorkflowStatus.WorkflowCountExceeded;
         runLog.logs =
-          OneUptimeDate.getCurrentDateAsFormattedString() +
+          OneUptimeDate.getCurrentDateAsFormattedString({
+            showSeconds: true,
+          }) +
           `: Workflow cannot run because it already ran ${workflowCount.toNumber()} in the last 30 days. Your current plan limit is ${
             WorkflowPlan[projectPlan.plan]
           }`;
@@ -160,8 +163,9 @@ export default class QueueWorkflow {
       runLog.projectId = workflow.projectId;
       runLog.workflowStatus = WorkflowStatus.Scheduled;
       runLog.logs =
-        OneUptimeDate.getCurrentDateAsFormattedString() +
-        `: Workflow ${workflowId.toString()} Scheduled.`;
+        OneUptimeDate.getCurrentDateAsFormattedString({
+          showSeconds: true,
+        }) + `: Workflow ${workflowId.toString()} Scheduled.`;
 
       workflowLog = await WorkflowLogService.create({
         data: runLog,

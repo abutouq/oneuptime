@@ -1,16 +1,19 @@
 import DataToProcess from "../DataToProcess";
 import CompareCriteria from "./CompareCriteria";
 import EvaluateOverTime from "./EvaluateOverTime";
-import { JSONObject } from "Common/Types/JSON";
+import { JSONObject } from "../../../../Types/JSON";
 import {
   CheckOn,
   CriteriaFilter,
   FilterType,
-} from "Common/Types/Monitor/CriteriaFilter";
-import ProbeMonitorResponse from "Common/Types/Probe/ProbeMonitorResponse";
-import Typeof from "Common/Types/Typeof";
+} from "../../../../Types/Monitor/CriteriaFilter";
+import ProbeMonitorResponse from "../../../../Types/Probe/ProbeMonitorResponse";
+import Typeof from "../../../../Types/Typeof";
+import CaptureSpan from "../../Telemetry/CaptureSpan";
+import logger from "../../Logger";
 
 export default class APIRequestCriteria {
+  @CaptureSpan()
   public static async isMonitorInstanceCriteriaFilterMet(input: {
     dataToProcess: DataToProcess;
     criteriaFilter: CriteriaFilter;
@@ -27,19 +30,24 @@ export default class APIRequestCriteria {
       input.criteriaFilter.eveluateOverTime &&
       input.criteriaFilter.evaluateOverTimeOptions
     ) {
-      overTimeValue = await EvaluateOverTime.getValueOverTime({
-        monitorId: input.dataToProcess.monitorId!,
-        evaluateOverTimeOptions: input.criteriaFilter.evaluateOverTimeOptions,
-        metricType: input.criteriaFilter.checkOn,
-        miscData: input.criteriaFilter.serverMonitorOptions as JSONObject,
-      });
+      try {
+        overTimeValue = await EvaluateOverTime.getValueOverTime({
+          projectId: (input.dataToProcess as ProbeMonitorResponse).projectId,
+          monitorId: input.dataToProcess.monitorId!,
+          evaluateOverTimeOptions: input.criteriaFilter.evaluateOverTimeOptions,
+          metricType: input.criteriaFilter.checkOn,
+          miscData: input.criteriaFilter.serverMonitorOptions as JSONObject,
+        });
 
-      if (Array.isArray(overTimeValue) && overTimeValue.length === 0) {
-        return null;
-      }
-
-      if (overTimeValue === undefined) {
-        return null;
+        if (Array.isArray(overTimeValue) && overTimeValue.length === 0) {
+          overTimeValue = undefined;
+        }
+      } catch (err) {
+        logger.error(
+          `Error in getting over time value for ${input.criteriaFilter.checkOn}`,
+        );
+        logger.error(err);
+        overTimeValue = undefined;
       }
     }
 
@@ -50,6 +58,17 @@ export default class APIRequestCriteria {
 
       return CompareCriteria.compareCriteriaBoolean({
         value: currentIsOnline,
+        criteriaFilter: input.criteriaFilter,
+      });
+    }
+
+    if (input.criteriaFilter.checkOn === CheckOn.IsRequestTimeout) {
+      const currentIsTimeout: boolean | Array<boolean> =
+        (overTimeValue as Array<boolean>) ||
+        (input.dataToProcess as ProbeMonitorResponse).isTimeout;
+
+      return CompareCriteria.compareCriteriaBoolean({
+        value: currentIsTimeout,
         criteriaFilter: input.criteriaFilter,
       });
     }

@@ -3,9 +3,11 @@ import UiAnalytics from "../../Utils/Analytics";
 import Alert, { AlertType } from "../Alerts/Alert";
 import Button, { ButtonStyleType } from "../Button/Button";
 import ButtonTypes from "../Button/ButtonTypes";
+
 import { DropdownOption, DropdownValue } from "../Dropdown/Dropdown";
 import ErrorMessage from "../ErrorMessage/ErrorMessage";
 import FormField from "./Fields/FormField";
+import FormSummary from "./FormSummary";
 import Steps from "./Steps/Steps";
 import Field from "./Types/Field";
 import Fields from "./Types/Fields";
@@ -13,14 +15,14 @@ import FormFieldSchemaType from "./Types/FormFieldSchemaType";
 import { FormStep } from "./Types/FormStep";
 import FormValues from "./Types/FormValues";
 import Validation from "./Validation";
-import OneUptimeDate from "Common/Types/Date";
-import Dictionary from "Common/Types/Dictionary";
-import { VoidFunction } from "Common/Types/FunctionTypes";
-import GenericObject from "Common/Types/GenericObject";
-import HashedString from "Common/Types/HashedString";
-import { JSONObject, JSONValue } from "Common/Types/JSON";
-import ObjectID from "Common/Types/ObjectID";
-import Typeof from "Common/Types/Typeof";
+import OneUptimeDate from "../../../Types/Date";
+import Dictionary from "../../../Types/Dictionary";
+import { VoidFunction } from "../../../Types/FunctionTypes";
+import GenericObject from "../../../Types/GenericObject";
+import HashedString from "../../../Types/HashedString";
+import { JSONObject, JSONValue } from "../../../Types/JSON";
+import ObjectID from "../../../Types/ObjectID";
+import Typeof from "../../../Types/Typeof";
 import { FormikErrors, FormikProps } from "formik";
 import React, {
   ForwardRefExoticComponent,
@@ -48,12 +50,22 @@ export const DefaultValidateFunction: DefaultValidateFunctionType = (
   return {};
 };
 
+export interface FormSummaryConfig {
+  enabled: boolean;
+  defaultStepName?: string | undefined;
+}
+
 export interface BaseComponentProps<T> {
   submitButtonStyleType?: ButtonStyleType | undefined;
   initialValues?: FormValues<T> | undefined;
   values?: FormValues<T> | undefined;
   onValidate?: undefined | ((values: FormValues<T>) => JSONObject);
-  onChange?: undefined | ((values: FormValues<T>) => void);
+  onChange?:
+    | undefined
+    | ((
+        values: FormValues<T>,
+        setNewFormValues: (newValues: FormValues<T>) => void,
+      ) => void);
   fields: Fields<T>;
   steps?: undefined | Array<FormStep<T>>;
   submitButtonText?: undefined | string;
@@ -73,6 +85,7 @@ export interface BaseComponentProps<T> {
   onIsLastFormStep?: undefined | ((isLastFormStep: boolean) => void);
   onFormValidationErrorChanged?: ((hasError: boolean) => void) | undefined;
   showSubmitButtonOnlyIfSomethingChanged?: boolean | undefined;
+  summary?: FormSummaryConfig | undefined;
 }
 
 export interface ComponentProps<T extends GenericObject>
@@ -104,12 +117,33 @@ const BasicForm: ForwardRefExoticComponent<any> = forwardRef(
       setIsLoading(props.isLoading);
     }, [props.isLoading]);
 
+    const getFormSteps: () => Array<FormStep<T>> | undefined = () => {
+      if (props.summary && props.summary.enabled) {
+        // add to last step
+        return [
+          ...(props.steps || [
+            {
+              id: props.summary.defaultStepName || "basic",
+              title: props.summary.defaultStepName || "Basic",
+              isSummaryStep: false,
+            },
+          ]),
+          {
+            id: "summary",
+            title: "Summary",
+            isSummaryStep: true,
+          },
+        ];
+      }
+      return props.steps;
+    };
+
     const [submitButtonText, setSubmitButtonText] = useState<string>(
       props.submitButtonText || "Submit",
     );
 
     const [formSteps, setFormSteps] = useState<Array<FormStep<T>> | undefined>(
-      props.steps,
+      getFormSteps(),
     );
 
     const isInitialValuesSet: MutableRefObject<boolean> = useRef(false);
@@ -175,7 +209,7 @@ const BasicForm: ForwardRefExoticComponent<any> = forwardRef(
 
     useEffect(() => {
       setFormSteps(
-        props.steps?.filter((step: FormStep<T>) => {
+        getFormSteps()?.filter((step: FormStep<T>) => {
           if (!step.showIf) {
             return true;
           }
@@ -240,11 +274,26 @@ const BasicForm: ForwardRefExoticComponent<any> = forwardRef(
 
       for (const item of fields) {
         // if this field is not the current step.
+
+        let shouldSkip: boolean = false;
         if (
           currentFormStepId &&
           item.stepId &&
           item.stepId !== currentFormStepId
         ) {
+          shouldSkip = true;
+        }
+
+        if (
+          props.summary?.enabled &&
+          (!props.steps || props.steps.length === 0)
+        ) {
+          // if summary is enabled and no steps are provided, then all fields belong to the same step and should not be skipped.
+          shouldSkip = false;
+          item.stepId = props.summary.defaultStepName || "basic";
+        }
+
+        if (shouldSkip) {
           continue;
         }
 
@@ -308,7 +357,10 @@ const BasicForm: ForwardRefExoticComponent<any> = forwardRef(
       setCurrentValue(refCurrentValue.current);
 
       if (props.onChange && isInitialValuesSet.current) {
-        props.onChange(refCurrentValue.current);
+        props.onChange(refCurrentValue.current, (values: FormValues<T>) => {
+          refCurrentValue.current = values;
+          setCurrentValue(refCurrentValue.current);
+        });
       }
     };
 
@@ -496,6 +548,10 @@ const BasicForm: ForwardRefExoticComponent<any> = forwardRef(
           (values as any)[fieldName] = field.defaultValue;
         }
 
+        if (field.getDefaultValue && (values as any)[fieldName] === undefined) {
+          (values as any)[fieldName] = field.getDefaultValue(values);
+        }
+
         isInitialValuesSet.current = true;
       }
 
@@ -511,7 +567,7 @@ const BasicForm: ForwardRefExoticComponent<any> = forwardRef(
     }
 
     if (formError) {
-      return <ErrorMessage error={formError} />;
+      return <ErrorMessage message={formError} />;
     }
 
     let showSubmitButton: boolean = !props.hideSubmitButton;
@@ -536,7 +592,10 @@ const BasicForm: ForwardRefExoticComponent<any> = forwardRef(
 
             <div className="flex">
               {formSteps && currentFormStepId && (
-                <div className="w-1/3">
+                <div
+                  style={{ flex: "0 1 auto" }}
+                  className="mr-10 hidden lg:block"
+                >
                   {/* Form Steps */}
 
                   <Steps
@@ -551,8 +610,9 @@ const BasicForm: ForwardRefExoticComponent<any> = forwardRef(
               )}
               <div
                 className={`${
-                  formSteps && currentFormStepId ? "w-2/3 pt-6" : "w-full pt-1"
+                  formSteps && currentFormStepId ? "w-auto pt-6" : "w-full pt-1"
                 }`}
+                style={{ flex: "1 1 auto" }}
               >
                 {props.error && (
                   <div className="mb-3">
@@ -571,6 +631,15 @@ const BasicForm: ForwardRefExoticComponent<any> = forwardRef(
                         .filter((field: Field<T>) => {
                           if (currentFormStepId) {
                             return field.stepId === currentFormStepId;
+                          }
+
+                          return true;
+                        })
+                        .filter((field: Field<T>) => {
+                          const currentValues: FormValues<T> =
+                            refCurrentValue.current;
+                          if (field.showIf && !field.showIf(currentValues)) {
+                            return false;
                           }
 
                           return true;
@@ -599,12 +668,26 @@ const BasicForm: ForwardRefExoticComponent<any> = forwardRef(
                                   disableAutofocus={
                                     props.disableAutofocus || false
                                   }
+                                  setFormValues={(values: FormValues<T>) => {
+                                    refCurrentValue.current = values;
+                                    setCurrentValue(refCurrentValue.current);
+                                  }}
                                 />
                               }
                               {field.footerElement}
                             </div>
                           );
                         })}
+
+                    {/* If Summary, show Model detail  */}
+
+                    {currentFormStepId === "summary" && (
+                      <FormSummary
+                        formValues={refCurrentValue.current}
+                        formFields={formFields}
+                        formSteps={formSteps || undefined}
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -644,7 +727,7 @@ const BasicForm: ForwardRefExoticComponent<any> = forwardRef(
                         }
                         buttonStyle={ButtonStyleType.NORMAL}
                         onClick={() => {
-                          props.onCancel && props.onCancel();
+                          props.onCancel?.();
                         }}
                       />
                     </div>

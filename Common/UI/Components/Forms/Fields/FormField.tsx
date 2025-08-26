@@ -1,4 +1,4 @@
-import Dictionary from "Common/Types/Dictionary";
+import Dictionary from "../../../../Types/Dictionary";
 import { GetReactElementFunction } from "../../../Types/FunctionTypes";
 import CategoryCheckbox from "../../CategoryCheckbox/Index";
 import CheckboxElement, {
@@ -20,17 +20,20 @@ import FieldLabelElement from "../Fields/FieldLabel";
 import Field, { FormFieldStyleType } from "../Types/Field";
 import FormFieldSchemaType from "../Types/FormFieldSchemaType";
 import FormValues from "../Types/FormValues";
-import FileModel from "Common/Models/DatabaseModels/DatabaseBaseModel/FileModel";
-import CodeType from "Common/Types/Code/CodeType";
-import Color from "Common/Types/Color";
-import OneUptimeDate from "Common/Types/Date";
-import BadDataException from "Common/Types/Exception/BadDataException";
-import MimeType from "Common/Types/File/MimeType";
-import GenericObject from "Common/Types/GenericObject";
-import { JSONValue } from "Common/Types/JSON";
-import ObjectID from "Common/Types/ObjectID";
-import Typeof from "Common/Types/Typeof";
+import FileModel from "../../../../Models/DatabaseModels/DatabaseBaseModel/FileModel";
+import CodeType from "../../../../Types/Code/CodeType";
+import Color from "../../../../Types/Color";
+import OneUptimeDate from "../../../../Types/Date";
+import BadDataException from "../../../../Types/Exception/BadDataException";
+import MimeType from "../../../../Types/File/MimeType";
+import GenericObject from "../../../../Types/GenericObject";
+import { JSONValue } from "../../../../Types/JSON";
+import ObjectID from "../../../../Types/ObjectID";
+import Typeof from "../../../../Types/Typeof";
 import React, { ReactElement, useEffect } from "react";
+import Radio, { RadioValue } from "../../Radio/Radio";
+import { BasicRadioButtonOption } from "../../RadioButtons/BasicRadioButtons";
+import HorizontalRule from "../../HorizontalRule/HorizontalRule";
 
 export interface ComponentProps<T extends GenericObject> {
   field: Field<T>;
@@ -44,6 +47,7 @@ export interface ComponentProps<T extends GenericObject> {
   setFieldValue: (fieldName: string, value: JSONValue) => void;
   disableAutofocus?: boolean;
   submitForm?: (() => void) | undefined;
+  setFormValues?: ((values: FormValues<T>) => void) | undefined;
 }
 
 const FormField: <T extends GenericObject>(
@@ -51,6 +55,20 @@ const FormField: <T extends GenericObject>(
 ) => ReactElement = <T extends GenericObject>(
   props: ComponentProps<T>,
 ): ReactElement => {
+  type onChangeFunction = (value: JSONValue) => void;
+
+  const onChange: onChangeFunction = (value: JSONValue): void => {
+    if (props.field.onChange) {
+      props.field.onChange(
+        value,
+        props.currentValues,
+        (newFormValues: FormValues<T>) => {
+          props.setFormValues?.(newFormValues);
+        },
+      );
+    }
+  };
+
   type GetFieldTypeFunction = (fieldType: FormFieldSchemaType) => string;
 
   const getFieldType: GetFieldTypeFunction = (
@@ -113,8 +131,8 @@ const FormField: <T extends GenericObject>(
             description={`${props.field.description}`}
             onSubmit={() => {
               setShowMultiSelectCheckboxCategoryModal(false);
-              props.field.onChange &&
-                props.field.onChange(checkboxCategoryValues);
+
+              onChange(checkboxCategoryValues);
               props.setFieldValue(props.fieldName, checkboxCategoryValues);
             }}
             onClose={() => {
@@ -180,7 +198,8 @@ const FormField: <T extends GenericObject>(
       codeType = CodeType.JavaScript;
     }
 
-    let fieldDescription: string | undefined = props.field.description;
+    let fieldDescription: string | ReactElement | undefined =
+      props.field.description;
 
     if (
       props.field.fieldType === FormFieldSchemaType.DateTime ||
@@ -246,6 +265,8 @@ const FormField: <T extends GenericObject>(
       <div className="sm:col-span-4 mt-0 mb-2" key={props.fieldName}>
         {/*** Do not display label on checkbox because checkbox can display its own label */}
 
+        {props.field.showHorizontalRuleAbove && <HorizontalRule />}
+
         {props.field.fieldType !== FormFieldSchemaType.Checkbox && (
           <FieldLabelElement
             title={props.field.title || ""}
@@ -263,7 +284,7 @@ const FormField: <T extends GenericObject>(
               error={props.touched && props.error ? props.error : undefined}
               dataTestId={props.field.dataTestId}
               onChange={async (value: Color | null) => {
-                props.field.onChange && props.field.onChange(value);
+                onChange(value);
                 props.setFieldValue(props.fieldName, value);
                 props.setFieldTouched(props.fieldName, true);
               }}
@@ -289,7 +310,7 @@ const FormField: <T extends GenericObject>(
               onChange={async (
                 value: DropdownValue | Array<DropdownValue> | null,
               ) => {
-                props.field.onChange && props.field.onChange(value);
+                onChange(value);
                 props.setFieldValue(props.fieldName, value);
               }}
               onBlur={async () => {
@@ -317,11 +338,11 @@ const FormField: <T extends GenericObject>(
               disabled={props.isDisabled || props.field.disabled}
               error={props.touched && props.error ? props.error : undefined}
               onChange={(value: ObjectID) => {
-                props.field.onChange && props.field.onChange(value);
+                onChange(value);
                 props.setFieldValue(props.fieldName, value);
               }}
               onEnterPress={() => {
-                props.submitForm && props.submitForm();
+                props.submitForm?.();
               }}
               initialValue={
                 props.currentValues &&
@@ -346,22 +367,50 @@ const FormField: <T extends GenericObject>(
                   : props.field.defaultValue || {}
               }
               onChange={(value: Dictionary<string | number | boolean>) => {
-                props.field.onChange && props.field.onChange(value);
+                onChange(value);
                 props.setFieldValue(props.fieldName, value);
               }}
             />
           )}
 
-          {props.field.fieldType === FormFieldSchemaType.RadioButton && (
+          {props.field.fieldType ===
+            FormFieldSchemaType.OptionChooserButton && (
             <RadioButtons
               error={props.touched && props.error ? props.error : undefined}
               dataTestId={props.field.dataTestId}
               onChange={async (value: string) => {
-                props.field.onChange && props.field.onChange(value);
+                onChange(value);
                 props.setFieldValue(props.fieldName, value);
               }}
               options={props.field.radioButtonOptions || []}
               initialValue={
+                props.currentValues &&
+                (props.currentValues as any)[props.fieldName]
+                  ? (props.currentValues as any)[props.fieldName]
+                  : ""
+              }
+            />
+          )}
+
+          {props.field.fieldType === FormFieldSchemaType.RadioButton && (
+            <Radio
+              error={props.touched && props.error ? props.error : undefined}
+              dataTestId={props.field.dataTestId}
+              onChange={async (value: RadioValue | null) => {
+                onChange(value);
+                props.setFieldValue(props.fieldName, value);
+              }}
+              options={
+                props.field.radioButtonOptions?.map(
+                  (option: BasicRadioButtonOption) => {
+                    return {
+                      label: option.title,
+                      value: option.value,
+                    };
+                  },
+                ) || []
+              }
+              value={
                 props.currentValues &&
                 (props.currentValues as any)[props.fieldName]
                   ? (props.currentValues as any)[props.fieldName]
@@ -376,8 +425,9 @@ const FormField: <T extends GenericObject>(
               error={props.touched && props.error ? props.error : undefined}
               tabIndex={index}
               dataTestId={props.field.dataTestId}
+              disableSpellCheck={props.field.disableSpellCheck}
               onChange={async (value: string) => {
-                props.field.onChange && props.field.onChange(value);
+                onChange(value);
                 props.setFieldValue(props.fieldName, value);
               }}
               onBlur={async () => {
@@ -400,7 +450,7 @@ const FormField: <T extends GenericObject>(
               tabIndex={index}
               dataTestId={props.field.dataTestId}
               onChange={async (value: string) => {
-                props.field.onChange && props.field.onChange(value);
+                onChange(value);
                 props.setFieldValue(props.fieldName, value);
               }}
               onBlur={async () => {
@@ -428,8 +478,9 @@ const FormField: <T extends GenericObject>(
               dataTestId={props.field.dataTestId}
               tabIndex={index}
               type={CodeType.Markdown}
+              disableSpellCheck={props.field.disableSpellCheck}
               onChange={async (value: string) => {
-                props.field.onChange && props.field.onChange(value);
+                onChange(value);
                 props.setFieldValue(props.fieldName, value);
               }}
               onBlur={async () => {
@@ -451,7 +502,7 @@ const FormField: <T extends GenericObject>(
               error: props.touched && props.error ? props.error : undefined,
               tabIndex: index,
               onChange: async (value: string) => {
-                props.field.onChange && props.field.onChange(value);
+                onChange(value);
                 props.setFieldValue(props.fieldName, value);
               },
               onBlur: async () => {
@@ -474,7 +525,7 @@ const FormField: <T extends GenericObject>(
               error={props.touched && props.error ? props.error : undefined}
               tabIndex={index}
               onChange={async (value: string) => {
-                props.field.onChange && props.field.onChange(value);
+                onChange(value);
                 props.setFieldValue(props.fieldName, value);
               }}
               onBlur={async () => {
@@ -518,7 +569,7 @@ const FormField: <T extends GenericObject>(
                   }
                 }
 
-                props.field.onChange && props.field.onChange(fileResult);
+                onChange(fileResult);
                 props.setFieldValue(props.fieldName, fileResult);
               }}
               onBlur={async () => {
@@ -544,14 +595,14 @@ const FormField: <T extends GenericObject>(
             <Toggle
               error={props.touched && props.error ? props.error : undefined}
               onChange={async (value: boolean) => {
-                props.field.onChange && props.field.onChange(value);
+                onChange(value);
                 props.setFieldValue(props.fieldName, value);
               }}
               onBlur={async () => {
                 props.setFieldTouched(props.fieldName, true);
               }}
               dataTestId={props.field.dataTestId}
-              initialValue={booleanValue}
+              value={booleanValue}
             />
           )}
 
@@ -561,7 +612,7 @@ const FormField: <T extends GenericObject>(
               title={props.field.title || ""}
               description={props.field.description || ""}
               onChange={async (value: boolean) => {
-                props.field.onChange && props.field.onChange(value);
+                onChange(value);
                 props.setFieldValue(props.fieldName, value);
               }}
               dataTestId={props.field.dataTestId}
@@ -588,7 +639,7 @@ const FormField: <T extends GenericObject>(
               error={props.touched && props.error ? props.error : undefined}
               dataTestId={props.field.dataTestId}
               onChange={async (value: Array<CategoryCheckboxValue>) => {
-                props.field.onChange && props.field.onChange(value);
+                onChange(value);
                 props.setFieldValue(props.fieldName, value);
               }}
               initialValue={
@@ -624,11 +675,11 @@ const FormField: <T extends GenericObject>(
               dataTestId={props.field.dataTestId}
               type={fieldType as InputType}
               onChange={(value: string) => {
-                props.field.onChange && props.field.onChange(value);
+                onChange(value);
                 props.setFieldValue(props.fieldName, value);
               }}
               onEnterPress={() => {
-                props.submitForm && props.submitForm();
+                props.submitForm?.();
               }}
               onBlur={() => {
                 props.setFieldTouched(props.fieldName, true);
@@ -646,6 +697,8 @@ const FormField: <T extends GenericObject>(
 
         {showMultiSelectCheckboxCategoryModal &&
           getMultiSelectCheckboxCategoryModal()}
+
+        {props.field.showHorizontalRuleBelow && <HorizontalRule />}
       </div>
     );
   };

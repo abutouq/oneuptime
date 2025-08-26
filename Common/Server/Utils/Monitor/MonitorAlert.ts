@@ -17,9 +17,11 @@ import AlertService from "../../Services/AlertService";
 import AlertSeverityService from "../../Services/AlertSeverityService";
 import AlertStateTimelineService from "../../Services/AlertStateTimelineService";
 import logger from "../Logger";
+import CaptureSpan from "../Telemetry/CaptureSpan";
 import DataToProcess from "./DataToProcess";
 
 export default class MonitorAlert {
+  @CaptureSpan()
   public static async checkOpenAlertsAndCloseIfResolved(input: {
     monitorId: ObjectID;
     autoResolveCriteriaInstanceIdAlertIdsDictionary: Dictionary<Array<string>>;
@@ -70,6 +72,7 @@ export default class MonitorAlert {
     return openAlerts;
   }
 
+  @CaptureSpan()
   public static async criteriaMetCreateAlertsAndUpdateMonitorStatus(input: {
     criteriaInstance: MonitorCriteriaInstance;
     monitor: Monitor;

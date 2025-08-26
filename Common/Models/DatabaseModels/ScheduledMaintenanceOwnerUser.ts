@@ -63,6 +63,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
 @Entity({
   name: "ScheduledMaintenanceOwnerUser",
 })
+@Index(["scheduledMaintenanceId", "userId", "projectId"])
 export default class ScheduledMaintenanceOwnerUser extends BaseModel {
   @ColumnAccessControl({
     create: [
@@ -344,6 +345,7 @@ export default class ScheduledMaintenanceOwnerUser extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -386,12 +388,7 @@ export default class ScheduledMaintenanceOwnerUser extends BaseModel {
   public deletedByUserId?: ObjectID = undefined;
 
   @ColumnAccessControl({
-    create: [
-      Permission.ProjectOwner,
-      Permission.ProjectAdmin,
-      Permission.ProjectMember,
-      Permission.CreateScheduledMaintenanceOwnerUser,
-    ],
+    create: [],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -403,10 +400,13 @@ export default class ScheduledMaintenanceOwnerUser extends BaseModel {
   @Index()
   @TableColumn({
     type: TableColumnType.Boolean,
+    computed: true,
+    hideColumnInDocumentation: true,
     required: true,
     isDefaultValueColumn: true,
     title: "Are Owners Notified",
     description: "Are owners notified of this resource ownership?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,

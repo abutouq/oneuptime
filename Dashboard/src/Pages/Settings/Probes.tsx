@@ -1,5 +1,5 @@
 import ProbeStatusElement from "../../Components/Probe/ProbeStatus";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageComponentProps from "../PageComponentProps";
 import Route from "Common/Types/API/Route";
 import URL from "Common/Types/API/URL";
@@ -35,6 +35,7 @@ const ProbePage: FunctionComponent<PageComponentProps> = (): ReactElement => {
           modelType={Probe}
           id="probes-table"
           name="Settings > Global Probes"
+          userPreferencesKey={"admin-probes-table"}
           isDeleteable={false}
           isEditable={false}
           isCreateable={false}
@@ -104,14 +105,16 @@ const ProbePage: FunctionComponent<PageComponentProps> = (): ReactElement => {
           title="Need help with setting up Custom Probes?"
           description="Here is a guide which will help you get set up"
           link={Route.fromString("/docs/probe/custom-probe")}
+          hideOnMobile={true}
         />
 
         <ModelTable<Probe>
           modelType={Probe}
           query={{
-            projectId: DashboardNavigation.getProjectId()!,
+            projectId: ProjectUtil.getCurrentProjectId()!,
           }}
           id="probes-table"
+          userPreferencesKey={"probes-table"}
           name="Settings > Probes"
           isDeleteable={false}
           isEditable={false}
@@ -251,7 +254,7 @@ const ProbePage: FunctionComponent<PageComponentProps> = (): ReactElement => {
               },
               filterEntityType: Label,
               filterQuery: {
-                projectId: DashboardNavigation.getProjectId()!,
+                projectId: ProjectUtil.getCurrentProjectId()!,
               },
               filterDropdownField: {
                 label: "name",

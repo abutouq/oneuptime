@@ -1,4 +1,3 @@
-import DashboardNavigation from "../../../Utils/Navigation";
 import PageComponentProps from "../../PageComponentProps";
 import NotNull from "Common/Types/BaseDatabase/NotNull";
 import { Green, Red, Yellow } from "Common/Types/BrandColors";
@@ -28,6 +27,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import ProjectUtil from "Common/UI/Utils/Project";
 
 const StatusPageDelete: FunctionComponent<PageComponentProps> = (
   props: PageComponentProps,
@@ -122,17 +122,20 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
         field: {
           subscriberEmail: true,
         },
+        stepId: "subscriber-info",
         title: "Email",
         description: "Status page updates will be sent to this email.",
         fieldType: FormFieldSchemaType.Email,
         required: true,
         placeholder: "subscriber@company.com",
+        disableSpellCheck: true,
       },
       {
         field: {
           isSubscriptionConfirmed: true,
         },
         title: "Do not send confirmation link",
+        stepId: "subscriber-info",
         description:
           "If this option is checked, then no confirmation link will be sent to the subscriber.",
         fieldType: FormFieldSchemaType.Toggle,
@@ -144,6 +147,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
           sendYouHaveSubscribedMessage: true,
         },
         title: "Send Subscription Email",
+        stepId: "subscriber-info",
         description:
           "Send Email with the confrimation link to the subscriber. The subscriber needs to click on the link to confirm the subscription.",
         fieldType: FormFieldSchemaType.Toggle,
@@ -155,6 +159,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
           isUnsubscribed: true,
         },
         title: "Unsubscribe",
+        stepId: "subscriber-info",
         description: "Unsubscribe this email from the status page.",
         fieldType: FormFieldSchemaType.Toggle,
         required: false,
@@ -168,6 +173,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
           isSubscribedToAllResources: true,
         },
         title: "Subscribe to All Resources",
+        stepId: "subscriber-info",
         description: "Send notifications for all resources.",
         fieldType: FormFieldSchemaType.Checkbox,
         required: false,
@@ -180,6 +186,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
         },
         title: "Select Resources to Subscribe",
         description: "Please select the resources you want to subscribe to.",
+        stepId: "subscriber-info",
         fieldType: FormFieldSchemaType.CategoryCheckbox,
         required: false,
         categoryCheckboxProps: categoryCheckboxOptionsAndCategories,
@@ -197,6 +204,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
         title: "Subscribe to All Event Types",
         description:
           "Select this option if you want to subscribe to all event types.",
+        stepId: "subscriber-info",
         fieldType: FormFieldSchemaType.Checkbox,
         required: false,
         defaultValue: true,
@@ -208,6 +216,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
         },
         title: "Select Event Types to Subscribe",
         description: "Please select the event types you want to subscribe to.",
+        stepId: "subscriber-info",
         fieldType: FormFieldSchemaType.MultiSelectDropdown,
         required: false,
         dropdownOptions: SubscriberUtil.getDropdownPropsBasedOnEventTypes(),
@@ -217,6 +226,19 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
       });
     }
 
+    // add internal note field
+    formFields.push({
+      field: {
+        internalNote: true,
+      },
+      title: "Internal Note",
+      stepId: "internal-info",
+      description:
+        "Internal note for the subscriber. This is for internal use only and is visible only to the team members.",
+      fieldType: FormFieldSchemaType.Markdown,
+      required: false,
+    });
+
     setFormFields(formFields);
   }, [isLoading]);
 
@@ -224,7 +246,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
     <Fragment>
       {isLoading ? <PageLoader isVisible={true} /> : <></>}
 
-      {error ? <ErrorMessage error={error} /> : <></>}
+      {error ? <ErrorMessage message={error} /> : <></>}
 
       {!error && !isLoading ? (
         <>
@@ -238,6 +260,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
             modelType={StatusPageSubscriber}
             id="table-subscriber"
             name="Status Page > Email Subscribers"
+            userPreferencesKey="status-page-subscriber-table"
             isDeleteable={true}
             showViewIdButton={true}
             isCreateable={true}
@@ -249,7 +272,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
             }}
             query={{
               statusPageId: modelId,
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
               subscriberEmail: new NotNull(),
             }}
             onBeforeCreate={(
@@ -269,6 +292,16 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
                 "Here are the list of subscribers who have subscribed to the status page.",
             }}
             noItemsMessage={"No subscribers found."}
+            formSteps={[
+              {
+                title: "Subscriber Info",
+                id: "subscriber-info",
+              },
+              {
+                title: "Internal Info",
+                id: "internal-info",
+              },
+            ]}
             formFields={formFields}
             showRefreshButton={true}
             filters={[
@@ -283,7 +316,14 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
                 field: {
                   isUnsubscribed: true,
                 },
-                title: "Unsubscribed",
+                title: "Unsubscribed?",
+                type: FieldType.Boolean,
+              },
+              {
+                field: {
+                  isSubscriptionConfirmed: true,
+                },
+                title: "Subscription Confirmed?",
                 type: FieldType.Boolean,
               },
               {
@@ -333,6 +373,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
                 },
                 title: "Subscribed At",
                 type: FieldType.DateTime,
+                hideOnMobile: true,
               },
             ]}
           />

@@ -13,22 +13,29 @@ import BadDataException from "../../Types/Exception/BadDataException";
 import { JSONObject } from "../../Types/JSON";
 import ObjectID from "../../Types/ObjectID";
 import PositiveNumber from "../../Types/PositiveNumber";
-import Incident from "Common/Models/DatabaseModels/Incident";
-import IncidentPublicNote from "Common/Models/DatabaseModels/IncidentPublicNote";
-import IncidentState from "Common/Models/DatabaseModels/IncidentState";
-import IncidentStateTimeline from "Common/Models/DatabaseModels/IncidentStateTimeline";
-import User from "Common/Models/DatabaseModels/User";
+import StatusPageSubscriberNotificationStatus from "../../Types/StatusPage/StatusPageSubscriberNotificationStatus";
+import Incident from "../../Models/DatabaseModels/Incident";
+import IncidentPublicNote from "../../Models/DatabaseModels/IncidentPublicNote";
+import IncidentState from "../../Models/DatabaseModels/IncidentState";
+import IncidentStateTimeline from "../../Models/DatabaseModels/IncidentStateTimeline";
 import { IsBillingEnabled } from "../EnvironmentConfig";
 import logger from "../Utils/Logger";
+import IncidentFeedService from "./IncidentFeedService";
+import { IncidentFeedEventType } from "../../Models/DatabaseModels/IncidentFeed";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
+import { LIMIT_PER_PROJECT } from "../../Types/Database/LimitMax";
+import WorkspaceNotificationRuleService from "./WorkspaceNotificationRuleService";
+import Semaphore, { SemaphoreMutex } from "../Infrastructure/Semaphore";
 
 export class Service extends DatabaseService<IncidentStateTimeline> {
   public constructor() {
     super(IncidentStateTimeline);
     if (IsBillingEnabled) {
-      this.hardDeleteItemsOlderThanInDays("createdAt", 120);
+      this.hardDeleteItemsOlderThanInDays("startsAt", 120);
     }
   }
 
+  @CaptureSpan()
   public async getResolvedStateIdForProject(
     projectId: ObjectID,
   ): Promise<ObjectID> {
@@ -53,107 +60,242 @@ export class Service extends DatabaseService<IncidentStateTimeline> {
     return resolvedState.id!;
   }
 
+  @CaptureSpan()
   protected override async onBeforeCreate(
     createBy: CreateBy<IncidentStateTimeline>,
   ): Promise<OnCreate<IncidentStateTimeline>> {
-    if (!createBy.data.incidentId) {
-      throw new BadDataException("incidentId is null");
-    }
+    let mutex: SemaphoreMutex | null = null;
 
-    if (!createBy.data.startsAt) {
-      createBy.data.startsAt = OneUptimeDate.getCurrentDate();
-    }
-
-    if (
-      (createBy.data.createdByUserId ||
-        createBy.data.createdByUser ||
-        createBy.props.userId) &&
-      !createBy.data.rootCause
-    ) {
-      let userId: ObjectID | undefined = createBy.data.createdByUserId;
-
-      if (createBy.props.userId) {
-        userId = createBy.props.userId;
+    try {
+      if (!createBy.data.incidentId) {
+        throw new BadDataException("incidentId is null");
       }
 
-      if (createBy.data.createdByUser && createBy.data.createdByUser.id) {
-        userId = createBy.data.createdByUser.id;
+      try {
+        mutex = await Semaphore.lock({
+          key: createBy.data.incidentId.toString(),
+          namespace: "IncidentStateTimeline.create",
+        });
+      } catch (err) {
+        logger.error(err);
       }
 
-      const user: User | null = await UserService.findOneBy({
-        query: {
-          _id: userId?.toString() as string,
-        },
-        select: {
-          _id: true,
-          name: true,
-          email: true,
-        },
-        props: {
-          isRoot: true,
-        },
-      });
-
-      if (user) {
-        createBy.data.rootCause = `Incident state created by ${user.name} (${user.email})`;
+      if (!createBy.data.startsAt) {
+        createBy.data.startsAt = OneUptimeDate.getCurrentDate();
       }
-    }
 
-    const lastIncidentStateTimeline: IncidentStateTimeline | null =
-      await this.findOneBy({
-        query: {
-          incidentId: createBy.data.incidentId,
-        },
-        sort: {
-          createdAt: SortOrder.Descending,
-        },
-        props: {
-          isRoot: true,
-        },
-        select: {
-          _id: true,
-        },
-      });
-
-    const publicNote: string | undefined = (
-      createBy.miscDataProps as JSONObject | undefined
-    )?.["publicNote"] as string | undefined;
-
-    if (publicNote) {
-      const incidentPublicNote: IncidentPublicNote = new IncidentPublicNote();
-      incidentPublicNote.incidentId = createBy.data.incidentId;
-      incidentPublicNote.note = publicNote;
-      incidentPublicNote.postedAt = createBy.data.startsAt;
-      incidentPublicNote.createdAt = createBy.data.startsAt;
-      incidentPublicNote.projectId = createBy.data.projectId!;
-      incidentPublicNote.shouldStatusPageSubscribersBeNotifiedOnNoteCreated =
-        Boolean(createBy.data.shouldStatusPageSubscribersBeNotified);
-
-      // mark status page subscribers as notified for this state change because we dont want to send duplicate (two) emails one for public note and one for state change.
       if (
-        incidentPublicNote.shouldStatusPageSubscribersBeNotifiedOnNoteCreated
+        (createBy.data.createdByUserId ||
+          createBy.data.createdByUser ||
+          createBy.props.userId) &&
+        !createBy.data.rootCause
       ) {
-        createBy.data.isStatusPageSubscribersNotified = true;
+        let userId: ObjectID | undefined = createBy.data.createdByUserId;
+
+        if (createBy.props.userId) {
+          userId = createBy.props.userId;
+        }
+
+        if (createBy.data.createdByUser && createBy.data.createdByUser.id) {
+          userId = createBy.data.createdByUser.id;
+        }
+
+        if (userId) {
+          createBy.data.rootCause = `Incident state created by ${await UserService.getUserMarkdownString(
+            {
+              userId: userId!,
+              projectId: createBy.data.projectId || createBy.props.tenantId!,
+            },
+          )}`;
+        }
       }
 
-      await IncidentPublicNoteService.create({
-        data: incidentPublicNote,
-        props: createBy.props,
-      });
-    }
+      const incidentStateId: ObjectID | undefined | null =
+        createBy.data.incidentStateId || createBy.data.incidentState?.id;
 
-    return {
-      createBy,
-      carryForward: {
-        lastIncidentStateTimelineId: lastIncidentStateTimeline?.id || null,
-      },
-    };
+      if (!incidentStateId) {
+        throw new BadDataException("incidentStateId is null");
+      }
+
+      // Execute queries for before and after states in parallel for better performance
+      const [stateBeforeThis, stateAfterThis] = await Promise.all([
+        this.findOneBy({
+          query: {
+            incidentId: createBy.data.incidentId,
+            startsAt: QueryHelper.lessThanEqualTo(createBy.data.startsAt),
+          },
+          sort: {
+            startsAt: SortOrder.Descending,
+          },
+          props: {
+            isRoot: true,
+          },
+          select: {
+            incidentStateId: true,
+            incidentState: {
+              _id: true,
+              order: true,
+              name: true,
+            },
+            startsAt: true,
+            endsAt: true,
+          },
+        }),
+        this.findOneBy({
+          query: {
+            incidentId: createBy.data.incidentId,
+            startsAt: QueryHelper.greaterThan(createBy.data.startsAt),
+          },
+          sort: {
+            startsAt: SortOrder.Ascending,
+          },
+          props: {
+            isRoot: true,
+          },
+          select: {
+            incidentStateId: true,
+            startsAt: true,
+            endsAt: true,
+          },
+        }),
+      ]);
+
+      logger.debug("State Before this");
+      logger.debug(stateBeforeThis);
+
+      // If this is the first state, then do not notify the owner.
+      if (!stateBeforeThis) {
+        // since this is the first status, do not notify the owner.
+        createBy.data.isOwnerNotified = true;
+      }
+
+      // check if this new state and the previous state are same.
+      // if yes, then throw bad data exception.
+
+      if (
+        stateBeforeThis &&
+        stateBeforeThis.incidentStateId &&
+        incidentStateId
+      ) {
+        if (
+          stateBeforeThis.incidentStateId.toString() ===
+          incidentStateId.toString()
+        ) {
+          throw new BadDataException(
+            "Incident state cannot be same as previous state.",
+          );
+        }
+      }
+
+      if (stateBeforeThis && stateBeforeThis.incidentState?.order) {
+        const newIncidentState: IncidentState | null =
+          await IncidentStateService.findOneBy({
+            query: {
+              _id: incidentStateId,
+            },
+            select: {
+              order: true,
+              name: true,
+            },
+            props: {
+              isRoot: true,
+            },
+          });
+
+        if (newIncidentState && newIncidentState.order) {
+          // check if the new incident state is in order is greater than the previous state order
+          if (
+            stateBeforeThis &&
+            stateBeforeThis.incidentState &&
+            stateBeforeThis.incidentState.order &&
+            newIncidentState.order <= stateBeforeThis.incidentState.order
+          ) {
+            throw new BadDataException(
+              `Incident cannot transition to ${newIncidentState.name} state from ${stateBeforeThis.incidentState.name} state because ${newIncidentState.name} is before ${stateBeforeThis.incidentState.name} in the order of incident states.`,
+            );
+          }
+        }
+      }
+
+      // compute ends at. It's the start of the next status.
+      if (stateAfterThis && stateAfterThis.startsAt) {
+        createBy.data.endsAt = stateAfterThis.startsAt;
+      }
+
+      // check if this new state and the previous state are same.
+      // if yes, then throw bad data exception.
+
+      if (stateAfterThis && stateAfterThis.incidentStateId && incidentStateId) {
+        if (
+          stateAfterThis.incidentStateId.toString() ===
+          incidentStateId.toString()
+        ) {
+          throw new BadDataException(
+            "Incident state cannot be same as next state.",
+          );
+        }
+      }
+
+      logger.debug("State After this");
+      logger.debug(stateAfterThis);
+
+      const publicNote: string | undefined = (
+        createBy.miscDataProps as JSONObject | undefined
+      )?.["publicNote"] as string | undefined;
+
+      if (publicNote) {
+        // mark status page subscribers as notified for this state change because we dont want to send duplicate (two) emails one for public note and one for state change.
+        if (createBy.data.shouldStatusPageSubscribersBeNotified) {
+          createBy.data.subscriberNotificationStatus =
+            StatusPageSubscriberNotificationStatus.Success;
+        }
+      }
+
+      // Set notification status based on shouldStatusPageSubscribersBeNotified
+      if (createBy.data.shouldStatusPageSubscribersBeNotified === false) {
+        createBy.data.subscriberNotificationStatus =
+          StatusPageSubscriberNotificationStatus.Skipped;
+        createBy.data.subscriberNotificationStatusMessage =
+          "Notifications skipped as subscribers are not to be notified for this incident state change.";
+      } else if (
+        createBy.data.shouldStatusPageSubscribersBeNotified === true &&
+        !publicNote
+      ) {
+        // Only set to Pending if there's no public note (public note handling sets it to Success)
+        createBy.data.subscriberNotificationStatus =
+          StatusPageSubscriberNotificationStatus.Pending;
+      }
+
+      return {
+        createBy,
+        carryForward: {
+          statusTimelineBeforeThisStatus: stateBeforeThis || null,
+          statusTimelineAfterThisStatus: stateAfterThis || null,
+          publicNote: publicNote,
+          mutex: mutex,
+        },
+      };
+    } catch (err) {
+      // release the mutex if it was acquired.
+      if (mutex) {
+        try {
+          await Semaphore.release(mutex);
+        } catch (err) {
+          logger.error(err);
+        }
+      }
+
+      throw err;
+    }
   }
 
+  @CaptureSpan()
   protected override async onCreateSuccess(
     onCreate: OnCreate<IncidentStateTimeline>,
     createdItem: IncidentStateTimeline,
   ): Promise<IncidentStateTimeline> {
+    const mutex: SemaphoreMutex | null = onCreate.carryForward.mutex;
+
     if (!createdItem.incidentId) {
       throw new BadDataException("incidentId is null");
     }
@@ -161,47 +303,142 @@ export class Service extends DatabaseService<IncidentStateTimeline> {
     if (!createdItem.incidentStateId) {
       throw new BadDataException("incidentStateId is null");
     }
-
     // update the last status as ended.
 
-    if (onCreate.carryForward.lastIncidentStateTimelineId) {
+    logger.debug("Status Timeline Before this");
+    logger.debug(onCreate.carryForward.statusTimelineBeforeThisStatus);
+
+    logger.debug("Status Timeline After this");
+    logger.debug(onCreate.carryForward.statusTimelineAfterThisStatus);
+
+    logger.debug("Created Item");
+    logger.debug(createdItem);
+
+    // now there are three cases.
+    // 1. This is the first status OR there's no status after this.
+    if (!onCreate.carryForward.statusTimelineBeforeThisStatus) {
+      // This is the first status, no need to update previous status.
+      logger.debug("This is the first status.");
+    } else if (!onCreate.carryForward.statusTimelineAfterThisStatus) {
+      // 2. This is the last status.
+      // Update the previous status to end at the start of this status.
       await this.updateOneById({
-        id: onCreate.carryForward.lastIncidentStateTimelineId!,
+        id: onCreate.carryForward.statusTimelineBeforeThisStatus.id!,
         data: {
-          endsAt: createdItem.createdAt || OneUptimeDate.getCurrentDate(),
+          endsAt: createdItem.startsAt!,
         },
         props: {
           isRoot: true,
         },
       });
+      logger.debug("This is the last status.");
+    } else {
+      // 3. This is in the middle.
+      // Update the previous status to end at the start of this status.
+      await this.updateOneById({
+        id: onCreate.carryForward.statusTimelineBeforeThisStatus.id!,
+        data: {
+          endsAt: createdItem.startsAt!,
+        },
+        props: {
+          isRoot: true,
+        },
+      });
+
+      // Update the next status to start at the end of this status.
+      await this.updateOneById({
+        id: onCreate.carryForward.statusTimelineAfterThisStatus.id!,
+        data: {
+          startsAt: createdItem.endsAt!,
+        },
+        props: {
+          isRoot: true,
+        },
+      });
+      logger.debug("This status is in the middle.");
     }
 
-    await IncidentService.updateOneBy({
-      query: {
-        _id: createdItem.incidentId?.toString(),
-      },
-      data: {
-        currentIncidentStateId: createdItem.incidentStateId,
-      },
-      props: onCreate.createBy.props,
-    });
+    if (!createdItem.endsAt) {
+      await IncidentService.updateOneBy({
+        query: {
+          _id: createdItem.incidentId?.toString(),
+        },
+        data: {
+          currentIncidentStateId: createdItem.incidentStateId,
+        },
+        props: onCreate.createBy.props,
+      });
+    }
 
-    // TODO: DELETE THIS WHEN WORKFLOW IS IMPLEMENMTED.
-    // check if this is resolved state, and if it is then resolve all the monitors.
-
-    const isResolvedState: IncidentState | null =
+    const incidentState: IncidentState | null =
       await IncidentStateService.findOneBy({
         query: {
           _id: createdItem.incidentStateId.toString()!,
-          isResolvedState: true,
         },
         props: {
           isRoot: true,
         },
         select: {
           _id: true,
+          isResolvedState: true,
+          isAcknowledgedState: true,
+          isCreatedState: true,
+          color: true,
+          name: true,
         },
       });
+
+    if (mutex) {
+      try {
+        await Semaphore.release(mutex);
+      } catch (err) {
+        logger.error(err);
+      }
+    }
+
+    const stateName: string = incidentState?.name || "";
+    let stateEmoji: string = "➡️";
+
+    // if resolved state then change emoji to ✅.
+
+    if (incidentState?.isResolvedState) {
+      stateEmoji = "✅";
+    } else if (incidentState?.isAcknowledgedState) {
+      // eyes emoji for acknowledged state.
+      stateEmoji = "👀";
+    } else if (incidentState?.isCreatedState) {
+      stateEmoji = "🔴";
+    }
+
+    const incidentNumber: number | null =
+      await IncidentService.getIncidentNumber({
+        incidentId: createdItem.incidentId,
+      });
+
+    const projectId: ObjectID = createdItem.projectId!;
+    const incidentId: ObjectID = createdItem.incidentId!;
+
+    await IncidentFeedService.createIncidentFeedItem({
+      incidentId: createdItem.incidentId!,
+      projectId: createdItem.projectId!,
+      incidentFeedEventType: IncidentFeedEventType.IncidentStateChanged,
+      displayColor: incidentState?.color,
+      feedInfoInMarkdown:
+        stateEmoji +
+        ` Changed **[Incident ${incidentNumber}](${(await IncidentService.getIncidentLinkInDashboard(projectId!, incidentId!)).toString()}) State** to **` +
+        stateName +
+        "**",
+      moreInformationInMarkdown: `**Cause:** 
+${createdItem.rootCause}`,
+      userId: createdItem.createdByUserId || onCreate.createBy.props.userId,
+      workspaceNotification: {
+        sendWorkspaceNotification: true,
+        notifyUserId:
+          createdItem.createdByUserId || onCreate.createBy.props.userId,
+      },
+    });
+
+    const isResolvedState: boolean = incidentState?.isResolvedState || false;
 
     if (isResolvedState) {
       const incident: Incident | null = await IncidentService.findOneBy({
@@ -228,6 +465,24 @@ export class Service extends DatabaseService<IncidentStateTimeline> {
       }
     }
 
+    if (onCreate.carryForward.publicNote) {
+      const publicNote: string = onCreate.carryForward.publicNote;
+
+      const incidentPublicNote: IncidentPublicNote = new IncidentPublicNote();
+      incidentPublicNote.incidentId = createdItem.incidentId;
+      incidentPublicNote.note = publicNote;
+      incidentPublicNote.postedAt = createdItem.startsAt!;
+      incidentPublicNote.createdAt = createdItem.startsAt!;
+      incidentPublicNote.projectId = createdItem.projectId!;
+      incidentPublicNote.shouldStatusPageSubscribersBeNotifiedOnNoteCreated =
+        Boolean(createdItem.shouldStatusPageSubscribersBeNotified);
+
+      await IncidentPublicNoteService.create({
+        data: incidentPublicNote,
+        props: onCreate.createBy.props,
+      });
+    }
+
     IncidentService.refreshIncidentMetrics({
       incidentId: createdItem.incidentId,
     }).catch((error: Error) => {
@@ -235,9 +490,74 @@ export class Service extends DatabaseService<IncidentStateTimeline> {
       logger.error(error);
     });
 
+    const isLastIncidentState: boolean = await this.isLastIncidentState({
+      projectId: createdItem.projectId!,
+      incidentStateId: createdItem.incidentStateId,
+    });
+
+    if (isLastIncidentState) {
+      WorkspaceNotificationRuleService.archiveWorkspaceChannels({
+        projectId: createdItem.projectId!,
+        notificationFor: {
+          incidentId: createdItem.incidentId,
+        },
+        sendMessageBeforeArchiving: {
+          _type: "WorkspacePayloadMarkdown",
+          text: `**[Incident ${incidentNumber}](${(
+            await IncidentService.getIncidentLinkInDashboard(
+              createdItem.projectId!,
+              createdItem.incidentId!,
+            )
+          ).toString()})** is resolved. Archiving channel.`,
+        },
+      }).catch((error: Error) => {
+        logger.error(`Error while archiving workspace channels:`);
+        logger.error(error);
+      });
+    }
+
     return createdItem;
   }
 
+  private async isLastIncidentState(data: {
+    projectId: ObjectID;
+    incidentStateId: ObjectID;
+  }): Promise<boolean> {
+    // find all the states for this project and sort it by order. Then, check if this is the last state.
+    const incidentStates: IncidentState[] = await IncidentStateService.findBy({
+      query: {
+        projectId: data.projectId,
+      },
+      limit: LIMIT_PER_PROJECT,
+      skip: 0,
+      sort: {
+        order: SortOrder.Ascending,
+      },
+      props: {
+        isRoot: true,
+      },
+    });
+
+    const incidentState: IncidentState | null =
+      incidentStates.find((incidentState: IncidentState) => {
+        return incidentState.id?.toString() === data.incidentStateId.toString();
+      }) || null;
+
+    if (!incidentState) {
+      throw new BadDataException("Incident state not found.");
+    }
+
+    const lastIncidentState: IncidentState | undefined =
+      incidentStates[incidentStates.length - 1];
+
+    if (lastIncidentState && lastIncidentState.id) {
+      return lastIncidentState.id.toString() === incidentState.id?.toString();
+    }
+
+    return false;
+  }
+
+  @CaptureSpan()
   protected override async onBeforeDelete(
     deleteBy: DeleteBy<IncidentStateTimeline>,
   ): Promise<OnDelete<IncidentStateTimeline>> {
@@ -248,6 +568,7 @@ export class Service extends DatabaseService<IncidentStateTimeline> {
           select: {
             incidentId: true,
             startsAt: true,
+            endsAt: true,
           },
           props: {
             isRoot: true,
@@ -267,80 +588,104 @@ export class Service extends DatabaseService<IncidentStateTimeline> {
           },
         });
 
+        if (!incidentStateTimelineToBeDeleted) {
+          throw new BadDataException("Incident state timeline not found.");
+        }
+
         if (incidentStateTimeline.isOne()) {
           throw new BadDataException(
             "Cannot delete the only state timeline. Incident should have at least one state in its timeline.",
           );
         }
 
-        if (incidentStateTimelineToBeDeleted?.startsAt) {
-          const beforeState: IncidentStateTimeline | null =
-            await this.findOneBy({
-              query: {
-                incidentId: incidentId,
-                startsAt: QueryHelper.lessThan(
-                  incidentStateTimelineToBeDeleted?.startsAt,
-                ),
-              },
-              sort: {
-                createdAt: SortOrder.Descending,
-              },
-              props: {
-                isRoot: true,
-              },
-              select: {
-                _id: true,
-                startsAt: true,
-              },
-            });
+        // There are three cases.
+        // 1. This is the first state.
+        // 2. This is the last state.
+        // 3. This is in the middle.
 
-          if (beforeState) {
-            const afterState: IncidentStateTimeline | null =
-              await this.findOneBy({
-                query: {
-                  incidentId: incidentId,
-                  startsAt: QueryHelper.greaterThan(
-                    incidentStateTimelineToBeDeleted?.startsAt,
-                  ),
-                },
-                sort: {
-                  createdAt: SortOrder.Ascending,
-                },
-                props: {
-                  isRoot: true,
-                },
-                select: {
-                  _id: true,
-                  startsAt: true,
-                },
-              });
+        const stateBeforeThis: IncidentStateTimeline | null =
+          await this.findOneBy({
+            query: {
+              _id: QueryHelper.notEquals(deleteBy.query._id as string),
+              incidentId: incidentId,
+              startsAt: QueryHelper.lessThanEqualTo(
+                incidentStateTimelineToBeDeleted.startsAt!,
+              ),
+            },
+            sort: {
+              startsAt: SortOrder.Descending,
+            },
+            props: {
+              isRoot: true,
+            },
+            select: {
+              incidentStateId: true,
+              startsAt: true,
+              endsAt: true,
+            },
+          });
 
-            if (!afterState) {
-              // if there's nothing after then end date of before state is null.
+        const stateAfterThis: IncidentStateTimeline | null =
+          await this.findOneBy({
+            query: {
+              incidentId: incidentId,
+              startsAt: QueryHelper.greaterThan(
+                incidentStateTimelineToBeDeleted.startsAt!,
+              ),
+            },
+            sort: {
+              startsAt: SortOrder.Ascending,
+            },
+            props: {
+              isRoot: true,
+            },
+            select: {
+              incidentStateId: true,
+              startsAt: true,
+              endsAt: true,
+            },
+          });
 
-              await this.updateOneById({
-                id: beforeState.id!,
-                data: {
-                  endsAt: null as any,
-                },
-                props: {
-                  isRoot: true,
-                },
-              });
-            } else {
-              // if there's something after then end date of before state is start date of after state.
+        if (!stateBeforeThis) {
+          // This is the first state, no need to update previous state.
+          logger.debug("This is the first state.");
+        } else if (!stateAfterThis) {
+          // This is the last state.
+          // Update the previous state to end at the end of this state.
+          await this.updateOneById({
+            id: stateBeforeThis.id!,
+            data: {
+              endsAt: incidentStateTimelineToBeDeleted.endsAt!,
+            },
+            props: {
+              isRoot: true,
+            },
+          });
+          logger.debug("This is the last state.");
+        } else {
+          // This state is in the middle.
+          // Update the previous state to end at the start of the next state.
+          await this.updateOneById({
+            id: stateBeforeThis.id!,
+            data: {
+              endsAt: stateAfterThis.startsAt!,
+            },
+            props: {
+              isRoot: true,
+            },
+          });
 
-              await this.updateOneById({
-                id: beforeState.id!,
-                data: {
-                  endsAt: afterState.startsAt!,
-                },
-                props: {
-                  isRoot: true,
-                },
-              });
-            }
-          }
+          // Update the next state to start at the start of this state.
+          await this.updateOneById({
+            id: stateAfterThis.id!,
+            data: {
+              startsAt: incidentStateTimelineToBeDeleted.startsAt!,
+            },
+            props: {
+              isRoot: true,
+            },
+          });
+          logger.debug("This state is in the middle.");
         }
       }
 
@@ -350,6 +695,7 @@ export class Service extends DatabaseService<IncidentStateTimeline> {
     return { deleteBy, carryForward: null };
   }
 
+  @CaptureSpan()
   protected override async onDeleteSuccess(
     onDelete: OnDelete<IncidentStateTimeline>,
     _itemIdsBeforeDelete: ObjectID[],
@@ -358,14 +704,14 @@ export class Service extends DatabaseService<IncidentStateTimeline> {
       // this is incidentId.
       const incidentId: ObjectID = onDelete.carryForward as ObjectID;
 
-      // get last status of this monitor.
+      // get last status of this incident.
       const incidentStateTimeline: IncidentStateTimeline | null =
         await this.findOneBy({
           query: {
             incidentId: incidentId,
           },
           sort: {
-            createdAt: SortOrder.Descending,
+            startsAt: SortOrder.Descending,
           },
           props: {
             isRoot: true,

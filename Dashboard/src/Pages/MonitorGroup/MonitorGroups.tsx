@@ -1,6 +1,6 @@
 import LabelsElement from "../../Components/Label/Labels";
 import CurrentStatusElement from "../../Components/MonitorGroup/CurrentStatus";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageMap from "../../Utils/PageMap";
 import RouteMap, { RouteUtil } from "../../Utils/RouteMap";
 import DashboardSideMenu from "../Monitor/SideMenu";
@@ -49,6 +49,7 @@ const MonitorGroupPage: FunctionComponent<PageComponentProps> = (
         modelType={MonitorGroup}
         name="Monitor Groups"
         id="monitors-group-table"
+        userPreferencesKey="monitor-groups-table"
         isDeleteable={false}
         showViewIdButton={true}
         isEditable={false}
@@ -106,7 +107,7 @@ const MonitorGroupPage: FunctionComponent<PageComponentProps> = (
 
             filterEntityType: Label,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -149,6 +150,7 @@ const MonitorGroupPage: FunctionComponent<PageComponentProps> = (
             },
             title: "Labels",
             type: FieldType.EntityArray,
+            hideOnMobile: true,
 
             getElement: (item: MonitorGroup): ReactElement => {
               return <LabelsElement labels={item["labels"] || []} />;

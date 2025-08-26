@@ -104,6 +104,7 @@ const RegisterPage: () => JSX.Element = () => {
       disabled: Boolean(initialValues && initialValues["email"]),
       title: "Email",
       dataTestId: "email",
+      disableSpellCheck: true,
     },
     {
       field: {
@@ -114,6 +115,7 @@ const RegisterPage: () => JSX.Element = () => {
       required: true,
       title: "Full Name",
       dataTestId: "name",
+      disableSpellCheck: true,
     },
   ];
 
@@ -128,6 +130,7 @@ const RegisterPage: () => JSX.Element = () => {
         required: true,
         title: "Company Name",
         dataTestId: "companyName",
+        disableSpellCheck: true,
       },
     ]);
 
@@ -159,6 +162,7 @@ const RegisterPage: () => JSX.Element = () => {
       title: "Password",
       required: true,
       dataTestId: "password",
+      disableSpellCheck: true,
     },
     {
       field: {
@@ -175,11 +179,12 @@ const RegisterPage: () => JSX.Element = () => {
       required: true,
       showEvenIfPermissionDoesNotExist: true,
       dataTestId: "confirmPassword",
+      disableSpellCheck: true,
     },
   ]);
 
   if (error) {
-    return <ErrorMessage error={error} />;
+    return <ErrorMessage message={error} />;
   }
 
   if (isLoading) {

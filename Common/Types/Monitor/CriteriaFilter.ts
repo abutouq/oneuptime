@@ -1,3 +1,5 @@
+import Zod, { ZodSchema } from "../../Utils/Schema/Zod";
+
 export enum CheckOn {
   ResponseTime = "Response Time (in ms)",
   ResponseStatusCode = "Response Status Code",
@@ -22,6 +24,7 @@ export enum CheckOn {
   IsExpiredCertificate = "Is Expired Certificate",
   IsValidCertificate = "Is Valid Certificate",
   IsNotAValidCertificate = "Is Not A Valid Certificate",
+  IsRequestTimeout = "Is Request Timeout",
 
   // Custom code or synthetic monitor.
   ResultValue = "Result Value",
@@ -110,12 +113,42 @@ export enum FilterType {
   IsNotExecuting = "Is Not Executing",
 }
 
-export enum FilterCondition {
-  All = "All",
-  Any = "Any",
-}
-
 export class CriteriaFilterUtil {
+  public static hasValueField(data: {
+    checkOn: CheckOn;
+    filterType: FilterType | undefined;
+  }): boolean {
+    const { checkOn } = data;
+
+    if (checkOn === CheckOn.IsOnline) {
+      return false;
+    }
+
+    if (checkOn === CheckOn.IsRequestTimeout) {
+      return false;
+    }
+
+    if (
+      checkOn === CheckOn.IsValidCertificate ||
+      checkOn === CheckOn.IsSelfSignedCertificate ||
+      checkOn === CheckOn.IsExpiredCertificate ||
+      checkOn === CheckOn.IsNotAValidCertificate
+    ) {
+      return false;
+    }
+
+    if (
+      FilterType.IsEmpty === data.filterType ||
+      FilterType.IsNotEmpty === data.filterType ||
+      FilterType.True === data.filterType ||
+      FilterType.False === data.filterType
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
   public static getEvaluateOverTimeTypeByCriteriaFilter(
     criteriaFilter: CriteriaFilter | undefined,
   ): Array<EvaluateOverTimeType> {
@@ -148,3 +181,21 @@ export class CriteriaFilterUtil {
     );
   }
 }
+
+export const CriteriaFilterSchema: ZodSchema = Zod.object({
+  checkOn: Zod.string(),
+  serverMonitorOptions: Zod.object({
+    diskPath: Zod.string().optional(),
+  }).optional(),
+  metricMonitorOptions: Zod.object({
+    metricAlias: Zod.string().optional(),
+    metricAggregationType: Zod.string().optional(),
+  }).optional(),
+  filterType: Zod.string().optional(),
+  value: Zod.union([Zod.string(), Zod.number()]).optional(),
+  eveluateOverTime: Zod.boolean().optional(),
+  evaluateOverTimeOptions: Zod.object({
+    timeValueInMinutes: Zod.number().optional(),
+    evaluateOverTimeType: Zod.string().optional(),
+  }).optional(),
+});

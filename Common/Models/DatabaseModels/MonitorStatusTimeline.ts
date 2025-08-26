@@ -25,6 +25,8 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
 @EnableDocumentation()
 @CanAccessIfCanReadOn("monitor")
 @TenantColumn("projectId")
+@Index(["monitorId", "projectId", "startsAt"]) // Composite index for efficient timeline queries
+@Index(["monitorId", "startsAt"]) // Alternative index for monitor-specific timeline queries
 @TableAccessControl({
   create: [
     Permission.ProjectOwner,
@@ -62,6 +64,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
 @Entity({
   name: "MonitorStatusTimeline",
 })
+@Index(["monitorId", "startsAt"])
 @TableMetadata({
   tableName: "MonitorStatusTimeline",
   singularName: "Monitor Status Event",
@@ -276,6 +279,7 @@ export default class MonitorStatusTimeline extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -389,12 +393,7 @@ export default class MonitorStatusTimeline extends BaseModel {
   public monitorStatusId?: ObjectID = undefined;
 
   @ColumnAccessControl({
-    create: [
-      Permission.ProjectOwner,
-      Permission.ProjectAdmin,
-      Permission.ProjectMember,
-      Permission.CreateMonitorStatusTimeline,
-    ],
+    create: [],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -406,10 +405,13 @@ export default class MonitorStatusTimeline extends BaseModel {
   @Index()
   @TableColumn({
     type: TableColumnType.Boolean,
+    computed: true,
+    hideColumnInDocumentation: true,
     required: true,
     isDefaultValueColumn: true,
     title: "Are Owners Notified",
     description: "Are owners notified of status change?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -515,7 +517,7 @@ export default class MonitorStatusTimeline extends BaseModel {
   @TableColumn({
     type: TableColumnType.Date,
     title: "Starts At",
-    description: "When did this status change start?",
+    description: "When did this status change?",
   })
   @Column({
     type: ColumnType.Date,

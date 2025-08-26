@@ -80,8 +80,8 @@ import {
 @SlugifyColumn("name", "slug")
 @TableMetadata({
   tableName: "ServiceCatalog",
-  singularName: "Service",
-  pluralName: "Services",
+  singularName: "Service in Service Catalog",
+  pluralName: "Services in Service Catalog",
   icon: IconProp.SquareStack,
   tableDescription:
     "Service Catalog is a collection of services that you have in your organization. It can be a collection of services that you are monitoring or services that you are providing to your customers. It can be anything that you want to keep track of.",
@@ -209,6 +209,7 @@ export default class ServiceCatalog extends BaseModel {
     required: true,
     unique: true,
     type: TableColumnType.Slug,
+    computed: true,
     title: "Slug",
     description: "Friendly globally unique name for your object",
   })
@@ -335,6 +336,7 @@ export default class ServiceCatalog extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })

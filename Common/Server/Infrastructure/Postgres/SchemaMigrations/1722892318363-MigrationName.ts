@@ -1,8 +1,10 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
+import CaptureSpan from "../../../Utils/Telemetry/CaptureSpan";
 
 export class MigrationName1722892318363 implements MigrationInterface {
   public name = "MigrationName1722892318363";
 
+  @CaptureSpan()
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       `ALTER TABLE "Monitor" ADD "telemetryMonitorNextMonitorAt" TIMESTAMP WITH TIME ZONE`,
@@ -21,6 +23,7 @@ export class MigrationName1722892318363 implements MigrationInterface {
     );
   }
 
+  @CaptureSpan()
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       `DROP INDEX "public"."IDX_02bae6cdc6d5b3092ac393fbb3"`,

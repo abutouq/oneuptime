@@ -8,6 +8,7 @@ import logger from "Common/Server/Utils/Logger";
 import xmlCrypto, { FileKeyInfo } from "xml-crypto";
 import xmldom from "xmldom";
 import zlib from "zlib";
+import Name from "Common/Types/Name";
 
 export default class SSOUtil {
   public static createSAMLRequestUrl(data: {
@@ -136,6 +137,88 @@ export default class SSOUtil {
       logger.error(err);
       return false;
     }
+  }
+
+  public static getUserFullName(payload: JSONObject): Name | null {
+    if (!payload["saml2p:Response"] && !payload["samlp:Response"]) {
+      return null;
+    }
+
+    payload =
+      (payload["saml2p:Response"] as JSONObject) ||
+      (payload["samlp:Response"] as JSONObject) ||
+      (payload["Response"] as JSONObject);
+
+    const samlAssertion: JSONArray =
+      (payload["saml2:Assertion"] as JSONArray) ||
+      (payload["saml:Assertion"] as JSONArray) ||
+      (payload["Assertion"] as JSONArray);
+
+    if (!samlAssertion || samlAssertion.length === 0) {
+      return null;
+    }
+
+    const samlAttributeStatement: JSONArray =
+      ((samlAssertion[0] as JSONObject)[
+        "saml2:AttributeStatement"
+      ] as JSONArray) ||
+      ((samlAssertion[0] as JSONObject)[
+        "saml:AttributeStatement"
+      ] as JSONArray) ||
+      ((samlAssertion[0] as JSONObject)["AttributeStatement"] as JSONArray);
+
+    if (!samlAttributeStatement || samlAttributeStatement.length === 0) {
+      return null;
+    }
+
+    const samlAttribute: JSONArray =
+      ((samlAttributeStatement[0] as JSONObject)[
+        "saml2:Attribute"
+      ] as JSONArray) ||
+      ((samlAttributeStatement[0] as JSONObject)[
+        "saml:Attribute"
+      ] as JSONArray) ||
+      ((samlAttributeStatement[0] as JSONObject)["Attribute"] as JSONArray);
+
+    if (!samlAttribute || samlAttribute.length === 0) {
+      return null;
+    }
+
+    // get displayName attribute.
+    //   {
+    //     "$": {
+    //         "Name": "http://schemas.microsoft.com/identity/claims/displayname"
+    //     },
+    //     "AttributeValue": [
+    //         "Nawaz Dhandala"
+    //     ]
+    // },
+
+    for (let i: number = 0; i < samlAttribute.length; i++) {
+      const attribute: JSONObject = samlAttribute[i] as JSONObject;
+      if (
+        attribute["$"] &&
+        (attribute["$"] as JSONObject)["Name"]?.toString()
+      ) {
+        const name: string | undefined = (attribute["$"] as JSONObject)[
+          "Name"
+        ]?.toString();
+        if (
+          name &&
+          name === "http://schemas.microsoft.com/identity/claims/displayname" &&
+          attribute["AttributeValue"] &&
+          Array.isArray(attribute["AttributeValue"]) &&
+          attribute["AttributeValue"].length > 0
+        ) {
+          const fullName: Name = new Name(
+            attribute["AttributeValue"][0]!.toString() as string,
+          );
+          return fullName;
+        }
+      }
+    }
+
+    return null;
   }
 
   public static getEmail(payload: JSONObject): Email {

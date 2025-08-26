@@ -2,7 +2,6 @@ import RunCron from "../../Utils/Cron";
 import LIMIT_MAX, { LIMIT_PER_PROJECT } from "Common/Types/Database/LimitMax";
 import OneUptimeDate from "Common/Types/Date";
 import NotificationRuleType from "Common/Types/NotificationRule/NotificationRuleType";
-import ObjectID from "Common/Types/ObjectID";
 import UserNotificationExecutionStatus from "Common/Types/UserNotification/UserNotificationExecutionStatus";
 import { EVERY_MINUTE } from "Common/Utils/CronTime";
 import { IsDevelopment } from "Common/Server/EnvironmentConfig";
@@ -13,6 +12,8 @@ import logger from "Common/Server/Utils/Logger";
 import Incident from "Common/Models/DatabaseModels/Incident";
 import UserNotificationRule from "Common/Models/DatabaseModels/UserNotificationRule";
 import UserOnCallLog from "Common/Models/DatabaseModels/UserOnCallLog";
+import Alert from "Common/Models/DatabaseModels/Alert";
+import AlertService from "Common/Server/Services/AlertService";
 
 RunCron(
   "UserOnCallLog:ExecutePendingExecutions",
@@ -34,10 +35,12 @@ RunCron(
           userId: true,
           userNotificationEventType: true,
           triggeredByIncidentId: true,
+          triggeredByAlertId: true,
           onCallDutyPolicyEscalationRuleId: true,
           onCallDutyPolicyExecutionLogTimelineId: true,
           onCallDutyPolicyExecutionLogId: true,
           onCallDutyPolicyId: true,
+          onCallDutyScheduleId: true,
           userBelongsToTeamId: true,
         },
         props: {
@@ -69,15 +72,82 @@ const executePendingNotificationLog: ExecutePendingNotificationLogFunction =
           pendingNotificationLog.userNotificationEventType!,
         );
 
-      const incident: Incident | null = await IncidentService.findOneById({
-        id: pendingNotificationLog.triggeredByIncidentId!,
-        props: {
-          isRoot: true,
-        },
-        select: {
-          incidentSeverityId: true,
-        },
-      });
+      let incident: Incident | null = null;
+      let alert: Alert | null = null;
+
+      if (pendingNotificationLog.triggeredByIncidentId) {
+        incident = await IncidentService.findOneById({
+          id: pendingNotificationLog.triggeredByIncidentId!,
+          props: {
+            isRoot: true,
+          },
+          select: {
+            incidentSeverityId: true,
+          },
+        });
+      }
+
+      if (pendingNotificationLog.triggeredByAlertId) {
+        alert = await AlertService.findOneById({
+          id: pendingNotificationLog.triggeredByAlertId!,
+          props: {
+            isRoot: true,
+          },
+          select: {
+            alertSeverityId: true,
+          },
+        });
+      }
+
+      if (!incident && !alert) {
+        throw new Error("Incident or Alert not found.");
+      }
+
+      if (incident) {
+        // check if the incident is acknowledged.
+        const isAcknowledged: boolean =
+          await IncidentService.isIncidentAcknowledged({
+            incidentId: pendingNotificationLog.triggeredByIncidentId!,
+          });
+        if (isAcknowledged) {
+          // then mark this policy as executed.
+          await UserOnCallLogService.updateOneById({
+            id: pendingNotificationLog.id!,
+            data: {
+              status: UserNotificationExecutionStatus.Completed,
+              statusMessage:
+                "Execution completed because incident is acknowledged.",
+            },
+            props: {
+              isRoot: true,
+            },
+          });
+          return;
+        }
+      }
+
+      if (alert) {
+        // check if the alert is acknowledged.
+        const isAcknowledged: boolean = await AlertService.isAlertAcknowledged({
+          alertId: pendingNotificationLog.triggeredByAlertId!,
+        });
+
+        if (isAcknowledged) {
+          // then mark this policy as executed.
+          await UserOnCallLogService.updateOneById({
+            id: pendingNotificationLog.id!,
+            data: {
+              status: UserNotificationExecutionStatus.Completed,
+              statusMessage:
+                "Execution completed because alert is acknowledged.",
+            },
+            props: {
+              isRoot: true,
+            },
+          });
+          return;
+        }
+      }
 
       const notificationRules: Array<UserNotificationRule> =
         await UserNotificationRuleService.findBy({
@@ -85,7 +155,8 @@ const executePendingNotificationLog: ExecutePendingNotificationLogFunction =
             projectId: pendingNotificationLog.projectId!,
             userId: pendingNotificationLog.userId!,
             ruleType: ruleType,
-            incidentSeverityId: incident?.incidentSeverityId as ObjectID,
+            incidentSeverityId: incident?.incidentSeverityId || undefined,
+            alertSeverityId: alert?.alertSeverityId || undefined,
           },
           select: {
             _id: true,
@@ -132,6 +203,7 @@ const executePendingNotificationLog: ExecutePendingNotificationLogFunction =
             userNotificationLogId: pendingNotificationLog.id!,
             projectId: pendingNotificationLog.projectId!,
             triggeredByIncidentId: pendingNotificationLog.triggeredByIncidentId,
+            triggeredByAlertId: pendingNotificationLog.triggeredByAlertId,
             userNotificationEventType:
               pendingNotificationLog.userNotificationEventType!,
             onCallPolicyExecutionLogId:
@@ -142,6 +214,7 @@ const executePendingNotificationLog: ExecutePendingNotificationLogFunction =
             userBelongsToTeamId: pendingNotificationLog.userBelongsToTeamId,
             onCallDutyPolicyExecutionLogTimelineId:
               pendingNotificationLog.onCallDutyPolicyExecutionLogTimelineId,
+            onCallScheduleId: pendingNotificationLog.onCallDutyScheduleId,
           },
         );
       }

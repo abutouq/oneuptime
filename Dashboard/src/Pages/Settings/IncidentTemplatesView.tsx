@@ -3,7 +3,7 @@ import MonitorsElement from "../../Components/Monitor/Monitors";
 import OnCallDutyPoliciesView from "../../Components/OnCallPolicy/OnCallPolicies";
 import TeamElement from "../../Components/Team/Team";
 import UserElement from "../../Components/User/User";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageMap from "../../Utils/PageMap";
 import ProjectUser from "../../Utils/ProjectUser";
 import RouteMap from "../../Utils/RouteMap";
@@ -314,6 +314,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (): ReactElement => {
       <ModelTable<IncidentTemplateOwnerTeam>
         modelType={IncidentTemplateOwnerTeam}
         id="table-incident-owner-team"
+        userPreferencesKey="incident-owner-team-table"
         name="Incident Template > Owner Team"
         singularName="Team"
         isDeleteable={true}
@@ -323,13 +324,13 @@ const TeamView: FunctionComponent<PageComponentProps> = (): ReactElement => {
         showViewIdButton={true}
         query={{
           incidentTemplateId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(
           item: IncidentTemplateOwnerTeam,
         ): Promise<IncidentTemplateOwnerTeam> => {
           item.incidentTemplateId = modelId;
-          item.projectId = DashboardNavigation.getProjectId()!;
+          item.projectId = ProjectUtil.getCurrentProjectId()!;
           return Promise.resolve(item);
         }}
         cardProps={{
@@ -401,6 +402,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (): ReactElement => {
         modelType={IncidentTemplateOwnerUser}
         id="table-incident-owner-team"
         name="Incident > Owner Team"
+        userPreferencesKey="incident-owner-user-table"
         isDeleteable={true}
         singularName="User"
         isCreateable={true}
@@ -409,13 +411,13 @@ const TeamView: FunctionComponent<PageComponentProps> = (): ReactElement => {
         createVerb={"Add"}
         query={{
           incidentTemplateId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(
           item: IncidentTemplateOwnerUser,
         ): Promise<IncidentTemplateOwnerUser> => {
           item.incidentTemplateId = modelId;
-          item.projectId = DashboardNavigation.getProjectId()!;
+          item.projectId = ProjectUtil.getCurrentProjectId()!;
           return Promise.resolve(item);
         }}
         cardProps={{
@@ -437,7 +439,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (): ReactElement => {
             placeholder: "Select User",
             fetchDropdownOptions: async () => {
               return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-                DashboardNavigation.getProjectId()!,
+                ProjectUtil.getCurrentProjectId()!,
               );
             },
           },

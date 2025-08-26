@@ -3,7 +3,7 @@
 #
 
 # Pull base image nodejs image.
-FROM public.ecr.aws/docker/library/node:21.7.3-alpine3.18
+FROM public.ecr.aws/docker/library/node:23.8-alpine3.21
 RUN mkdir /tmp/npm &&  chmod 2777 /tmp/npm && chown 1000:1000 /tmp/npm && npm config set cache /tmp/npm --global
 
 RUN npm config set fetch-retries 5
@@ -61,6 +61,8 @@ CMD [ "npm", "run", "dev" ]
 COPY ./Workflow /usr/src/app
 # Bundle app source
 RUN npm run compile
+# Set permission to write logs and cache in case container run as non root
+RUN chown -R 1000:1000 "/tmp/npm" && chmod -R 2777 "/tmp/npm"
 #Run the app
 CMD [ "npm", "start" ]
 {{ end }}

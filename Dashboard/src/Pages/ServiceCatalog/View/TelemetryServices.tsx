@@ -12,7 +12,7 @@ import React, {
 import TelemetryServicesTable from "../../../Components/TelemetryService/TelemetryServiceTable";
 import { PromiseVoidFunction } from "Common/Types/FunctionTypes";
 import ModelAPI from "Common/UI/Utils/ModelAPI/ModelAPI";
-import ListResult from "Common/UI/Utils/BaseDatabase/ListResult";
+import ListResult from "Common/Types/BaseDatabase/ListResult";
 import { LIMIT_PER_PROJECT } from "Common/Types/Database/LimitMax";
 import API from "Common/UI/Utils/API/API";
 import ErrorMessage from "Common/UI/Components/ErrorMessage/ErrorMessage";
@@ -23,9 +23,9 @@ import TelemetryService from "Common/Models/DatabaseModels/TelemetryService";
 import ConfirmModal from "Common/UI/Components/Modal/ConfirmModal";
 import IconProp from "Common/Types/Icon/IconProp";
 import ModelFormModal from "Common/UI/Components/ModelFormModal/ModelFormModal";
-import DashboardNavigation from "../../../Utils/Navigation";
 import { FormType } from "Common/UI/Components/Forms/ModelForm";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
+import ProjectUtil from "Common/UI/Utils/Project";
 
 const ServiceCatalogTelemetryServices: FunctionComponent<
   PageComponentProps
@@ -86,7 +86,7 @@ const ServiceCatalogTelemetryServices: FunctionComponent<
   }, []);
 
   if (error) {
-    return <ErrorMessage error={error} />;
+    return <ErrorMessage message={error} />;
   }
 
   if (isLoading) {
@@ -216,7 +216,7 @@ const ServiceCatalogTelemetryServices: FunctionComponent<
           ) => {
             serviceCatalogTelemetryService.serviceCatalogId = modelId;
             serviceCatalogTelemetryService.projectId =
-              DashboardNavigation.getProjectId()!;
+              ProjectUtil.getCurrentProjectId()!;
             return Promise.resolve(serviceCatalogTelemetryService);
           }}
           formProps={{

@@ -8,6 +8,7 @@ import Realtime from "Common/Server/Utils/Realtime";
 import PostgresAppInstance from "Common/Server/Infrastructure/PostgresDatabase";
 import Redis from "Common/Server/Infrastructure/Redis";
 import { ClickhouseAppInstance } from "Common/Server/Infrastructure/ClickhouseDatabase";
+import { WORKER_CONCURRENCY } from "./Config";
 import "ejs";
 
 const APP_NAME: string = "worker";
@@ -22,6 +23,8 @@ const init: PromiseVoidFunction = async (): Promise<void> => {
     });
 
     logger.debug("Telemetry initialized");
+
+    logger.info(`Worker Service - Queue concurrency: ${WORKER_CONCURRENCY}`);
 
     const statusCheck: PromiseVoidFunction = async (): Promise<void> => {
       // Check the status of infrastructure components
@@ -66,15 +69,15 @@ const init: PromiseVoidFunction = async (): Promise<void> => {
 
     logger.debug("Realtime initialized");
 
-    // Add default routes to the app
-    await App.addDefaultRoutes();
-
-    logger.debug("Default routes added");
-
-    // Initialize home routes at the end since it has a catch-all route
+    // Register worker routes (must be before default 404 catch-alls)
     await WorkerRoutes.init();
 
     logger.debug("Routes initialized");
+
+    // Add default routes to the app (catch-alls should be last)
+    await App.addDefaultRoutes();
+
+    logger.debug("Default routes added");
 
     logger.info("Worker Initialized Successfully");
   } catch (err) {

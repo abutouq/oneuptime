@@ -21,12 +21,12 @@ import ObjectID from "../../Types/ObjectID";
 import PositiveNumber from "../../Types/PositiveNumber";
 import Typeof from "../../Types/Typeof";
 import UserNotificationEventType from "../../Types/UserNotification/UserNotificationEventType";
-import Model from "Common/Models/DatabaseModels/Alert";
-import AlertOwnerTeam from "Common/Models/DatabaseModels/AlertOwnerTeam";
-import AlertOwnerUser from "Common/Models/DatabaseModels/AlertOwnerUser";
-import AlertState from "Common/Models/DatabaseModels/AlertState";
-import AlertStateTimeline from "Common/Models/DatabaseModels/AlertStateTimeline";
-import User from "Common/Models/DatabaseModels/User";
+import Model from "../../Models/DatabaseModels/Alert";
+import AlertOwnerTeam from "../../Models/DatabaseModels/AlertOwnerTeam";
+import AlertOwnerUser from "../../Models/DatabaseModels/AlertOwnerUser";
+import AlertState from "../../Models/DatabaseModels/AlertState";
+import AlertStateTimeline from "../../Models/DatabaseModels/AlertStateTimeline";
+import User from "../../Models/DatabaseModels/User";
 import { IsBillingEnabled } from "../EnvironmentConfig";
 import TelemetryType from "../../Types/Telemetry/TelemetryType";
 import logger from "../Utils/Logger";
@@ -38,6 +38,23 @@ import Metric, {
   ServiceType,
 } from "../../Models/AnalyticsModels/Metric";
 import AlertMetricType from "../../Types/Alerts/AlertMetricType";
+import AlertFeedService from "./AlertFeedService";
+import { AlertFeedEventType } from "../../Models/DatabaseModels/AlertFeed";
+import { Gray500, Red500 } from "../../Types/BrandColors";
+import Label from "../../Models/DatabaseModels/Label";
+import LabelService from "./LabelService";
+import AlertSeverity from "../../Models/DatabaseModels/AlertSeverity";
+import AlertSeverityService from "./AlertSeverityService";
+import WorkspaceType from "../../Types/Workspace/WorkspaceType";
+import NotificationRuleWorkspaceChannel from "../../Types/Workspace/NotificationRules/NotificationRuleWorkspaceChannel";
+import AlertWorkspaceMessages from "../Utils/Workspace/WorkspaceMessages/Alert";
+import Monitor from "../../Models/DatabaseModels/Monitor";
+import MonitorService from "./MonitorService";
+import { MessageBlocksByWorkspaceType } from "./WorkspaceNotificationRuleService";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
+import MetricType from "../../Models/DatabaseModels/MetricType";
+import Dictionary from "../../Types/Dictionary";
+import OnCallDutyPolicy from "../../Models/DatabaseModels/OnCallDutyPolicy";
 
 export class Service extends DatabaseService<Model> {
   public constructor() {
@@ -47,6 +64,7 @@ export class Service extends DatabaseService<Model> {
     }
   }
 
+  @CaptureSpan()
   public async isAlertAcknowledged(data: {
     alertId: ObjectID;
   }): Promise<boolean> {
@@ -70,7 +88,7 @@ export class Service extends DatabaseService<Model> {
     }
 
     if (!alert.projectId) {
-      throw new BadDataException("Incient Project ID not found");
+      throw new BadDataException("Alert Project ID not found");
     }
 
     const ackAlertState: AlertState =
@@ -91,6 +109,34 @@ export class Service extends DatabaseService<Model> {
     return false;
   }
 
+  @CaptureSpan()
+  public async getExistingAlertNumberForProject(data: {
+    projectId: ObjectID;
+  }): Promise<number> {
+    // get last alert number.
+    const lastAlert: Model | null = await this.findOneBy({
+      query: {
+        projectId: data.projectId,
+      },
+      select: {
+        alertNumber: true,
+      },
+      sort: {
+        createdAt: SortOrder.Descending,
+      },
+      props: {
+        isRoot: true,
+      },
+    });
+
+    if (!lastAlert) {
+      return 0;
+    }
+
+    return lastAlert.alertNumber ? Number(lastAlert.alertNumber) : 0;
+  }
+
+  @CaptureSpan()
   public async acknowledgeAlert(
     alertId: ObjectID,
     acknowledgedByUserId: ObjectID,
@@ -142,6 +188,7 @@ export class Service extends DatabaseService<Model> {
     });
   }
 
+  @CaptureSpan()
   protected override async onBeforeCreate(
     createBy: CreateBy<Model>,
   ): Promise<OnCreate<Model>> {
@@ -149,9 +196,12 @@ export class Service extends DatabaseService<Model> {
       throw new BadDataException("ProjectId required to create alert.");
     }
 
+    const projectId: ObjectID =
+      createBy.props.tenantId || createBy.data.projectId!;
+
     const alertState: AlertState | null = await AlertStateService.findOneBy({
       query: {
-        projectId: createBy.props.tenantId || createBy.data.projectId!,
+        projectId: projectId,
         isCreatedState: true,
       },
       select: {
@@ -170,6 +220,13 @@ export class Service extends DatabaseService<Model> {
 
     createBy.data.currentAlertStateId = alertState.id;
 
+    const alertNumberForThisAlert: number =
+      (await this.getExistingAlertNumberForProject({
+        projectId: projectId,
+      })) + 1;
+
+    createBy.data.alertNumber = alertNumberForThisAlert;
+
     if (
       (createBy.data.createdByUserId ||
         createBy.data.createdByUser ||
@@ -186,28 +243,20 @@ export class Service extends DatabaseService<Model> {
         userId = createBy.data.createdByUser.id;
       }
 
-      const user: User | null = await UserService.findOneBy({
-        query: {
-          _id: userId?.toString() as string,
-        },
-        select: {
-          _id: true,
-          name: true,
-          email: true,
-        },
-        props: {
-          isRoot: true,
-        },
-      });
-
-      if (user) {
-        createBy.data.rootCause = `Alert created by ${user.name} (${user.email})`;
+      if (userId) {
+        createBy.data.rootCause = `Alert created by ${await UserService.getUserMarkdownString(
+          {
+            userId: userId!,
+            projectId: projectId,
+          },
+        )}`;
       }
     }
 
     return { createBy, carryForward: null };
   }
 
+  @CaptureSpan()
   protected override async onCreateSuccess(
     onCreate: OnCreate<Model>,
     createdItem: Model,
@@ -224,55 +273,322 @@ export class Service extends DatabaseService<Model> {
       throw new BadDataException("currentAlertStateId is required");
     }
 
-    await this.changeAlertState({
-      projectId: createdItem.projectId,
-      alertId: createdItem.id,
-      alertStateId: createdItem.currentAlertStateId,
-      notifyOwners: false,
-      rootCause: createdItem.rootCause,
-      stateChangeLog: createdItem.createdStateLog,
+    // Get alert data for feed creation
+    const alert: Model | null = await this.findOneById({
+      id: createdItem.id,
+      select: {
+        projectId: true,
+        alertNumber: true,
+        title: true,
+        description: true,
+        alertSeverity: {
+          name: true,
+        },
+        rootCause: true,
+        remediationNotes: true,
+        currentAlertState: {
+          name: true,
+        },
+        labels: {
+          name: true,
+        },
+        monitor: {
+          name: true,
+          _id: true,
+        },
+      },
       props: {
         isRoot: true,
       },
     });
 
-    // add owners.
+    if (!alert) {
+      throw new BadDataException("Alert not found");
+    }
 
+    // Execute core operations in parallel first
+    const coreOperations: Array<Promise<any>> = [];
+
+    // Create feed item asynchronously
+    coreOperations.push(this.createAlertFeedAsync(alert, createdItem));
+
+    // Handle state change asynchronously
+    coreOperations.push(this.handleAlertStateChangeAsync(createdItem));
+
+    // Handle owner assignment asynchronously
     if (
       onCreate.createBy.miscDataProps &&
       (onCreate.createBy.miscDataProps["ownerTeams"] ||
         onCreate.createBy.miscDataProps["ownerUsers"])
     ) {
-      await this.addOwners(
-        createdItem.projectId,
-        createdItem.id,
-        (onCreate.createBy.miscDataProps["ownerUsers"] as Array<ObjectID>) ||
-          [],
-        (onCreate.createBy.miscDataProps["ownerTeams"] as Array<ObjectID>) ||
-          [],
-        false,
-        onCreate.createBy.props,
+      coreOperations.push(
+        this.addOwners(
+          createdItem.projectId,
+          createdItem.id,
+          (onCreate.createBy.miscDataProps["ownerUsers"] as Array<ObjectID>) ||
+            [],
+          (onCreate.createBy.miscDataProps["ownerTeams"] as Array<ObjectID>) ||
+            [],
+          false,
+          onCreate.createBy.props,
+        ),
       );
     }
 
-    if (
-      createdItem.onCallDutyPolicies?.length &&
-      createdItem.onCallDutyPolicies?.length > 0
-    ) {
-      for (const policy of createdItem.onCallDutyPolicies) {
-        await OnCallDutyPolicyService.executePolicy(
-          new ObjectID(policy._id as string),
-          {
-            triggeredByAlertId: createdItem.id!,
-            userNotificationEventType: UserNotificationEventType.AlertCreated,
-          },
+    // Execute core operations in parallel with error handling
+    Promise.allSettled(coreOperations)
+      .then((coreResults: any[]) => {
+        // Log any errors from core operations
+        coreResults.forEach((result: any, index: number) => {
+          if (result.status === "rejected") {
+            logger.error(
+              `Core operation ${index} failed in AlertService.onCreateSuccess: ${result.reason}`,
+            );
+          }
+        });
+
+        // Handle on-call duty policies asynchronously
+        if (
+          createdItem.onCallDutyPolicies?.length &&
+          createdItem.onCallDutyPolicies?.length > 0
+        ) {
+          this.executeAlertOnCallDutyPoliciesAsync(createdItem).catch(
+            (error: Error) => {
+              logger.error(
+                `On-call duty policy execution failed in AlertService.onCreateSuccess: ${error}`,
+              );
+            },
+          );
+        }
+
+        // Handle workspace operations after core operations complete
+        if (createdItem.projectId && createdItem.id) {
+          // Run workspace operations in background without blocking response
+          this.handleAlertWorkspaceOperationsAsync(createdItem).catch(
+            (error: Error) => {
+              logger.error(
+                `Workspace operations failed in AlertService.onCreateSuccess: ${error}`,
+              );
+            },
+          );
+        }
+      })
+      .catch((error: Error) => {
+        logger.error(
+          `Critical error in AlertService core operations: ${error}`,
         );
-      }
-    }
+      });
 
     return createdItem;
   }
 
+  @CaptureSpan()
+  private async handleAlertWorkspaceOperationsAsync(
+    createdItem: Model,
+  ): Promise<void> {
+    try {
+      if (!createdItem.projectId || !createdItem.id) {
+        throw new BadDataException(
+          "projectId and id are required for workspace operations",
+        );
+      }
+
+      // send message to workspaces - slack, teams, etc.
+      const workspaceResult: {
+        channelsCreated: Array<NotificationRuleWorkspaceChannel>;
+      } | null =
+        await AlertWorkspaceMessages.createChannelsAndInviteUsersToChannels({
+          projectId: createdItem.projectId,
+          alertId: createdItem.id,
+          alertNumber: createdItem.alertNumber!,
+        });
+
+      logger.debug("Alert created. Workspace result:");
+      logger.debug(workspaceResult);
+
+      if (workspaceResult && workspaceResult.channelsCreated?.length > 0) {
+        // update alert with these channels.
+        await this.updateOneById({
+          id: createdItem.id,
+          data: {
+            postUpdatesToWorkspaceChannels:
+              workspaceResult.channelsCreated || [],
+          },
+          props: {
+            isRoot: true,
+          },
+        });
+      }
+    } catch (error) {
+      logger.error(`Error in handleAlertWorkspaceOperationsAsync: ${error}`);
+      throw error;
+    }
+  }
+
+  @CaptureSpan()
+  private async createAlertFeedAsync(
+    alert: Model,
+    createdItem: Model,
+  ): Promise<void> {
+    try {
+      const createdByUserId: ObjectID | undefined | null =
+        createdItem.createdByUserId || createdItem.createdByUser?.id;
+
+      let feedInfoInMarkdown: string = `#### 🚨 Alert ${createdItem.alertNumber?.toString()} Created: 
+           
+**${createdItem.title || "No title provided."}**:
+     
+${createdItem.description || "No description provided."}
+     
+     `;
+
+      if (alert.currentAlertState?.name) {
+        feedInfoInMarkdown += `🔴 **Alert State**: ${alert.currentAlertState.name} \n\n`;
+      }
+
+      if (alert.alertSeverity?.name) {
+        feedInfoInMarkdown += `⚠️ **Severity**: ${alert.alertSeverity.name} \n\n`;
+      }
+
+      if (alert.monitor) {
+        feedInfoInMarkdown += `🌎 **Resources Affected**:\n`;
+
+        const monitor: Monitor = alert.monitor;
+        feedInfoInMarkdown += `- [${monitor.name}](${(await MonitorService.getMonitorLinkInDashboard(createdItem.projectId!, monitor.id!)).toString()})\n`;
+
+        feedInfoInMarkdown += `\n\n`;
+      }
+
+      if (createdItem.rootCause) {
+        feedInfoInMarkdown += `\n
+📄 **Root Cause**:
+     
+${createdItem.rootCause || "No root cause provided."}
+     
+`;
+      }
+
+      if (createdItem.remediationNotes) {
+        feedInfoInMarkdown += `\n 
+🎯 **Remediation Notes**:
+     
+${createdItem.remediationNotes || "No remediation notes provided."}
+     
+     
+     `;
+      }
+
+      const alertCreateMessageBlocks: Array<MessageBlocksByWorkspaceType> =
+        await AlertWorkspaceMessages.getAlertCreateMessageBlocks({
+          alertId: createdItem.id!,
+          projectId: createdItem.projectId!,
+        });
+
+      await AlertFeedService.createAlertFeedItem({
+        alertId: createdItem.id!,
+        projectId: createdItem.projectId!,
+        alertFeedEventType: AlertFeedEventType.AlertCreated,
+        displayColor: Red500,
+        feedInfoInMarkdown: feedInfoInMarkdown,
+        userId: createdByUserId || undefined,
+        workspaceNotification: {
+          appendMessageBlocks: alertCreateMessageBlocks,
+          sendWorkspaceNotification: true,
+        },
+      });
+    } catch (error) {
+      logger.error(`Error in createAlertFeedAsync: ${error}`);
+      throw error;
+    }
+  }
+
+  @CaptureSpan()
+  private async handleAlertStateChangeAsync(createdItem: Model): Promise<void> {
+    try {
+      if (!createdItem.projectId || !createdItem.id) {
+        throw new BadDataException(
+          "projectId and id are required for state change",
+        );
+      }
+
+      await this.changeAlertState({
+        projectId: createdItem.projectId,
+        alertId: createdItem.id,
+        alertStateId: createdItem.currentAlertStateId!,
+        notifyOwners: false,
+        rootCause: createdItem.rootCause,
+        stateChangeLog: createdItem.createdStateLog,
+        props: {
+          isRoot: true,
+        },
+      });
+    } catch (error) {
+      logger.error(`Error in handleAlertStateChangeAsync: ${error}`);
+      throw error;
+    }
+  }
+
+  @CaptureSpan()
+  private async executeAlertOnCallDutyPoliciesAsync(
+    createdItem: Model,
+  ): Promise<void> {
+    try {
+      if (
+        createdItem.onCallDutyPolicies?.length &&
+        createdItem.onCallDutyPolicies?.length > 0
+      ) {
+        // Execute all on-call policies in parallel
+        const policyPromises: Promise<void>[] =
+          createdItem.onCallDutyPolicies.map((policy: OnCallDutyPolicy) => {
+            return OnCallDutyPolicyService.executePolicy(
+              new ObjectID(policy["_id"] as string),
+              {
+                triggeredByAlertId: createdItem.id!,
+                userNotificationEventType:
+                  UserNotificationEventType.AlertCreated,
+              },
+            );
+          });
+
+        await Promise.allSettled(policyPromises);
+      }
+    } catch (error) {
+      logger.error(`Error in executeAlertOnCallDutyPoliciesAsync: ${error}`);
+      throw error;
+    }
+  }
+
+  @CaptureSpan()
+  public async getWorkspaceChannelForAlert(data: {
+    alertId: ObjectID;
+    workspaceType?: WorkspaceType | null;
+  }): Promise<Array<NotificationRuleWorkspaceChannel>> {
+    const alert: Model | null = await this.findOneById({
+      id: data.alertId,
+      select: {
+        postUpdatesToWorkspaceChannels: true,
+      },
+      props: {
+        isRoot: true,
+      },
+    });
+
+    if (!alert) {
+      throw new BadDataException("Alert not found.");
+    }
+
+    return (alert.postUpdatesToWorkspaceChannels || []).filter(
+      (channel: NotificationRuleWorkspaceChannel) => {
+        if (!data.workspaceType) {
+          return true;
+        }
+
+        return channel.workspaceType === data.workspaceType;
+      },
+    );
+  }
+
+  @CaptureSpan()
   public async getAlertIdentifiedDate(alertId: ObjectID): Promise<Date> {
     const timeline: AlertStateTimeline | null =
       await AlertStateTimelineService.findOneBy({
@@ -297,6 +613,7 @@ export class Service extends DatabaseService<Model> {
     return timeline.startsAt;
   }
 
+  @CaptureSpan()
   public async findOwners(alertId: ObjectID): Promise<Array<User>> {
     if (!alertId) {
       throw new BadDataException("alertId is required");
@@ -370,6 +687,7 @@ export class Service extends DatabaseService<Model> {
     return users;
   }
 
+  @CaptureSpan()
   public async addOwners(
     projectId: ObjectID,
     alertId: ObjectID,
@@ -411,6 +729,7 @@ export class Service extends DatabaseService<Model> {
     }
   }
 
+  @CaptureSpan()
   public async getAlertLinkInDashboard(
     projectId: ObjectID,
     alertId: ObjectID,
@@ -422,6 +741,7 @@ export class Service extends DatabaseService<Model> {
     );
   }
 
+  @CaptureSpan()
   protected override async onUpdateSuccess(
     onUpdate: OnUpdate<Model>,
     updatedItemIds: ObjectID[],
@@ -445,9 +765,162 @@ export class Service extends DatabaseService<Model> {
       }
     }
 
+    if (updatedItemIds.length > 0) {
+      for (const alertId of updatedItemIds) {
+        let shouldAddAlertFeed: boolean = false;
+
+        const alert: Model | null = await this.findOneById({
+          id: alertId,
+          select: {
+            projectId: true,
+            alertNumber: true,
+          },
+          props: {
+            isRoot: true,
+          },
+        });
+
+        const projectId: ObjectID = alert!.projectId!;
+        const alertNumber: number = alert!.alertNumber!;
+
+        let feedInfoInMarkdown: string = `**[Alert ${alertNumber}](${(await this.getAlertLinkInDashboard(projectId!, alertId!)).toString()}) was updated.**`;
+
+        const createdByUserId: ObjectID | undefined | null =
+          onUpdate.updateBy.props.userId;
+
+        if (onUpdate.updateBy.data.title) {
+          // add alert feed.
+
+          feedInfoInMarkdown += `\n\n**Title**: 
+${onUpdate.updateBy.data.title || "No title provided."}
+`;
+          shouldAddAlertFeed = true;
+        }
+
+        if (onUpdate.updateBy.data.rootCause) {
+          if (onUpdate.updateBy.data.title) {
+            // add alert feed.
+
+            feedInfoInMarkdown += `\n\n**📄 Root Cause**: 
+${onUpdate.updateBy.data.rootCause || "No root cause provided."}
+  `;
+            shouldAddAlertFeed = true;
+          }
+        }
+
+        if (onUpdate.updateBy.data.description) {
+          // add alert feed.
+
+          feedInfoInMarkdown += `\n\n**Alert Description**: 
+          ${onUpdate.updateBy.data.description || "No description provided."}
+          `;
+          shouldAddAlertFeed = true;
+        }
+
+        if (onUpdate.updateBy.data.remediationNotes) {
+          // add alert feed.
+
+          feedInfoInMarkdown += `\n\n**🎯 Remediation Notes**: 
+${onUpdate.updateBy.data.remediationNotes || "No remediation notes provided."}
+        `;
+          shouldAddAlertFeed = true;
+        }
+
+        if (
+          onUpdate.updateBy.data.labels &&
+          onUpdate.updateBy.data.labels.length > 0 &&
+          Array.isArray(onUpdate.updateBy.data.labels)
+        ) {
+          const labelIds: Array<ObjectID> = (
+            onUpdate.updateBy.data.labels as any
+          )
+            .map((label: Label) => {
+              if (label._id) {
+                return new ObjectID(label._id?.toString());
+              }
+
+              return null;
+            })
+            .filter((labelId: ObjectID | null) => {
+              return labelId !== null;
+            });
+
+          const labels: Array<Label> = await LabelService.findBy({
+            query: {
+              _id: QueryHelper.any(labelIds),
+            },
+            select: {
+              name: true,
+            },
+            limit: LIMIT_PER_PROJECT,
+            skip: 0,
+            props: {
+              isRoot: true,
+            },
+          });
+
+          if (labels.length > 0) {
+            feedInfoInMarkdown += `\n\n**🏷️ Labels**:
+
+${labels
+  .map((label: Label) => {
+    return `- ${label.name}`;
+  })
+  .join("\n")}
+`;
+
+            shouldAddAlertFeed = true;
+          }
+        }
+
+        if (
+          onUpdate.updateBy.data.alertSeverity &&
+          (onUpdate.updateBy.data.alertSeverity as any)._id
+        ) {
+          const alertSeverity: AlertSeverity | null =
+            await AlertSeverityService.findOneBy({
+              query: {
+                _id: new ObjectID(
+                  (onUpdate.updateBy.data.alertSeverity as any)?._id.toString(),
+                ),
+              },
+              select: {
+                name: true,
+              },
+              props: {
+                isRoot: true,
+              },
+            });
+
+          if (alertSeverity) {
+            feedInfoInMarkdown += `\n\n**⚠️ Alert Severity**:
+${alertSeverity.name}
+`;
+
+            shouldAddAlertFeed = true;
+          }
+        }
+
+        if (shouldAddAlertFeed) {
+          await AlertFeedService.createAlertFeedItem({
+            alertId: alertId,
+            projectId: onUpdate.updateBy.props.tenantId as ObjectID,
+            alertFeedEventType: AlertFeedEventType.AlertUpdated,
+            displayColor: Gray500,
+            feedInfoInMarkdown: feedInfoInMarkdown,
+            userId: createdByUserId || undefined,
+            workspaceNotification: {
+              sendWorkspaceNotification: true,
+            },
+          });
+        }
+      }
+    }
+
     return onUpdate;
   }
 
+  @CaptureSpan()
   public async doesMonitorHasMoreActiveManualAlerts(
     monitorId: ObjectID,
     proojectId: ObjectID,
@@ -482,6 +955,7 @@ export class Service extends DatabaseService<Model> {
     return alertCount.toNumber() > 0;
   }
 
+  @CaptureSpan()
   protected override async onBeforeDelete(
     deleteBy: DeleteBy<Model>,
   ): Promise<OnDelete<Model>> {
@@ -508,6 +982,7 @@ export class Service extends DatabaseService<Model> {
     };
   }
 
+  @CaptureSpan()
   public async changeAlertState(data: {
     projectId: ObjectID;
     alertId: ObjectID;
@@ -575,6 +1050,7 @@ export class Service extends DatabaseService<Model> {
     });
   }
 
+  @CaptureSpan()
   public async refreshAlertMetrics(data: { alertId: ObjectID }): Promise<void> {
     const alert: Model | null = await this.findOneById({
       id: data.alertId,
@@ -585,8 +1061,8 @@ export class Service extends DatabaseService<Model> {
           name: true,
         },
         alertSeverity: {
-          name: true,
           _id: true,
+          name: true,
         },
       },
       props: {
@@ -599,11 +1075,10 @@ export class Service extends DatabaseService<Model> {
     }
 
     if (!alert.projectId) {
-      throw new BadDataException("Incient Project ID not found");
+      throw new BadDataException("Alert Project ID not found");
     }
 
     // get alert state timeline
-
     const alertStateTimelines: Array<AlertStateTimeline> =
       await AlertStateTimelineService.findBy({
         query: {
@@ -632,8 +1107,7 @@ export class Service extends DatabaseService<Model> {
     const firstAlertStateTimeline: AlertStateTimeline | undefined =
       alertStateTimelines[0];
 
-    // delete all the alert metrics with this alert id because its a refresh.
-
+    // delete all the alert metrics with this alert id because it's a refresh
     await MetricService.deleteBy({
       query: {
         serviceId: data.alertId,
@@ -644,9 +1118,9 @@ export class Service extends DatabaseService<Model> {
     });
 
     const itemsToSave: Array<Metric> = [];
+    const metricTypesMap: Dictionary<MetricType> = {};
 
     // now we need to create new metrics for this alert - TimeToAcknowledge, TimeToResolve, AlertCount, AlertDuration
-
     const alertStartsAt: Date =
       firstAlertStateTimeline?.startsAt ||
       alert.createdAt ||
@@ -658,16 +1132,14 @@ export class Service extends DatabaseService<Model> {
     alertCountMetric.serviceId = alert.id!;
     alertCountMetric.serviceType = ServiceType.Alert;
     alertCountMetric.name = AlertMetricType.AlertCount;
-    alertCountMetric.description = "Number of alerts created";
     alertCountMetric.value = 1;
-    alertCountMetric.unit = "";
     alertCountMetric.attributes = {
       alertId: data.alertId.toString(),
       projectId: alert.projectId.toString(),
-      monitorId: alert.monitor?.id!.toString() || "",
-      monitorName: alert.monitor?.name!.toString() || "",
-      alertSeverityId: alert.alertSeverity?.id!.toString() || "",
-      alertSeverityName: alert.alertSeverity?.name!.toString() || "",
+      monitorId: alert.monitor?._id?.toString(),
+      monitorName: alert.monitor?.name?.toString(),
+      alertSeverityId: alert.alertSeverity?._id?.toString(),
+      alertSeverityName: alert.alertSeverity?.name?.toString(),
     };
 
     alertCountMetric.time = alertStartsAt;
@@ -677,6 +1149,13 @@ export class Service extends DatabaseService<Model> {
     alertCountMetric.metricPointType = MetricPointType.Sum;
 
     itemsToSave.push(alertCountMetric);
+
+    const metricType: MetricType = new MetricType();
+    metricType.name = alertCountMetric.name;
+    metricType.description = "Number of alerts created";
+    metricType.unit = "";
+    metricType.telemetryServices = [];
+    metricTypesMap[alertCountMetric.name] = metricType;
 
     // is the alert acknowledged?
     const isAlertAcknowledged: boolean = alertStateTimelines.some(
@@ -698,20 +1177,17 @@ export class Service extends DatabaseService<Model> {
         timeToAcknowledgeMetric.serviceId = alert.id!;
         timeToAcknowledgeMetric.serviceType = ServiceType.Alert;
         timeToAcknowledgeMetric.name = AlertMetricType.TimeToAcknowledge;
-        timeToAcknowledgeMetric.description =
-          "Time taken to acknowledge the alert";
         timeToAcknowledgeMetric.value = OneUptimeDate.getDifferenceInSeconds(
           ackAlertStateTimeline?.startsAt || OneUptimeDate.getCurrentDate(),
           alertStartsAt,
         );
-        timeToAcknowledgeMetric.unit = "seconds";
         timeToAcknowledgeMetric.attributes = {
           alertId: data.alertId.toString(),
           projectId: alert.projectId.toString(),
-          monitorId: alert.monitor?.id!.toString() || "",
-          monitorName: alert.monitor?.name!.toString() || "",
-          alertSeverityId: alert.alertSeverity?.id!.toString() || "",
-          alertSeverityName: alert.alertSeverity?.name!.toString() || "",
+          monitorId: alert.monitor?._id?.toString(),
+          monitorName: alert.monitor?.name?.toString(),
+          alertSeverityId: alert.alertSeverity?._id?.toString(),
+          alertSeverityName: alert.alertSeverity?.name?.toString(),
         };
 
         timeToAcknowledgeMetric.time =
@@ -724,6 +1200,12 @@ export class Service extends DatabaseService<Model> {
         timeToAcknowledgeMetric.metricPointType = MetricPointType.Sum;
 
         itemsToSave.push(timeToAcknowledgeMetric);
+
+        const metricType: MetricType = new MetricType();
+        metricType.name = timeToAcknowledgeMetric.name;
+        metricType.description = "Time taken to acknowledge the alert";
+        metricType.unit = "seconds";
+        metricTypesMap[timeToAcknowledgeMetric.name] = metricType;
       }
     }
 
@@ -747,20 +1229,18 @@ export class Service extends DatabaseService<Model> {
         timeToResolveMetric.serviceId = alert.id!;
         timeToResolveMetric.serviceType = ServiceType.Alert;
         timeToResolveMetric.name = AlertMetricType.TimeToResolve;
-        timeToResolveMetric.description = "Time taken to resolve the alert";
         timeToResolveMetric.value = OneUptimeDate.getDifferenceInSeconds(
           resolvedAlertStateTimeline?.startsAt ||
             OneUptimeDate.getCurrentDate(),
           alertStartsAt,
         );
-        timeToResolveMetric.unit = "seconds";
         timeToResolveMetric.attributes = {
           alertId: data.alertId.toString(),
           projectId: alert.projectId.toString(),
-          monitorId: alert.monitor?.id!.toString() || "",
-          monitorName: alert.monitor?.name!.toString() || "",
-          alertSeverityId: alert.alertSeverity?.id!.toString() || "",
-          alertSeverityName: alert.alertSeverity?.name!.toString() || "",
+          monitorId: alert.monitor?._id?.toString(),
+          monitorName: alert.monitor?.name?.toString(),
+          alertSeverityId: alert.alertSeverity?._id?.toString(),
+          alertSeverityName: alert.alertSeverity?.name?.toString(),
         };
 
         timeToResolveMetric.time =
@@ -773,11 +1253,16 @@ export class Service extends DatabaseService<Model> {
         timeToResolveMetric.metricPointType = MetricPointType.Sum;
 
         itemsToSave.push(timeToResolveMetric);
+
+        const metricType: MetricType = new MetricType();
+        metricType.name = timeToResolveMetric.name;
+        metricType.description = "Time taken to resolve the alert";
+        metricType.unit = "seconds";
+        metricTypesMap[timeToResolveMetric.name] = metricType;
       }
     }
 
     // alert duration
-
     const alertDurationMetric: Metric = new Metric();
 
     const lastAlertStateTimeline: AlertStateTimeline | undefined =
@@ -787,25 +1272,21 @@ export class Service extends DatabaseService<Model> {
       const alertEndsAt: Date =
         lastAlertStateTimeline.startsAt || OneUptimeDate.getCurrentDate();
 
-      // save metric.
-
       alertDurationMetric.projectId = alert.projectId;
       alertDurationMetric.serviceId = alert.id!;
       alertDurationMetric.serviceType = ServiceType.Alert;
       alertDurationMetric.name = AlertMetricType.AlertDuration;
-      alertDurationMetric.description = "Duration of the alert";
       alertDurationMetric.value = OneUptimeDate.getDifferenceInSeconds(
         alertEndsAt,
         alertStartsAt,
       );
-      alertDurationMetric.unit = "seconds";
       alertDurationMetric.attributes = {
         alertId: data.alertId.toString(),
         projectId: alert.projectId.toString(),
-        monitorId: alert.monitor?.id!.toString() || "",
-        monitorName: alert.monitor?.name!.toString() || "",
-        alertSeverityId: alert.alertSeverity?.id!.toString() || "",
-        alertSeverityName: alert.alertSeverity?.name!.toString() || "",
+        monitorId: alert.monitor?._id?.toString(),
+        monitorName: alert.monitor?.name?.toString(),
+        alertSeverityId: alert.alertSeverity?._id?.toString(),
+        alertSeverityName: alert.alertSeverity?.name?.toString(),
       };
 
       alertDurationMetric.time =
@@ -816,6 +1297,14 @@ export class Service extends DatabaseService<Model> {
         alertDurationMetric.time,
       );
       alertDurationMetric.metricPointType = MetricPointType.Sum;
+
+      itemsToSave.push(alertDurationMetric);
+
+      const metricType: MetricType = new MetricType();
+      metricType.name = alertDurationMetric.name;
+      metricType.description = "Duration of the alert";
+      metricType.unit = "seconds";
+      metricTypesMap[alertDurationMetric.name] = metricType;
     }
 
     await MetricService.createMany({
@@ -825,14 +1314,193 @@ export class Service extends DatabaseService<Model> {
       },
     });
 
-    // index attributes.
+    // index attributes
     TelemetryUtil.indexAttributes({
-      attributes: ["monitorId", "projectId", "alertId", "monitorNames"],
+      attributes: ["monitorId", "projectId", "alertId", "monitorName"],
       projectId: alert.projectId,
       telemetryType: TelemetryType.Metric,
     }).catch((err: Error) => {
       logger.error(err);
     });
+
+    TelemetryUtil.indexMetricNameServiceNameMap({
+      metricNameServiceNameMap: metricTypesMap,
+      projectId: alert.projectId,
+    }).catch((err: Error) => {
+      logger.error(err);
+    });
+  }
+
+  @CaptureSpan()
+  public async isAlertResolved(data: { alertId: ObjectID }): Promise<boolean> {
+    const alert: Model | null = await this.findOneBy({
+      query: {
+        _id: data.alertId,
+      },
+      select: {
+        projectId: true,
+        currentAlertState: {
+          order: true,
+        },
+      },
+      props: {
+        isRoot: true,
+      },
+    });
+
+    if (!alert) {
+      throw new BadDataException("Alert not found");
+    }
+
+    if (!alert.projectId) {
+      throw new BadDataException("Alert Project ID not found");
+    }
+
+    const resolvedAlertState: AlertState =
+      await AlertStateService.getResolvedAlertState({
+        projectId: alert.projectId,
+        props: {
+          isRoot: true,
+        },
+      });
+
+    const currentAlertStateOrder: number = alert.currentAlertState!.order!;
+    const resolvedAlertStateOrder: number = resolvedAlertState.order!;
+
+    if (currentAlertStateOrder >= resolvedAlertStateOrder) {
+      return true;
+    }
+
+    return false;
+  }
+
+  @CaptureSpan()
+  public async getAlertNumber(data: {
+    alertId: ObjectID;
+  }): Promise<number | null> {
+    const alert: Model | null = await this.findOneById({
+      id: data.alertId,
+      select: {
+        alertNumber: true,
+      },
+      props: {
+        isRoot: true,
+      },
+    });
+
+    if (!alert) {
+      throw new BadDataException("Alert not found.");
+    }
+
+    return alert.alertNumber ? Number(alert.alertNumber) : null;
+  }
+
+  @CaptureSpan()
+  public async resolveAlert(
+    alertId: ObjectID,
+    resolvedByUserId: ObjectID,
+  ): Promise<Model> {
+    const alert: Model | null = await this.findOneById({
+      id: alertId,
+      select: {
+        projectId: true,
+        alertNumber: true,
+      },
+      props: {
+        isRoot: true,
+      },
+    });
+
+    if (!alert || !alert.projectId) {
+      throw new BadDataException("Alert not found.");
+    }
+
+    const alertState: AlertState | null = await AlertStateService.findOneBy({
+      query: {
+        projectId: alert.projectId,
+        isResolvedState: true,
+      },
+      select: {
+        _id: true,
+      },
+      props: {
+        isRoot: true,
+      },
+    });
+
+    if (!alertState || !alertState.id) {
+      throw new BadDataException(
+        "Acknowledged state not found for this project. Please add acknowledged state from settings.",
+      );
+    }
+
+    const alertStateTimeline: AlertStateTimeline = new AlertStateTimeline();
+    alertStateTimeline.projectId = alert.projectId;
+    alertStateTimeline.alertId = alertId;
+    alertStateTimeline.alertStateId = alertState.id;
+    alertStateTimeline.createdByUserId = resolvedByUserId;
+
+    await AlertStateTimelineService.create({
+      data: alertStateTimeline,
+      props: {
+        isRoot: true,
+      },
+    });
+
+    // store alert metric
+
+    return alert;
+  }
+
+  /**
+   * Ensures the currentAlertStateId of the alert matches the latest timeline entry.
+   */
+  public async refreshAlertCurrentStatus(alertId: ObjectID): Promise<void> {
+    const alert: Model | null = await this.findOneById({
+      id: alertId,
+      select: {
+        _id: true,
+        projectId: true,
+        currentAlertStateId: true,
+      },
+      props: { isRoot: true },
+    });
+    if (!alert || !alert.projectId) {
+      return;
+    }
+    const latestTimeline: AlertStateTimeline | null =
+      await AlertStateTimelineService.findOneBy({
+        query: {
+          alertId: alert.id!,
+          projectId: alert.projectId,
+        },
+        sort: {
+          startsAt: SortOrder.Descending,
+        },
+        select: {
+          alertStateId: true,
+        },
+        props: {
+          isRoot: true,
+        },
+      });
+    if (
+      latestTimeline &&
+      latestTimeline.alertStateId &&
+      alert.currentAlertStateId?.toString() !==
+        latestTimeline.alertStateId.toString()
+    ) {
+      await this.updateOneBy({
+        query: { _id: alert.id!.toString() },
+        data: {
+          currentAlertStateId: latestTimeline.alertStateId,
+        },
+        props: { isRoot: true },
+      });
+      logger.info(
+        `Updated Alert ${alert.id} current state to ${latestTimeline.alertStateId}`,
+      );
+    }
   }
 }
 export default new Service();

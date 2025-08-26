@@ -1,6 +1,6 @@
 import Card, { CardButtonSchema } from "../Card/Card";
 import Table, { ComponentProps as TableComponentProps } from "./Table";
-import GenericObject from "Common/Types/GenericObject";
+import GenericObject from "../../../Types/GenericObject";
 import React, { ReactElement } from "react";
 
 export interface ComponentProps<T extends GenericObject> {
@@ -14,7 +14,7 @@ type TableRowFunction = <T extends GenericObject>(
   props: ComponentProps<T>,
 ) => ReactElement;
 
-const TableRow: TableRowFunction = <T extends GenericObject>(
+const TableCard: TableRowFunction = <T extends GenericObject>(
   props: ComponentProps<T>,
 ): ReactElement => {
   return (
@@ -28,4 +28,4 @@ const TableRow: TableRowFunction = <T extends GenericObject>(
   );
 };
 
-export default TableRow;
+export default TableCard;

@@ -1,5 +1,5 @@
 import NotificationMethodView from "../../Components/NotificationMethods/NotificationMethod";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageComponentProps from "../PageComponentProps";
 import { Green, Red, Yellow } from "Common/Types/BrandColors";
 import { ErrorFunction, VoidFunction } from "Common/Types/FunctionTypes";
@@ -34,10 +34,11 @@ const Settings: FunctionComponent<PageComponentProps> = (): ReactElement => {
       <ModelTable<UserOnCallLogTimeline>
         modelType={UserOnCallLogTimeline}
         query={{
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
           userNotificationLogId: modelId.toString(),
           userId: User.getUserId()?.toString(),
         }}
+        userPreferencesKey="user-notification-logs-timeline-table"
         id="notification-logs-timeline-table"
         name="User Settings > Notification Logs > Timeline"
         isDeleteable={false}
@@ -55,6 +56,9 @@ const Settings: FunctionComponent<PageComponentProps> = (): ReactElement => {
           },
           userSms: {
             phone: true,
+          },
+          userPush: {
+            deviceName: true,
           },
         }}
         noItemsMessage={"No notifications sent out so far."}
@@ -126,6 +130,7 @@ const Settings: FunctionComponent<PageComponentProps> = (): ReactElement => {
             },
             title: "Notification Sent At",
             type: FieldType.DateTime,
+            hideOnMobile: true,
           },
           {
             field: {
@@ -151,6 +156,10 @@ const Settings: FunctionComponent<PageComponentProps> = (): ReactElement => {
               } else if (item["status"] === UserNotificationStatus.Error) {
                 return (
                   <Pill color={Yellow} text={UserNotificationStatus.Error} />
+                );
+              } else if (item["status"] === UserNotificationStatus.Sending) {
+                return (
+                  <Pill color={Yellow} text={UserNotificationStatus.Sending} />
                 );
               } else if (item["status"] === UserNotificationStatus.Skipped) {
                 return (

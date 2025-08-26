@@ -1,4 +1,3 @@
-import DashboardNavigation from "../../../Utils/Navigation";
 import PageComponentProps from "../../PageComponentProps";
 import Color from "Common/Types/Color";
 import OneUptimeDate from "Common/Types/Date";
@@ -16,6 +15,7 @@ import SimpleLogViewer from "Common/UI/Components/SimpleLogViewer/SimpleLogViewe
 import FieldType from "Common/UI/Components/Types/FieldType";
 import Navigation from "Common/UI/Utils/Navigation";
 import AlertState from "Common/Models/DatabaseModels/AlertState";
+import ProjectUtil from "Common/UI/Utils/Project";
 import AlertStateTimeline from "Common/Models/DatabaseModels/AlertStateTimeline";
 import React, {
   Fragment,
@@ -23,6 +23,7 @@ import React, {
   ReactElement,
   useState,
 } from "react";
+import SortOrder from "Common/Types/BaseDatabase/SortOrder";
 
 const AlertViewStateTimeline: FunctionComponent<PageComponentProps> = (
   props: PageComponentProps,
@@ -40,6 +41,7 @@ const AlertViewStateTimeline: FunctionComponent<PageComponentProps> = (
         modelType={AlertStateTimeline}
         id="table-alert-status-timeline"
         name="Monitor > State Timeline"
+        userPreferencesKey="alert-status-timeline-table"
         isEditable={false}
         isDeleteable={true}
         isCreateable={true}
@@ -47,7 +49,7 @@ const AlertViewStateTimeline: FunctionComponent<PageComponentProps> = (
         showViewIdButton={true}
         query={{
           alertId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         selectMoreFields={{
           stateChangeLog: true,
@@ -106,6 +108,8 @@ const AlertViewStateTimeline: FunctionComponent<PageComponentProps> = (
           description: "Here is the status timeline for this alert",
         }}
         noItemsMessage={"No status timeline created for this alert so far."}
+        sortBy="startsAt"
+        sortOrder={SortOrder.Descending}
         formFields={[
           {
             field: {
@@ -119,6 +123,18 @@ const AlertViewStateTimeline: FunctionComponent<PageComponentProps> = (
               type: AlertState,
               labelField: "name",
               valueField: "_id",
+            },
+          },
+          {
+            field: {
+              startsAt: true,
+            },
+            title: "Starts At",
+            fieldType: FormFieldSchemaType.DateTime,
+            required: true,
+            placeholder: "Starts At",
+            getDefaultValue: () => {
+              return OneUptimeDate.getCurrentDate();
             },
           },
         ]}
@@ -135,7 +151,7 @@ const AlertViewStateTimeline: FunctionComponent<PageComponentProps> = (
             type: FieldType.Entity,
             filterEntityType: AlertState,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -144,7 +160,7 @@ const AlertViewStateTimeline: FunctionComponent<PageComponentProps> = (
           },
           {
             field: {
-              createdAt: true,
+              startsAt: true,
             },
             title: "Starts At",
             type: FieldType.Date,
@@ -183,7 +199,7 @@ const AlertViewStateTimeline: FunctionComponent<PageComponentProps> = (
           },
           {
             field: {
-              createdAt: true,
+              startsAt: true,
             },
             title: "Starts At",
             type: FieldType.DateTime,
@@ -206,7 +222,7 @@ const AlertViewStateTimeline: FunctionComponent<PageComponentProps> = (
               return (
                 <p>
                   {OneUptimeDate.differenceBetweenTwoDatesAsFromattedString(
-                    item["createdAt"] as Date,
+                    item["startsAt"] as Date,
                     (item["endsAt"] as Date) || OneUptimeDate.getCurrentDate(),
                   )}
                 </p>

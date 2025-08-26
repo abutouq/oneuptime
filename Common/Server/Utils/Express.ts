@@ -1,18 +1,19 @@
 import logger from "./Logger";
-import Dictionary from "Common/Types/Dictionary";
-import GenericFunction from "Common/Types/GenericFunction";
-import { JSONObject, JSONObjectOrArray } from "Common/Types/JSON";
-import JSONWebTokenData from "Common/Types/JsonWebTokenData";
-import ObjectID from "Common/Types/ObjectID";
+import Dictionary from "../../Types/Dictionary";
+import GenericFunction from "../../Types/GenericFunction";
+import { JSONObject, JSONObjectOrArray } from "../../Types/JSON";
+import JSONWebTokenData from "../../Types/JsonWebTokenData";
+import ObjectID from "../../Types/ObjectID";
 import {
   UserGlobalAccessPermission,
   UserTenantAccessPermission,
-} from "Common/Types/Permission";
-import Port from "Common/Types/Port";
-import UserType from "Common/Types/UserType";
+} from "../../Types/Permission";
+import Port from "../../Types/Port";
+import UserType from "../../Types/UserType";
 import "ejs";
 import express from "express";
 import { Server, createServer } from "http";
+import CaptureSpan from "./Telemetry/CaptureSpan";
 
 export type RequestHandler = express.RequestHandler;
 export type NextFunction = express.NextFunction;
@@ -37,7 +38,8 @@ export interface OneUptimeRequest extends express.Request {
   userAuthorization?: JSONWebTokenData;
   tenantId?: ObjectID;
   userGlobalAccessPermission?: UserGlobalAccessPermission;
-  userTenantAccessPermission?: Dictionary<UserTenantAccessPermission>; // tenantId <-> UserTenantAccessPermission
+  userTenantAccessPermission?: Dictionary<UserTenantAccessPermission>; // tenantId <-> UserTenantAccessPermission;
+  rawFormUrlEncodedBody?: string;
 }
 
 export interface OneUptimeResponse extends express.Response {
@@ -48,18 +50,22 @@ class Express {
   private static app: express.Application;
   private static httpServer: Server;
 
+  @CaptureSpan()
   public static getRouter(): express.Router {
     return express.Router();
   }
 
+  @CaptureSpan()
   public static setupExpress(): void {
     this.app = express();
   }
 
+  @CaptureSpan()
   public static getHttpServer(): Server {
     return this.httpServer;
   }
 
+  @CaptureSpan()
   public static getExpressApp(): express.Application {
     if (!this.app) {
       this.setupExpress();
@@ -68,6 +74,7 @@ class Express {
     return this.app;
   }
 
+  @CaptureSpan()
   public static async launchApplication(
     appName: string,
     port?: Port,

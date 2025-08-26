@@ -5,10 +5,61 @@ import { JSONObject, ObjectType } from "./JSON";
 import PositiveNumber from "./PositiveNumber";
 import moment from "moment-timezone";
 import Timezone from "./Timezone";
+import Zod, { ZodSchema } from "../Utils/Schema/Zod";
 
 export const Moment: typeof moment = moment;
 
 export default class OneUptimeDate {
+  // get date time from unix timestamp
+
+  public static getSchema(): ZodSchema {
+    return Zod.object({
+      _type: Zod.literal(ObjectType.DateTime),
+      value: Zod.string().openapi({
+        type: "string",
+        example: "2023-10-01T12:00:00Z",
+      }),
+    }).openapi({
+      type: "object",
+      description: "A date time object.",
+      example: {
+        _type: ObjectType.DateTime,
+        value: "2023-10-01T12:00:00Z",
+      },
+    });
+  }
+
+  public static getHoursAndMinutesFromMinutes(minutes: number): string {
+    const hours: number = Math.floor(minutes / 60);
+    const mins: number = minutes % 60;
+
+    let formattedString: string = "";
+
+    if (hours > 0) {
+      formattedString += hours + " hours ";
+    }
+
+    if (mins > 0) {
+      formattedString += mins + " minutes";
+    }
+
+    return formattedString.trim() || "0 minutes";
+  }
+
+  public static fromUnixTimestamp(timestamp: number): Date {
+    return new Date(timestamp * 1000);
+  }
+
+  public static getStartOfTheWeek(date: Date): Date {
+    date = this.fromString(date);
+    return moment(date).startOf("week").toDate();
+  }
+
+  public static getEndOfTheWeek(date: Date): Date {
+    date = this.fromString(date);
+    return moment(date).endOf("week").toDate();
+  }
+
   public static getInBetweenDatesAsFormattedString(
     inBetween: InBetween<Date>,
   ): string {
@@ -97,6 +148,11 @@ export default class OneUptimeDate {
     }
 
     return this.addRemoveDays(date, difference);
+  }
+
+  public static getDayOfTheWeekIndex(date: Date): number {
+    date = this.fromString(date);
+    return moment(date).weekday();
   }
 
   public static isOverlapping(
@@ -760,13 +816,13 @@ export default class OneUptimeDate {
   public static isAfter(date: Date, startDate: Date): boolean {
     date = this.fromString(date);
     startDate = this.fromString(startDate);
-    return moment(date).isAfter(startDate);
+    return moment(date).isAfter(startDate, "seconds");
   }
 
   public static isOnOrAfter(date: Date, startDate: Date): boolean {
     date = this.fromString(date);
     startDate = this.fromString(startDate);
-    return moment(date).isSameOrAfter(startDate);
+    return moment(date).isSameOrAfter(startDate, "seconds");
   }
 
   public static getDayOfWeek(date: Date): DayOfWeek {
@@ -799,7 +855,8 @@ export default class OneUptimeDate {
   public static isOnOrBefore(date: Date, endDate: Date): boolean {
     date = this.fromString(date);
     endDate = this.fromString(endDate);
-    return moment(date).isSameOrBefore(endDate);
+
+    return moment(date).isSameOrBefore(endDate, "seconds");
   }
 
   public static isEqualBySeconds(date: Date, startDate: Date): boolean {
@@ -810,35 +867,45 @@ export default class OneUptimeDate {
 
   public static hasExpired(expirationDate: Date): boolean {
     expirationDate = this.fromString(expirationDate);
-    return !moment(this.getCurrentDate()).isBefore(expirationDate);
+    return !moment(this.getCurrentDate()).isBefore(expirationDate, "seconds");
   }
 
   public static isBefore(date: Date, endDate: Date): boolean {
     date = this.fromString(date);
     endDate = this.fromString(endDate);
-    return moment(date).isBefore(endDate);
+    return moment(date).isBefore(endDate, "seconds");
   }
 
-  public static getCurrentDateAsFormattedString(): string {
-    return this.getDateAsFormattedString(new Date());
+  public static getCurrentDateAsFormattedString(options?: {
+    onlyShowDate?: boolean;
+    showSeconds?: boolean;
+  }): string {
+    return this.getDateAsFormattedString(new Date(), options);
   }
 
   public static getDateAsFormattedString(
     date: string | Date,
-    onlyShowDate?: boolean,
+    options?: {
+      onlyShowDate?: boolean;
+      showSeconds?: boolean;
+    },
   ): string {
     date = this.fromString(date);
 
     let formatstring: string = "MMM DD YYYY, HH:mm";
 
-    if (onlyShowDate) {
+    if (options?.showSeconds) {
+      formatstring = "MMM DD YYYY, HH:mm:ss";
+    }
+
+    if (options?.onlyShowDate) {
       formatstring = "MMM DD, YYYY";
     }
 
     return (
       moment(date).format(formatstring) +
       " " +
-      (onlyShowDate ? "" : this.getCurrentTimezoneString())
+      (options?.onlyShowDate ? "" : this.getCurrentTimezoneString())
     );
   }
 
@@ -1120,12 +1187,12 @@ export default class OneUptimeDate {
 
   public static isInThePast(date: string | Date): boolean {
     date = this.fromString(date);
-    return moment(date).isBefore(new Date());
+    return moment(date).isBefore(new Date(), "seconds");
   }
 
   public static isInTheFuture(date: string | Date): boolean {
     date = this.fromString(date);
-    return moment(date).isAfter(new Date());
+    return moment(date).isAfter(new Date(), "seconds");
   }
 
   public static fromString(date: string | JSONObject | Date): Date {

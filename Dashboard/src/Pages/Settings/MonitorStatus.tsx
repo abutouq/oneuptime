@@ -1,4 +1,4 @@
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageComponentProps from "../PageComponentProps";
 import SortOrder from "Common/Types/BaseDatabase/SortOrder";
 import Color from "Common/Types/Color";
@@ -21,9 +21,10 @@ const Monitors: FunctionComponent<PageComponentProps> = (
       <ModelTable<MonitorStatus>
         modelType={MonitorStatus}
         query={{
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         id="monitor-status-table"
+        userPreferencesKey="monitor-status-table"
         name="Settings > Monitor Status"
         isDeleteable={true}
         isEditable={true}
@@ -129,7 +130,7 @@ const Monitors: FunctionComponent<PageComponentProps> = (
               description: true,
             },
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
 
             getElement: (item: MonitorStatus): ReactElement => {
               return (

@@ -9,13 +9,15 @@ import SortOrder from "../../Types/BaseDatabase/SortOrder";
 import LIMIT_MAX from "../../Types/Database/LimitMax";
 import BadDataException from "../../Types/Exception/BadDataException";
 import ObjectID from "../../Types/ObjectID";
-import AlertState from "Common/Models/DatabaseModels/AlertState";
+import AlertState from "../../Models/DatabaseModels/AlertState";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export class Service extends DatabaseService<AlertState> {
   public constructor() {
     super(AlertState);
   }
 
+  @CaptureSpan()
   protected override async onBeforeCreate(
     createBy: CreateBy<AlertState>,
   ): Promise<OnCreate<AlertState>> {
@@ -39,6 +41,7 @@ export class Service extends DatabaseService<AlertState> {
     };
   }
 
+  @CaptureSpan()
   protected override async onBeforeDelete(
     deleteBy: DeleteBy<AlertState>,
   ): Promise<OnDelete<AlertState>> {
@@ -69,6 +72,7 @@ export class Service extends DatabaseService<AlertState> {
     };
   }
 
+  @CaptureSpan()
   protected override async onDeleteSuccess(
     onDelete: OnDelete<AlertState>,
     _itemIdsBeforeDelete: ObjectID[],
@@ -92,6 +96,7 @@ export class Service extends DatabaseService<AlertState> {
     };
   }
 
+  @CaptureSpan()
   protected override async onBeforeUpdate(
     updateBy: UpdateBy<AlertState>,
   ): Promise<OnUpdate<AlertState>> {
@@ -152,6 +157,7 @@ export class Service extends DatabaseService<AlertState> {
     }
   }
 
+  @CaptureSpan()
   public async getAllAlertStates(data: {
     projectId: ObjectID;
     props: DatabaseCommonInteractionProps;
@@ -178,6 +184,7 @@ export class Service extends DatabaseService<AlertState> {
     return alertStates;
   }
 
+  @CaptureSpan()
   public async getUnresolvedAlertStates(
     projectId: ObjectID,
     props: DatabaseCommonInteractionProps,
@@ -200,6 +207,32 @@ export class Service extends DatabaseService<AlertState> {
     return unresolvedAlertStates;
   }
 
+  @CaptureSpan()
+  public async getResolvedAlertState(data: {
+    projectId: ObjectID;
+    props: DatabaseCommonInteractionProps;
+  }): Promise<AlertState> {
+    const alertStates: Array<AlertState> = await this.getAllAlertStates({
+      projectId: data.projectId,
+      props: data.props,
+    });
+
+    const resolvedAlertState: AlertState | undefined = alertStates.find(
+      (alertState: AlertState) => {
+        return alertState?.isResolvedState;
+      },
+    );
+
+    if (!resolvedAlertState) {
+      throw new BadDataException(
+        "Resolved Alert State not found for this project",
+      );
+    }
+
+    return resolvedAlertState;
+  }
+
+  @CaptureSpan()
   public async getAcknowledgedAlertState(data: {
     projectId: ObjectID;
     props: DatabaseCommonInteractionProps;

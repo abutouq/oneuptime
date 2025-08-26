@@ -16,6 +16,7 @@ import tls, { TLSSocket } from "tls";
 export interface SslResponse extends SslMonitorResponse {
   isOnline: boolean;
   failureCause: string;
+  isTimeout?: boolean | undefined;
 }
 
 export interface SSLMonitorOptions {
@@ -99,7 +100,8 @@ export default class SSLMonitor {
         );
 
         return {
-          isOnline: false,
+          isOnline: true,
+          isTimeout: true,
           failureCause:
             "Request was tried " +
             pingOptions.currentRetryCount +
@@ -107,8 +109,16 @@ export default class SSLMonitor {
         };
       }
 
+      // if AggregateError is thrown, it means that the request failed
+      if (
+        API.getFriendlyErrorMessage(err as Error).includes("AggregateError")
+      ) {
+        return null;
+      }
+
       return {
         isOnline: false,
+        isTimeout: false,
         failureCause: API.getFriendlyErrorMessage(err as Error),
       };
     }
@@ -127,7 +137,7 @@ export default class SSLMonitor {
         port,
         rejectUnauthorized: true,
       });
-    } catch (err) {
+    } catch {
       try {
         certificate = await this.getCertificate({
           host,
@@ -175,10 +185,14 @@ export default class SSLMonitor {
     host: string;
     port: number;
     rejectUnauthorized: boolean;
+    retry?: number;
+    currentRetryCount?: number;
   }): Promise<tls.PeerCertificate> {
     const { host, rejectUnauthorized } = data;
 
     let { port } = data;
+    const retry: number = data.retry || 3;
+    const currentRetryCount: number = data.currentRetryCount || 1;
 
     if (!port) {
       port = 443;
@@ -223,9 +237,26 @@ export default class SSLMonitor {
       },
     );
 
-    const certificate: tls.PeerCertificate = await sslPromise;
+    try {
+      const certificate: tls.PeerCertificate = await sslPromise;
+      return certificate;
+    } catch (err: unknown) {
+      logger.debug(
+        `getCertificate failed for host ${host}:${port} - Retry: ${currentRetryCount} - Error: ${err}`,
+      );
 
-    return certificate;
+      if (currentRetryCount < retry) {
+        await Sleep.sleep(1000);
+        return await this.getCertificate({
+          host,
+          port,
+          rejectUnauthorized,
+          retry,
+          currentRetryCount: currentRetryCount + 1,
+        });
+      }
+      throw err;
+    }
   }
 
   private static getOptions(

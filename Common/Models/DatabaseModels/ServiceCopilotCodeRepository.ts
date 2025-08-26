@@ -68,8 +68,8 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
 @CrudApiEndpoint(new Route("/service-copilot-code-repository"))
 @TableMetadata({
   tableName: "ServiceCopilotCodeRepository",
-  singularName: "Service",
-  pluralName: "Services",
+  singularName: "Service Code Repository for Copilot",
+  pluralName: "Service Code Repositories for Copilot",
   icon: IconProp.SquareStack,
   tableDescription:
     "Add services to your code repository to categorize and manage them easily. This will help copilot understand and generate code.",
@@ -174,6 +174,7 @@ export default class ServiceCopilotCodeRepository extends BaseModel {
     canReadOnRelationQuery: true,
     title: "Path in Repository",
     description: "Path in your code repository where this service is located",
+    defaultValue: "/",
   })
   @Column({
     nullable: false,
@@ -338,6 +339,7 @@ export default class ServiceCopilotCodeRepository extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })

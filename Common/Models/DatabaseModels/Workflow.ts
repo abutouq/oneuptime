@@ -196,6 +196,7 @@ export default class Workflow extends BaseModel {
     required: true,
     unique: true,
     type: TableColumnType.Slug,
+    computed: true,
     title: "Slug",
     description: "Friendly globally unique name for your object",
   })
@@ -318,6 +319,7 @@ export default class Workflow extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -384,6 +386,7 @@ export default class Workflow extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Is Enabled",
     description: "Is this workflow enabled?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,

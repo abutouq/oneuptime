@@ -9,7 +9,6 @@ import TableAccessControl from "../../Types/Database/AccessControl/TableAccessCo
 import ColumnType from "../../Types/Database/ColumnType";
 import CrudApiEndpoint from "../../Types/Database/CrudApiEndpoint";
 import EnableDocumentation from "../../Types/Database/EnableDocumentation";
-import EnableWorkflow from "../../Types/Database/EnableWorkflow";
 import TableColumn from "../../Types/Database/TableColumn";
 import TableColumnType from "../../Types/Database/TableColumnType";
 import TableMetadata from "../../Types/Database/TableMetadata";
@@ -25,6 +24,8 @@ export type MonitorStepProbeResponse = Dictionary<ProbeMonitorResponse>;
 
 @EnableDocumentation()
 @TenantColumn("projectId")
+@Index(["monitorId", "probeId"]) // Composite index for efficient monitor-probe relationship queries
+@Index(["monitorId", "projectId"]) // Alternative index for monitor queries within project
 @TableAccessControl({
   create: [
     Permission.ProjectOwner,
@@ -47,12 +48,6 @@ export type MonitorStepProbeResponse = Dictionary<ProbeMonitorResponse>;
     Permission.ProjectAdmin,
     Permission.EditMonitorProbe,
   ],
-})
-@EnableWorkflow({
-  create: true,
-  delete: true,
-  update: true,
-  read: true,
 })
 @CrudApiEndpoint(new Route("/monitor-probe"))
 @TableMetadata({
@@ -383,6 +378,7 @@ export default class MonitorProbe extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -447,6 +443,7 @@ export default class MonitorProbe extends BaseModel {
     isDefaultValueColumn: true,
     required: true,
     type: TableColumnType.Boolean,
+    defaultValue: true,
   })
   @Column({
     type: ColumnType.Boolean,

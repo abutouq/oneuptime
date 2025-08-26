@@ -177,6 +177,7 @@ export default class ProjectSmtpConfig extends BaseModel {
     type: TableColumnType.Slug,
     title: "Slug",
     description: "Friendly globally unique name for your object",
+    computed: true,
   })
   @Column({
     nullable: false,
@@ -293,6 +294,7 @@ export default class ProjectSmtpConfig extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -511,7 +513,11 @@ export default class ProjectSmtpConfig extends BaseModel {
       Permission.EditProjectSMTPConfig,
     ],
   })
-  @TableColumn({ required: true, type: TableColumnType.Boolean })
+  @TableColumn({
+    required: true,
+    type: TableColumnType.Boolean,
+    defaultValue: true,
+  })
   @Column({
     nullable: false,
     type: ColumnType.Boolean,

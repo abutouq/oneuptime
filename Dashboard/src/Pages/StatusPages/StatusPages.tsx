@@ -1,47 +1,31 @@
 import LabelsElement from "../../Components/Label/Labels";
-import DashboardNavigation from "../../Utils/Navigation";
-import PageMap from "../../Utils/PageMap";
-import RouteMap, { RouteUtil } from "../../Utils/RouteMap";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageComponentProps from "../PageComponentProps";
-import Route from "Common/Types/API/Route";
 import URL from "Common/Types/API/URL";
 import Banner from "Common/UI/Components/Banner/Banner";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
 import ModelTable from "Common/UI/Components/ModelTable/ModelTable";
-import Page from "Common/UI/Components/Page/Page";
 import FieldType from "Common/UI/Components/Types/FieldType";
 import Navigation from "Common/UI/Utils/Navigation";
 import Label from "Common/Models/DatabaseModels/Label";
 import StatusPage from "Common/Models/DatabaseModels/StatusPage";
 import React, { FunctionComponent, ReactElement } from "react";
-import StatusPageElement from "../../Components/StatusPage/StatusPageLabel";
+import StatusPageElement from "../../Components/StatusPage/StatusPageElement";
 
 const StatusPages: FunctionComponent<PageComponentProps> = (): ReactElement => {
   return (
-    <Page
-      title={"Status Pages"}
-      breadcrumbLinks={[
-        {
-          title: "Project",
-          to: RouteUtil.populateRouteParams(RouteMap[PageMap.HOME] as Route),
-        },
-        {
-          title: "Status Pages",
-          to: RouteUtil.populateRouteParams(
-            RouteMap[PageMap.STATUS_PAGES] as Route,
-          ),
-        },
-      ]}
-    >
+    <div>
       <Banner
         openInNewTab={true}
         title="Need a demo of status pages?"
         description="Watch this video which will help you build status page for your company in under 12 minutes."
         link={URL.fromString("https://youtu.be/F6BNipy5VCk")}
+        hideOnMobile={true}
       />
       <ModelTable<StatusPage>
         modelType={StatusPage}
         id="status-page-table"
+        userPreferencesKey="status-page-table"
         isDeleteable={false}
         isEditable={false}
         isCreateable={true}
@@ -94,7 +78,7 @@ const StatusPages: FunctionComponent<PageComponentProps> = (): ReactElement => {
               description: true,
             },
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
           {
             field: {
@@ -107,7 +91,7 @@ const StatusPages: FunctionComponent<PageComponentProps> = (): ReactElement => {
             type: FieldType.EntityArray,
             filterEntityType: Label,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -132,7 +116,8 @@ const StatusPages: FunctionComponent<PageComponentProps> = (): ReactElement => {
             },
             noValueMessage: "-",
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
+            hideOnMobile: true,
           },
           {
             field: {
@@ -143,6 +128,7 @@ const StatusPages: FunctionComponent<PageComponentProps> = (): ReactElement => {
             },
             title: "Labels",
             type: FieldType.EntityArray,
+            hideOnMobile: true,
 
             getElement: (item: StatusPage): ReactElement => {
               return <LabelsElement labels={item["labels"] || []} />;
@@ -150,7 +136,7 @@ const StatusPages: FunctionComponent<PageComponentProps> = (): ReactElement => {
           },
         ]}
       />
-    </Page>
+    </div>
   );
 };
 

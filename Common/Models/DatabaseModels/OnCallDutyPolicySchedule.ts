@@ -282,6 +282,7 @@ export default class OnCallDutyPolicySchedule extends BaseModel {
     type: TableColumnType.Slug,
     title: "Slug",
     description: "Friendly globally unique name for your object",
+    computed: true,
   })
   @Column({
     nullable: false,
@@ -365,6 +366,7 @@ export default class OnCallDutyPolicySchedule extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -400,4 +402,208 @@ export default class OnCallDutyPolicySchedule extends BaseModel {
     transformer: ObjectID.getDatabaseTransformer(),
   })
   public deletedByUserId?: ObjectID = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicySchedule,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectOnCallDutyPolicySchedule,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "currentUserIdOnRoster",
+    type: TableColumnType.Entity,
+    modelType: User,
+    title: "Current User On Roster",
+    description: "Relation to User who is currently on roster",
+  })
+  @ManyToOne(
+    () => {
+      return User;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "SET NULL",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "currentUserIdOnRoster" })
+  public currentUserOnRoster?: User = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectOnCallDutyPolicySchedule,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    title: "Current User ID On Roster",
+    description: "User ID who is currently on roster",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public currentUserIdOnRoster?: ObjectID = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicySchedule,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectOnCallDutyPolicySchedule,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "nextUserIdOnRoster",
+    type: TableColumnType.Entity,
+    modelType: User,
+    title: "Next User On Roster",
+    description: "Relation to User who is next on roster",
+  })
+  @ManyToOne(
+    () => {
+      return User;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "SET NULL",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "nextUserIdOnRoster" })
+  public nextUserOnRoster?: User = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectOnCallDutyPolicySchedule,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    title: "Next User ID On Roster",
+    description: "Next ID who is currently on roster",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public nextUserIdOnRoster?: ObjectID = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectOnCallDutyPolicySchedule,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    type: TableColumnType.Date,
+    title: "Roster Handoff At",
+    description:
+      "When does the roster handoff occur for this schedule for the current user?",
+  })
+  @Column({
+    type: ColumnType.Date,
+    nullable: true,
+  })
+  public rosterHandoffAt?: Date = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectOnCallDutyPolicySchedule,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    type: TableColumnType.Date,
+    title: "Roster Next Handoff At",
+    description:
+      "When does the next roster handoff occur for this schedule for the next user?",
+  })
+  @Column({
+    type: ColumnType.Date,
+    nullable: true,
+  })
+  public rosterNextHandoffAt?: Date = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectOnCallDutyPolicySchedule,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    type: TableColumnType.Date,
+    title: "Roster Next Event Start At",
+    description:
+      "When does the next event start for this schedule for the next user?",
+  })
+  @Column({
+    type: ColumnType.Date,
+    nullable: true,
+  })
+  public rosterNextStartAt?: Date = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectOnCallDutyPolicySchedule,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    type: TableColumnType.Date,
+    title: "Roster Event Start At",
+    description:
+      "When does the current event start for this schedule for the current user?",
+  })
+  @Column({
+    type: ColumnType.Date,
+    nullable: true,
+  })
+  public rosterStartAt?: Date = undefined;
 }

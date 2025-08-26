@@ -1,9 +1,14 @@
+import CaptureSpan from "../../Telemetry/CaptureSpan";
 import DataToProcess from "../DataToProcess";
 import CompareCriteria from "./CompareCriteria";
-import { CheckOn, CriteriaFilter } from "Common/Types/Monitor/CriteriaFilter";
-import LogMonitorResponse from "Common/Types/Monitor/LogMonitor/LogMonitorResponse";
+import {
+  CheckOn,
+  CriteriaFilter,
+} from "../../../../Types/Monitor/CriteriaFilter";
+import LogMonitorResponse from "../../../../Types/Monitor/LogMonitor/LogMonitorResponse";
 
 export default class LogMonitorCriteria {
+  @CaptureSpan()
   public static async isMonitorInstanceCriteriaFilterMet(input: {
     dataToProcess: DataToProcess;
     criteriaFilter: CriteriaFilter;

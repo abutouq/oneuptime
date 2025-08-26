@@ -7,6 +7,9 @@ dependencies:
   version: 18.19.1
 - name: clickhouse
   repository: https://charts.bitnami.com/bitnami
-  version: 6.3.2
-digest: sha256:de8479db21cf543cee4b16ccd4db9d7b16f771ffe48b77c52ce4967651256825
-generated: "2024-11-20T18:57:43.789729Z"
+  version: 9.0.0
+- name: keda
+  repository: https://kedacore.github.io/charts
+  version: 2.17.2
+digest: sha256:6e4d02525abd4434e8481eedb6244d88ab9d8b800a6f1c543cba96cf5b1d2922
+generated: "2025-07-30T19:45:21.077234+01:00"

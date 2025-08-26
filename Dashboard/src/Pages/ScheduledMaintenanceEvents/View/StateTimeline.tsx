@@ -1,4 +1,3 @@
-import DashboardNavigation from "../../../Utils/Navigation";
 import PageComponentProps from "../../PageComponentProps";
 import { Black } from "Common/Types/BrandColors";
 import OneUptimeDate from "Common/Types/Date";
@@ -11,26 +10,61 @@ import FieldType from "Common/UI/Components/Types/FieldType";
 import Navigation from "Common/UI/Utils/Navigation";
 import ScheduledMaintenanceState from "Common/Models/DatabaseModels/ScheduledMaintenanceState";
 import ScheduledMaintenanceStateTimeline from "Common/Models/DatabaseModels/ScheduledMaintenanceStateTimeline";
-import React, { Fragment, FunctionComponent, ReactElement } from "react";
+import StatusPageSubscriberNotificationStatus from "Common/Types/StatusPage/StatusPageSubscriberNotificationStatus";
+import ModelAPI from "Common/UI/Utils/ModelAPI/ModelAPI";
+import CheckboxViewer from "Common/UI/Components/Checkbox/CheckboxViewer";
+import SubscriberNotificationStatus from "../../../Components/StatusPageSubscribers/SubscriberNotificationStatus";
+import React, {
+  Fragment,
+  FunctionComponent,
+  ReactElement,
+  useState,
+} from "react";
+import SortOrder from "Common/Types/BaseDatabase/SortOrder";
+import ProjectUtil from "Common/UI/Utils/Project";
 
 const ScheduledMaintenanceDelete: FunctionComponent<PageComponentProps> = (
   props: PageComponentProps,
 ): ReactElement => {
   const modelId: ObjectID = Navigation.getLastParamAsObjectID(1);
+  const [refreshToggle, setRefreshToggle] = useState<boolean>(false);
+
+  const handleResendNotification: (
+    item: ScheduledMaintenanceStateTimeline,
+  ) => Promise<void> = async (
+    item: ScheduledMaintenanceStateTimeline,
+  ): Promise<void> => {
+    try {
+      await ModelAPI.updateById({
+        modelType: ScheduledMaintenanceStateTimeline,
+        id: item.id!,
+        data: {
+          subscriberNotificationStatus:
+            StatusPageSubscriberNotificationStatus.Pending,
+          subscriberNotificationStatusMessage: null,
+        },
+      });
+      setRefreshToggle(!refreshToggle);
+    } catch {
+      // Error resending notification: handle appropriately
+    }
+  };
 
   return (
     <Fragment>
       <ModelTable<ScheduledMaintenanceStateTimeline>
         modelType={ScheduledMaintenanceStateTimeline}
         id="table-scheduledMaintenance-status-timeline"
+        userPreferencesKey="scheduled-maintenance-status-timeline-table"
         name="Scheduled Maintenance Events > State Timeline"
         isDeleteable={true}
         isCreateable={true}
         showViewIdButton={true}
         isViewable={false}
+        refreshToggle={refreshToggle.toString()}
         query={{
           scheduledMaintenanceId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(
           item: ScheduledMaintenanceStateTimeline,
@@ -67,6 +101,18 @@ const ScheduledMaintenanceDelete: FunctionComponent<PageComponentProps> = (
           },
           {
             field: {
+              startsAt: true,
+            },
+            title: "Starts At",
+            fieldType: FormFieldSchemaType.DateTime,
+            required: true,
+            placeholder: "Starts At",
+            getDefaultValue: () => {
+              return OneUptimeDate.getCurrentDate();
+            },
+          },
+          {
+            field: {
               shouldStatusPageSubscribersBeNotified: true,
             },
 
@@ -79,6 +125,8 @@ const ScheduledMaintenanceDelete: FunctionComponent<PageComponentProps> = (
         ]}
         showRefreshButton={true}
         viewPageRoute={Navigation.getCurrentRoute()}
+        sortBy="startsAt"
+        sortOrder={SortOrder.Descending}
         filters={[
           {
             field: {
@@ -91,7 +139,7 @@ const ScheduledMaintenanceDelete: FunctionComponent<PageComponentProps> = (
           },
           {
             field: {
-              createdAt: true,
+              startsAt: true,
             },
             title: "Starts At",
             type: FieldType.DateTime,
@@ -111,6 +159,9 @@ const ScheduledMaintenanceDelete: FunctionComponent<PageComponentProps> = (
             type: FieldType.Boolean,
           },
         ]}
+        selectMoreFields={{
+          subscriberNotificationStatusMessage: true,
+        }}
         columns={[
           {
             field: {
@@ -141,7 +192,7 @@ const ScheduledMaintenanceDelete: FunctionComponent<PageComponentProps> = (
           },
           {
             field: {
-              createdAt: true,
+              startsAt: true,
             },
             title: "Starts At",
             type: FieldType.DateTime,
@@ -166,7 +217,7 @@ const ScheduledMaintenanceDelete: FunctionComponent<PageComponentProps> = (
               return (
                 <p>
                   {OneUptimeDate.differenceBetweenTwoDatesAsFromattedString(
-                    item["createdAt"] as Date,
+                    item["startsAt"] as Date,
                     (item["endsAt"] as Date) || OneUptimeDate.getCurrentDate(),
                   )}
                 </p>
@@ -177,8 +228,44 @@ const ScheduledMaintenanceDelete: FunctionComponent<PageComponentProps> = (
             field: {
               shouldStatusPageSubscribersBeNotified: true,
             },
-            title: "Subscribers Notified",
+            title: "Notification Enabled",
             type: FieldType.Boolean,
+            getElement: (
+              item: ScheduledMaintenanceStateTimeline,
+            ): ReactElement => {
+              return (
+                <CheckboxViewer
+                  isChecked={
+                    item.shouldStatusPageSubscribersBeNotified as boolean
+                  }
+                  text={
+                    item.shouldStatusPageSubscribersBeNotified ? "Yes" : "No"
+                  }
+                />
+              );
+            },
+          },
+          {
+            field: {
+              subscriberNotificationStatus: true,
+            },
+            title: "Subscriber Notification Status",
+            type: FieldType.Text,
+            getElement: (
+              item: ScheduledMaintenanceStateTimeline,
+            ): ReactElement => {
+              return (
+                <SubscriberNotificationStatus
+                  status={item.subscriberNotificationStatus}
+                  subscriberNotificationStatusMessage={
+                    item.subscriberNotificationStatusMessage
+                  }
+                  onResendNotification={() => {
+                    return handleResendNotification(item);
+                  }}
+                />
+              );
+            },
           },
         ]}
       />

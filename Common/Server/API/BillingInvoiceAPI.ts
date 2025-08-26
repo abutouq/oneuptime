@@ -13,15 +13,14 @@ import {
 } from "../Utils/Express";
 import Response from "../Utils/Response";
 import BaseAPI from "./BaseAPI";
-import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import SubscriptionStatus from "Common/Types/Billing/SubscriptionStatus";
-import BadDataException from "Common/Types/Exception/BadDataException";
-import { JSONObject } from "Common/Types/JSON";
-import Permission, { UserPermission } from "Common/Types/Permission";
+import BaseModel from "../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import BadDataException from "../../Types/Exception/BadDataException";
+import { JSONObject } from "../../Types/JSON";
+import Permission, { UserPermission } from "../../Types/Permission";
 import BillingInvoice, {
   InvoiceStatus,
-} from "Common/Models/DatabaseModels/BillingInvoice";
-import Project from "Common/Models/DatabaseModels/Project";
+} from "../../Models/DatabaseModels/BillingInvoice";
+import Project from "../../Models/DatabaseModels/Project";
 
 export default class UserAPI extends BaseAPI<
   BillingInvoice,
@@ -106,11 +105,38 @@ export default class UserAPI extends BaseAPI<
           if (!item.paymentProviderCustomerId) {
             throw new BadDataException("Customer ID not found");
           }
+          let invoice: Invoice | null = null;
 
-          const invoice: Invoice = await BillingService.payInvoice(
-            item.paymentProviderCustomerId!,
-            item.paymentProviderInvoiceId!,
-          );
+          try {
+            invoice = await BillingService.payInvoice(
+              item.paymentProviderCustomerId!,
+              item.paymentProviderInvoiceId!,
+            );
+          } catch (err) {
+            invoice = await BillingService.getInvoice(
+              item.paymentProviderCustomerId!,
+              item.paymentProviderInvoiceId!,
+            );
+
+            // check if this invoice needs more authentication like 3ds secure.
+            if (
+              invoice.status === InvoiceStatus.Open &&
+              invoice.paymentIntentId
+            ) {
+              const paymentIntentId: string = invoice.paymentIntentId;
+
+              const clientSecret: string =
+                await BillingService.getPaymentIntentClientSecret(
+                  paymentIntentId,
+                );
+
+              return Response.sendJsonObjectResponse(req, res, {
+                clientSecret: clientSecret,
+              });
+            }
+            // otherwise we have no idea what went wrong and throw an error.
+            throw err;
+          }
 
           // save updated status.
 
@@ -127,37 +153,8 @@ export default class UserAPI extends BaseAPI<
             },
           });
 
-          // refresh subscription status.
-          const subscriptionState: SubscriptionStatus =
-            await BillingService.getSubscriptionStatus(
-              project.paymentProviderSubscriptionId as string,
-            );
-
-          const meteredSubscriptionState: SubscriptionStatus =
-            await BillingService.getSubscriptionStatus(
-              project.paymentProviderMeteredSubscriptionId as string,
-            );
-
-          // if subscription is cancelled, create a new subscription and update project.
-
-          if (
-            meteredSubscriptionState === SubscriptionStatus.Canceled ||
-            subscriptionState === SubscriptionStatus.Canceled
-          ) {
-            await ProjectService.reactiveSubscription(project.id!);
-          }
-
-          await ProjectService.updateOneById({
-            id: project.id!,
-            data: {
-              paymentProviderSubscriptionStatus: subscriptionState,
-              paymentProviderMeteredSubscriptionStatus:
-                meteredSubscriptionState,
-            },
-            props: {
-              isRoot: true,
-              ignoreHooks: true,
-            },
+          await BillingInvoiceService.refreshSubscriptionStatus({
+            projectId: project.id!,
           });
 
           return Response.sendEmptySuccessResponse(req, res);

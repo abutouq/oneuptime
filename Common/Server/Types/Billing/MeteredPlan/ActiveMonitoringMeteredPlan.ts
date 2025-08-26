@@ -3,17 +3,20 @@ import MonitorService from "../../../Services/MonitorService";
 import ProjectService from "../../../Services/ProjectService";
 import QueryHelper from "../../Database/QueryHelper";
 import ServerMeteredPlan from "./ServerMeteredPlan";
-import ProductType from "Common/Types/MeteredPlan/ProductType";
-import MonitorType from "Common/Types/Monitor/MonitorType";
-import ObjectID from "Common/Types/ObjectID";
-import PositiveNumber from "Common/Types/PositiveNumber";
-import Project from "Common/Models/DatabaseModels/Project";
+import ProductType from "../../../../Types/MeteredPlan/ProductType";
+import MonitorType from "../../../../Types/Monitor/MonitorType";
+import ObjectID from "../../../../Types/ObjectID";
+import PositiveNumber from "../../../../Types/PositiveNumber";
+import Project from "../../../../Models/DatabaseModels/Project";
+import CaptureSpan from "../../../Utils/Telemetry/CaptureSpan";
 
 export default class ActiveMonitoringMeteredPlan extends ServerMeteredPlan {
+  @CaptureSpan()
   public override getProductType(): ProductType {
     return ProductType.ActiveMonitoring;
   }
 
+  @CaptureSpan()
   public override async reportQuantityToBillingProvider(
     projectId: ObjectID,
     options?: {

@@ -3,11 +3,12 @@ import BasicForm, {
   DefaultValidateFunction,
   FormErrors,
   FormProps,
+  FormSummaryConfig,
 } from "./BasicForm";
 import Fields from "./Types/Fields";
 import { FormStep } from "./Types/FormStep";
 import FormValues from "./Types/FormValues";
-import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import BaseModel from "../../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
 import React, {
   MutableRefObject,
   ReactElement,
@@ -22,7 +23,12 @@ export interface ComponentProps<TBaseModel extends BaseModel> {
     values: FormValues<TBaseModel>,
     onSubmitSuccessful: () => void,
   ) => void;
-  onChange?: undefined | ((values: FormValues<TBaseModel>) => void);
+  onChange?:
+    | undefined
+    | ((
+        values: FormValues<TBaseModel>,
+        setNewFormValues: (newValues: FormValues<TBaseModel>) => void,
+      ) => void);
   onValidate?:
     | undefined
     | ((values: FormValues<TBaseModel>) => FormErrors<FormValues<TBaseModel>>);
@@ -46,6 +52,8 @@ export interface ComponentProps<TBaseModel extends BaseModel> {
   hideSubmitButton?: undefined | boolean;
   formRef?: undefined | MutableRefObject<FormProps<FormValues<TBaseModel>>>;
   initialValues?: FormValues<TBaseModel> | undefined;
+  summary?: FormSummaryConfig | undefined;
+  values?: FormValues<TBaseModel> | undefined;
 }
 
 const BasicModelForm: <TBaseModel extends BaseModel>(
@@ -97,6 +105,7 @@ const BasicModelForm: <TBaseModel extends BaseModel>(
 
   return (
     <BasicForm
+      values={props.values}
       isLoading={props.isLoading || false}
       fields={formFields}
       id={props.id}
@@ -121,6 +130,7 @@ const BasicModelForm: <TBaseModel extends BaseModel>(
       onIsLastFormStep={props.onIsLastFormStep}
       hideSubmitButton={props.hideSubmitButton}
       ref={props.formRef}
+      summary={props.summary}
     ></BasicForm>
   );
 };

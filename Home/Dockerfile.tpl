@@ -3,7 +3,7 @@
 #
 
 # Pull base image nodejs image.
-FROM public.ecr.aws/docker/library/node:21.7.3-alpine3.18
+FROM public.ecr.aws/docker/library/node:23.8-alpine3.21
 RUN mkdir /tmp/npm &&  chmod 2777 /tmp/npm && chown 1000:1000 /tmp/npm && npm config set cache /tmp/npm --global
 
 RUN npm config set fetch-retries 5
@@ -20,7 +20,7 @@ ENV APP_VERSION=${APP_VERSION}
 RUN if [ -z "$APP_VERSION" ]; then export APP_VERSION=1.0.0; fi
 
 # Install bash. 
-RUN apk add bash && apk add curl
+RUN apk add bash && apk add curl && apk add git
 
 
 # Install python
@@ -53,6 +53,14 @@ RUN npm install
 #   - 1444: OneUptime-home
 EXPOSE 1444
 
+# Make a directory for blog. 
+RUN mkdir -p /usr/src
+
+# Clone blog repo. 
+RUN cd /usr/src && git clone https://github.com/oneuptime/blog
+
+# Now we have the blog repo cloned to /usr/src/blog.
+
 {{ if eq .Env.ENVIRONMENT "development" }}
 #Run the app
 CMD [ "npm", "run", "dev" ]
@@ -61,6 +69,8 @@ CMD [ "npm", "run", "dev" ]
 COPY ./Home /usr/src/app
 # Bundle app source
 RUN npm run compile
+# Set permission to write logs and cache in case container run as non root
+RUN chown -R 1000:1000 "/tmp/npm" && chmod -R 2777 "/tmp/npm"
 #Run the app
 CMD [ "npm", "start" ]
 {{ end }}

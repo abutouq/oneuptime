@@ -1,14 +1,17 @@
 import DatabaseService from "../../../../Services/DatabaseService";
 import logger from "../../../../Utils/Logger";
 import ComponentCode, { RunOptions, RunReturnType } from "../../ComponentCode";
-import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import BadDataException from "Common/Types/Exception/BadDataException";
-import Exception from "Common/Types/Exception/Exception";
-import { JSONObject } from "Common/Types/JSON";
-import JSONFunctions from "Common/Types/JSONFunctions";
-import Text from "Common/Types/Text";
-import ComponentMetadata, { Port } from "Common/Types/Workflow/Component";
-import BaseModelComponents from "Common/Types/Workflow/Components/BaseModel";
+import BaseModel from "../../../../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import BadDataException from "../../../../../Types/Exception/BadDataException";
+import Exception from "../../../../../Types/Exception/Exception";
+import { JSONObject } from "../../../../../Types/JSON";
+import JSONFunctions from "../../../../../Types/JSONFunctions";
+import Text from "../../../../../Types/Text";
+import ComponentMetadata, {
+  Port,
+} from "../../../../../Types/Workflow/Component";
+import BaseModelComponents from "../../../../../Types/Workflow/Components/BaseModel";
+import CaptureSpan from "../../../../Utils/Telemetry/CaptureSpan";
 
 export default class CreateOneBaseModel<
   TBaseModel extends BaseModel,
@@ -41,6 +44,7 @@ export default class CreateOneBaseModel<
     this.modelService = modelService;
   }
 
+  @CaptureSpan()
   public override async run(
     args: JSONObject,
     options: RunOptions,

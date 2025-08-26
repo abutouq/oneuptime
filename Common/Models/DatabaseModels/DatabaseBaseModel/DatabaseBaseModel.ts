@@ -56,13 +56,15 @@ export default class DatabaseBaseModel extends BaseEntity {
     title: "ID",
     type: TableColumnType.ObjectID,
     description: "ID of this object",
+    computed: true,
   })
   @PrimaryGeneratedColumn("uuid")
   public _id?: string = undefined;
 
   @TableColumn({
-    title: "Created",
+    title: "Created At",
     type: TableColumnType.Date,
+    computed: true,
     description: "Date and Time when the object was created.",
   })
   @CreateDateColumn({
@@ -71,8 +73,9 @@ export default class DatabaseBaseModel extends BaseEntity {
   public createdAt?: Date = undefined;
 
   @TableColumn({
-    title: "Updated",
+    title: "Updated At",
     type: TableColumnType.Date,
+    computed: true,
     description: "Date and Time when the object was updated.",
   })
   @UpdateDateColumn({
@@ -81,8 +84,9 @@ export default class DatabaseBaseModel extends BaseEntity {
   public updatedAt?: Date = undefined;
 
   @TableColumn({
-    title: "Deleted",
+    title: "Deleted At",
     type: TableColumnType.Date,
+    computed: true,
     description: "Date and Time when the object was deleted.",
   })
   @DeleteDateColumn({
@@ -92,8 +96,10 @@ export default class DatabaseBaseModel extends BaseEntity {
 
   @TableColumn({
     title: "Version",
-    type: TableColumnType.Version,
+    type: TableColumnType.Number,
+    computed: true,
     description: "Object version",
+    hideColumnInDocumentation: true,
   })
   @VersionColumn()
   public version?: number = undefined;
@@ -650,7 +656,13 @@ export default class DatabaseBaseModel extends BaseEntity {
     json = JSONFunctions.deserialize(json);
     const baseModel: T = new type();
 
-    for (const key of Object.keys(json)) {
+    for (let key of Object.keys(json)) {
+      if (key === "id") {
+        key = "_id";
+        json["_id"] = json["id"];
+        delete json["id"];
+      }
+
       const tableColumnMetadata: TableColumnMetadata =
         baseModel.getTableColumnMetadata(key);
       if (tableColumnMetadata) {

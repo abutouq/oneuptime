@@ -1,4 +1,4 @@
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageComponentProps from "../PageComponentProps";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
 import ModelTable from "Common/UI/Components/ModelTable/ModelTable";
@@ -13,7 +13,7 @@ const APIKeys: FunctionComponent<PageComponentProps> = (): ReactElement => {
       <ModelTable<TelemetryIngestionKey>
         modelType={TelemetryIngestionKey}
         query={{
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         id="api-keys-table"
         name="Settings > Telemetry Ingestion Keys"
@@ -23,6 +23,7 @@ const APIKeys: FunctionComponent<PageComponentProps> = (): ReactElement => {
         isCreateable={true}
         isViewable={true}
         singularName="Ingestion Key"
+        userPreferencesKey="telemetry-ingestion-keys-table"
         cardProps={{
           title: "Telemetry Ingestion Keys",
           description:
@@ -84,7 +85,7 @@ const APIKeys: FunctionComponent<PageComponentProps> = (): ReactElement => {
             },
             noValueMessage: "-",
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
         ]}
       />

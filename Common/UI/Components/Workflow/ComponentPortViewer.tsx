@@ -1,5 +1,5 @@
 import ErrorMessage from "../ErrorMessage/ErrorMessage";
-import { Port } from "Common/Types/Workflow/Component";
+import { Port } from "../../../Types/Workflow/Component";
 import React, { FunctionComponent, ReactElement } from "react";
 
 export interface ComponentProps {
@@ -16,7 +16,7 @@ const ComponentPortViewer: FunctionComponent<ComponentProps> = (
       <h2 className="text-base font-medium text-gray-500">{props.name}</h2>
       <p className="text-sm font-medium text-gray-400">{props.description}</p>
       {props.ports && props.ports.length === 0 && (
-        <ErrorMessage error={"This component does not have any ports."} />
+        <ErrorMessage message={"This component does not have any ports."} />
       )}
       <div className="mt-3">
         {props.ports &&

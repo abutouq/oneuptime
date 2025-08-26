@@ -7,17 +7,24 @@ import { EmailEnvelope } from "Common/Types/Email/EmailMessage";
 import EmailTemplateType from "Common/Types/Email/EmailTemplateType";
 import NotificationSettingEventType from "Common/Types/NotificationSetting/NotificationSettingEventType";
 import { SMSMessage } from "Common/Types/SMS/SMS";
+import PushNotificationMessage from "Common/Types/PushNotification/PushNotificationMessage";
 import Text from "Common/Types/Text";
 import { EVERY_MINUTE } from "Common/Utils/CronTime";
 import ProjectService from "Common/Server/Services/ProjectService";
 import ScheduledMaintenanceService from "Common/Server/Services/ScheduledMaintenanceService";
 import ScheduledMaintenanceStateTimelineService from "Common/Server/Services/ScheduledMaintenanceStateTimelineService";
 import UserNotificationSettingService from "Common/Server/Services/UserNotificationSettingService";
+import PushNotificationUtil from "Common/Server/Utils/PushNotificationUtil";
 import Markdown, { MarkdownContentType } from "Common/Server/Types/Markdown";
 import ScheduledMaintenance from "Common/Models/DatabaseModels/ScheduledMaintenance";
 import ScheduledMaintenanceState from "Common/Models/DatabaseModels/ScheduledMaintenanceState";
 import ScheduledMaintenanceStateTimeline from "Common/Models/DatabaseModels/ScheduledMaintenanceStateTimeline";
 import User from "Common/Models/DatabaseModels/User";
+import ScheduledMaintenanceFeedService from "Common/Server/Services/ScheduledMaintenanceFeedService";
+import { ScheduledMaintenanceFeedEventType } from "Common/Models/DatabaseModels/ScheduledMaintenanceFeed";
+import { Blue500 } from "Common/Types/BrandColors";
+import ObjectID from "Common/Types/ObjectID";
+import UserService from "Common/Server/Services/UserService";
 
 RunCron(
   "ScheduledMaintenanceOwner:SendStateChangeEmail",
@@ -47,6 +54,7 @@ RunCron(
             _id: true,
             title: true,
             description: true,
+            scheduledMaintenanceNumber: true,
           },
           scheduledMaintenanceState: {
             name: true,
@@ -55,6 +63,8 @@ RunCron(
       });
 
     for (const scheduledMaintenanceStateTimeline of scheduledMaintenanceStateTimelines) {
+      let moreScheduledMaintenanceFeedInformationInMarkdown: string = "";
+
       const scheduledMaintenance: ScheduledMaintenance =
         scheduledMaintenanceStateTimeline.scheduledMaintenance!;
       const scheduledMaintenanceState: ScheduledMaintenanceState =
@@ -143,16 +153,58 @@ RunCron(
           ],
         };
 
+        const pushMessage: PushNotificationMessage =
+          PushNotificationUtil.createGenericNotification({
+            title: "Scheduled Maintenance State Changed",
+            body: `Scheduled maintenance ${scheduledMaintenance.title} state changed to ${scheduledMaintenanceState!.name!}. Click to view details.`,
+            clickAction: (
+              await ScheduledMaintenanceService.getScheduledMaintenanceLinkInDashboard(
+                scheduledMaintenance.projectId!,
+                scheduledMaintenance.id!,
+              )
+            ).toString(),
+            tag: "scheduled-maintenance-state-changed",
+            requireInteraction: false,
+          });
+
         await UserNotificationSettingService.sendUserNotification({
           userId: user.id!,
           projectId: scheduledMaintenanceStateTimeline.projectId!,
           emailEnvelope: emailMessage,
           smsMessage: sms,
           callRequestMessage: callMessage,
+          pushNotificationMessage: pushMessage,
+          scheduledMaintenanceId: scheduledMaintenance.id!,
           eventType:
             NotificationSettingEventType.SEND_SCHEDULED_MAINTENANCE_STATE_CHANGED_OWNER_NOTIFICATION,
         });
+
+        moreScheduledMaintenanceFeedInformationInMarkdown += `**Notified:** ${await UserService.getUserMarkdownString(
+          {
+            userId: user.id!,
+            projectId: scheduledMaintenanceStateTimeline.projectId!,
+          },
+        )})\n`;
       }
+
+      const scheduledMaintenanceNumber: number =
+        scheduledMaintenance.scheduledMaintenanceNumber!;
+      const projectId: ObjectID = scheduledMaintenance.projectId!;
+      const scheduledMaintenanceId: ObjectID = scheduledMaintenance.id!;
+
+      await ScheduledMaintenanceFeedService.createScheduledMaintenanceFeedItem({
+        scheduledMaintenanceId: scheduledMaintenance.id!,
+        projectId: scheduledMaintenance.projectId!,
+        scheduledMaintenanceFeedEventType:
+          ScheduledMaintenanceFeedEventType.OwnerNotificationSent,
+        displayColor: Blue500,
+        feedInfoInMarkdown: `🔔 **Owners have been notified about the state change of the [Scheduled Maintenance ${scheduledMaintenanceNumber}](${(await ScheduledMaintenanceService.getScheduledMaintenanceLinkInDashboard(projectId, scheduledMaintenanceId)).toString()}).**: Owners have been notified about the state change of the scheduledMaintenance because the scheduledMaintenance state changed to **${scheduledMaintenanceState.name}**.`,
+        moreInformationInMarkdown:
+          moreScheduledMaintenanceFeedInformationInMarkdown,
+        workspaceNotification: {
+          sendWorkspaceNotification: true,
+        },
+      });
     }
   },
 );

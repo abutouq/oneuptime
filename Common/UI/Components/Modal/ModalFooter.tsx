@@ -18,7 +18,7 @@ const ModalFooter: FunctionComponent<ComponentProps> = (
   props: ComponentProps,
 ): ReactElement => {
   return (
-    <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+    <div className="bg-gray-50 px-4 py-3 flex flex-row gap-3 md:flex-row-reverse md:px-6">
       {props.onSubmit ? (
         <Button
           buttonStyle={
@@ -53,7 +53,7 @@ const ModalFooter: FunctionComponent<ComponentProps> = (
           title={props.closeButtonText ? props.closeButtonText : "Cancel"}
           data-dismiss="modal"
           onClick={() => {
-            props.onClose && props.onClose();
+            props.onClose?.();
           }}
           dataTestId="modal-footer-close-button"
         />

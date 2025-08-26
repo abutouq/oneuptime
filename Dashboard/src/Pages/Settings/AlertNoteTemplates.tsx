@@ -1,4 +1,4 @@
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import { RouteUtil } from "../../Utils/RouteMap";
 import PageComponentProps from "../PageComponentProps";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
@@ -16,6 +16,7 @@ const AlertNoteTemplates: FunctionComponent<PageComponentProps> = (
         modelType={AlertNoteTemplate}
         id="alert-templates-table"
         name="Settings > Alert Templates"
+        userPreferencesKey="alert-templates-table"
         isDeleteable={false}
         isEditable={false}
         isCreateable={true}
@@ -27,7 +28,7 @@ const AlertNoteTemplates: FunctionComponent<PageComponentProps> = (
         }}
         noItemsMessage={"No note templates found."}
         query={{
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         showViewIdButton={true}
         formSteps={[
@@ -111,7 +112,7 @@ const AlertNoteTemplates: FunctionComponent<PageComponentProps> = (
               templateDescription: true,
             },
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
         ]}
       />

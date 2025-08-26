@@ -1,4 +1,3 @@
-import DashboardNavigation from "../../../Utils/Navigation";
 import PageComponentProps from "../../PageComponentProps";
 import URL from "Common/Types/API/URL";
 import BadDataException from "Common/Types/Exception/BadDataException";
@@ -10,7 +9,6 @@ import Banner from "Common/UI/Components/Banner/Banner";
 import { ButtonStyleType } from "Common/UI/Components/Button/Button";
 import Card from "Common/UI/Components/Card/Card";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
-import Link from "Common/UI/Components/Link/Link";
 import ConfirmModal from "Common/UI/Components/Modal/ConfirmModal";
 import CardModelDetail from "Common/UI/Components/ModelDetail/CardModelDetail";
 import ModelTable from "Common/UI/Components/ModelTable/ModelTable";
@@ -31,6 +29,8 @@ import React, {
   ReactElement,
   useState,
 } from "react";
+import Link from "Common/UI/Components/Link/Link";
+import ProjectUtil from "Common/UI/Utils/Project";
 
 const SSOPage: FunctionComponent<PageComponentProps> = (
   props: PageComponentProps,
@@ -47,12 +47,14 @@ const SSOPage: FunctionComponent<PageComponentProps> = (
           title="Need help with configuring SSO?"
           description="Watch this 10 minute video which will help you get set up"
           link={URL.fromString("https://youtu.be/F_h74p38SU0")}
+          hideOnMobile={true}
         />
 
         <ModelTable<StatusPageSSO>
           modelType={StatusPageSSO}
+          userPreferencesKey={"status-page-sso-table"}
           query={{
-            projectId: DashboardNavigation.getProjectId()!,
+            projectId: ProjectUtil.getCurrentProjectId()!,
             statusPageId: modelId.toString(),
           }}
           onBeforeCreate={(item: StatusPageSSO): Promise<StatusPageSSO> => {
@@ -135,6 +137,7 @@ const SSOPage: FunctionComponent<PageComponentProps> = (
                 "Members will be forwarded here when signing in to your organization",
               placeholder: "https://yourapp.example.com/apps/appId",
               stepId: "sign-on",
+              disableSpellCheck: true,
             },
             {
               field: {
@@ -147,6 +150,7 @@ const SSOPage: FunctionComponent<PageComponentProps> = (
               required: true,
               placeholder: "https://example.com",
               stepId: "sign-on",
+              disableSpellCheck: true,
             },
             {
               field: {
@@ -249,6 +253,7 @@ const SSOPage: FunctionComponent<PageComponentProps> = (
               },
               title: "Description",
               type: FieldType.Text,
+              hideOnMobile: true,
             },
 
             {
@@ -257,6 +262,7 @@ const SSOPage: FunctionComponent<PageComponentProps> = (
               },
               title: "Enabled",
               type: FieldType.Boolean,
+              hideOnMobile: true,
             },
           ]}
         />

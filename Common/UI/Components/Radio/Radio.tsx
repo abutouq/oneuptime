@@ -1,47 +1,64 @@
 import { DropdownOption, DropdownValue } from "../Dropdown/Dropdown";
-import Text from "Common/Types/Text";
-import React, { FunctionComponent, ReactElement, useState } from "react";
+import Text from "../../../Types/Text";
+import React, {
+  FunctionComponent,
+  ReactElement,
+  useEffect,
+  useState,
+} from "react";
 
-export interface RadioOption extends DropdownOption {}
+export type RadioOption = DropdownOption;
 
 export type RadioValue = DropdownValue;
 
 export interface ComponentProps {
   options: Array<RadioOption>;
-  initialValue?: undefined | RadioOption;
+  initialValue?: undefined | RadioValue;
   className?: undefined | string;
-  onChange?:
-    | undefined
-    | ((value: RadioValue | Array<RadioValue> | null) => void);
-  value?: RadioOption | undefined;
+  onChange?: undefined | ((value: RadioValue | null) => void);
+  value?: RadioValue | undefined;
   onFocus?: (() => void) | undefined;
   onBlur?: (() => void) | undefined;
   tabIndex?: number | undefined;
   error?: string | undefined;
+  dataTestId?: string | undefined;
 }
 
 const Radio: FunctionComponent<ComponentProps> = (
   props: ComponentProps,
 ): ReactElement => {
-  const [value, setValue] = useState<RadioOption | undefined>(
-    props.initialValue || props.value,
+  const [value, setValue] = useState<RadioValue | undefined>(
+    props.initialValue || props.value || undefined,
   );
+
+  useEffect(() => {
+    setValue(props.value);
+  }, [props.value]);
 
   const groupName: string = Text.generateRandomText();
 
   return (
-    <div className={`mt-2 space-y-2 ${props.className}`}>
+    <div
+      className={`mt-2 space-y-2 ${props.className}`}
+      data-testid={props.dataTestId}
+    >
       {props.options.map((option: RadioOption, index: number) => {
         return (
           <div key={index} className="flex items-center gap-x-3">
             <input
               tabIndex={props.tabIndex}
-              defaultChecked={value?.value === option.value}
+              checked={value === option.value}
               onClick={() => {
-                setValue(option);
-                props.onChange && props.onChange(option.value);
-                props.onBlur && props.onBlur();
-                props.onFocus && props.onFocus();
+                setValue(option.value);
+                if (props.onChange) {
+                  props.onChange(option.value);
+                }
+                if (props.onBlur) {
+                  props.onBlur();
+                }
+                if (props.onFocus) {
+                  props.onFocus();
+                }
               }}
               name={groupName}
               type="radio"

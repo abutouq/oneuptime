@@ -1,17 +1,20 @@
 import { EncryptionSecret } from "../EnvironmentConfig";
-import Email from "Common/Types/Email";
-import BadDataException from "Common/Types/Exception/BadDataException";
-import { JSONObject } from "Common/Types/JSON";
-import JSONFunctions from "Common/Types/JSONFunctions";
-import JSONWebTokenData from "Common/Types/JsonWebTokenData";
-import Name from "Common/Types/Name";
-import ObjectID from "Common/Types/ObjectID";
-import Timezone from "Common/Types/Timezone";
-import StatusPagePrivateUser from "Common/Models/DatabaseModels/StatusPagePrivateUser";
-import User from "Common/Models/DatabaseModels/User";
+import Email from "../../Types/Email";
+import BadDataException from "../../Types/Exception/BadDataException";
+import { JSONObject } from "../../Types/JSON";
+import JSONFunctions from "../../Types/JSONFunctions";
+import JSONWebTokenData from "../../Types/JsonWebTokenData";
+import Name from "../../Types/Name";
+import ObjectID from "../../Types/ObjectID";
+import Timezone from "../../Types/Timezone";
+import StatusPagePrivateUser from "../../Models/DatabaseModels/StatusPagePrivateUser";
+import User from "../../Models/DatabaseModels/User";
 import jwt from "jsonwebtoken";
+import logger from "./Logger";
+import CaptureSpan from "./Telemetry/CaptureSpan";
 
 class JSONWebToken {
+  @CaptureSpan()
   public static signUserLoginToken(data: {
     tokenData: {
       userId: ObjectID;
@@ -30,6 +33,7 @@ class JSONWebToken {
     });
   }
 
+  @CaptureSpan()
   public static sign(props: {
     data: JSONWebTokenData | User | StatusPagePrivateUser | string | JSONObject;
     expiresInSeconds: number;
@@ -69,6 +73,7 @@ class JSONWebToken {
     return JSONWebToken.signJsonPayload(jsonObj, expiresInSeconds);
   }
 
+  @CaptureSpan()
   public static signJsonPayload(
     payload: JSONObject,
     expiresInSeconds: number,
@@ -78,6 +83,7 @@ class JSONWebToken {
     });
   }
 
+  @CaptureSpan()
   public static decodeJsonPayload(token: string): JSONObject {
     const decodedToken: string = JSON.stringify(
       jwt.verify(token, EncryptionSecret.toString()) as string,
@@ -87,6 +93,7 @@ class JSONWebToken {
     return decoded;
   }
 
+  @CaptureSpan()
   public static decode(token: string): JSONWebTokenData {
     try {
       const decoded: JSONObject = JSONWebToken.decodeJsonPayload(token);
@@ -113,6 +120,7 @@ class JSONWebToken {
         isGlobalLogin: Boolean(decoded["isGlobalLogin"]),
       };
     } catch (e) {
+      logger.error(e);
       throw new BadDataException("AccessToken is invalid or expired");
     }
   }

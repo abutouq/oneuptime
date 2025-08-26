@@ -169,6 +169,7 @@ export default class Label extends AccessControlModel {
     length: ColumnLength.ShortText,
   })
   @UniqueColumnBy("projectId")
+  @Index()
   public override name?: string = undefined;
 
   @ColumnAccessControl({
@@ -185,6 +186,7 @@ export default class Label extends AccessControlModel {
     required: true,
     unique: true,
     type: TableColumnType.Slug,
+    computed: true,
     title: "Slug",
     description: "Friendly globally unique name for your object",
   })
@@ -303,6 +305,7 @@ export default class Label extends AccessControlModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })

@@ -4,6 +4,7 @@ import CreateBy from "../Types/Database/CreateBy";
 import DeleteBy from "../Types/Database/DeleteBy";
 import { OnCreate, OnDelete, OnUpdate } from "../Types/Database/Hooks";
 import QueryHelper from "../Types/Database/QueryHelper";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 import Select from "../Types/Database/Select";
 import UpdateBy from "../Types/Database/UpdateBy";
 import Errors from "../Utils/Errors";
@@ -16,7 +17,7 @@ import ProjectService from "./ProjectService";
 import UserNotificationRuleService from "./UserNotificationRuleService";
 import UserNotificationSettingService from "./UserNotificationSettingService";
 import UserService from "./UserService";
-import { AccountsRoute } from "Common/ServiceRoute";
+import { AccountsRoute } from "../../ServiceRoute";
 import Hostname from "../../Types/API/Hostname";
 import Protocol from "../../Types/API/Protocol";
 import URL from "../../Types/API/URL";
@@ -29,15 +30,19 @@ import EmailTemplateType from "../../Types/Email/EmailTemplateType";
 import BadDataException from "../../Types/Exception/BadDataException";
 import ObjectID from "../../Types/ObjectID";
 import PositiveNumber from "../../Types/PositiveNumber";
-import Project from "Common/Models/DatabaseModels/Project";
-import TeamMember from "Common/Models/DatabaseModels/TeamMember";
-import User from "Common/Models/DatabaseModels/User";
+import Project from "../../Models/DatabaseModels/Project";
+import TeamMember from "../../Models/DatabaseModels/TeamMember";
+import User from "../../Models/DatabaseModels/User";
+import ProjectUserService from "./ProjectUserService";
+import OnCallDutyPolicyTimeLogService from "./OnCallDutyPolicyTimeLogService";
+import OneUptimeDate from "../../Types/Date";
 
 export class TeamMemberService extends DatabaseService<TeamMember> {
   public constructor() {
     super(TeamMember);
   }
 
+  @CaptureSpan()
   protected override async onBeforeCreate(
     createBy: CreateBy<TeamMember>,
   ): Promise<OnCreate<TeamMember>> {
@@ -90,6 +95,7 @@ export class TeamMemberService extends DatabaseService<TeamMember> {
         isNewUser = true;
         user = await UserService.createByEmail({
           email,
+          name: undefined, // name is not required for now.
           props: {
             isRoot: true,
           },
@@ -134,6 +140,7 @@ export class TeamMemberService extends DatabaseService<TeamMember> {
           },
           {
             projectId: createBy.data.projectId!,
+            userId: user.id!,
           },
         ).catch((err: Error) => {
           logger.error(err);
@@ -163,6 +170,7 @@ export class TeamMemberService extends DatabaseService<TeamMember> {
     return { createBy, carryForward: null };
   }
 
+  @CaptureSpan()
   public async refreshTokens(
     userId: ObjectID,
     projectId: ObjectID,
@@ -176,6 +184,7 @@ export class TeamMemberService extends DatabaseService<TeamMember> {
     );
   }
 
+  @CaptureSpan()
   protected override async onCreateSuccess(
     onCreate: OnCreate<TeamMember>,
     createdItem: TeamMember,
@@ -189,9 +198,16 @@ export class TeamMemberService extends DatabaseService<TeamMember> {
       onCreate.createBy.data.projectId!,
     );
 
+    ProjectUserService.refreshProjectUsersByProject({
+      projectId: onCreate.createBy.data.projectId!,
+    }).catch((err: Error) => {
+      logger.error(err);
+    });
+
     return createdItem;
   }
 
+  @CaptureSpan()
   protected override async onUpdateSuccess(
     onUpdate: OnUpdate<TeamMember>,
     updatedItemIds: Array<ObjectID>,
@@ -231,11 +247,18 @@ export class TeamMemberService extends DatabaseService<TeamMember> {
           item.user?.email as Email,
         );
       }
+
+      ProjectUserService.refreshProjectUsersByProject({
+        projectId: item.projectId!,
+      }).catch((err: Error) => {
+        logger.error(err);
+      });
     }
 
     return { updateBy, carryForward: onUpdate.carryForward };
   }
 
+  @CaptureSpan()
   protected override async onBeforeDelete(
     deleteBy: DeleteBy<TeamMember>,
   ): Promise<OnDelete<TeamMember>> {
@@ -260,6 +283,14 @@ export class TeamMemberService extends DatabaseService<TeamMember> {
 
     // check if there's one member in the team.
     for (const member of members) {
+      OnCallDutyPolicyTimeLogService.endTimeForUser({
+        projectId: member.projectId!,
+        userId: member.userId!,
+        endsAt: OneUptimeDate.getCurrentDate(),
+      }).catch((err: Error) => {
+        logger.error(err);
+      });
+
       if (member.team?.shouldHaveAtLeastOneMember) {
         if (!member.hasAcceptedInvitation) {
           continue;
@@ -291,6 +322,7 @@ export class TeamMemberService extends DatabaseService<TeamMember> {
     };
   }
 
+  @CaptureSpan()
   protected override async onDeleteSuccess(
     onDelete: OnDelete<TeamMember>,
   ): Promise<OnDelete<TeamMember>> {
@@ -303,11 +335,19 @@ export class TeamMemberService extends DatabaseService<TeamMember> {
         item.userId!,
         item.projectId!,
       );
+
+      // refresh project users.
+      ProjectUserService.refreshProjectUsersByProject({
+        projectId: item.projectId!,
+      }).catch((err: Error) => {
+        logger.error(err);
+      });
     }
 
     return onDelete;
   }
 
+  @CaptureSpan()
   public async getUniqueTeamMemberCountInProject(
     projectId: ObjectID,
   ): Promise<number> {
@@ -336,6 +376,7 @@ export class TeamMemberService extends DatabaseService<TeamMember> {
     return [...new Set(memberIds)].length; //get unique member ids.
   }
 
+  @CaptureSpan()
   public async getUsersInTeams(teamIds: Array<ObjectID>): Promise<Array<User>> {
     const members: Array<TeamMember> = await this.findBy({
       query: {
@@ -373,6 +414,7 @@ export class TeamMemberService extends DatabaseService<TeamMember> {
     });
   }
 
+  @CaptureSpan()
   public async getUsersInTeam(teamId: ObjectID): Promise<Array<User>> {
     const members: Array<TeamMember> = await this.findBy({
       query: {
@@ -399,6 +441,7 @@ export class TeamMemberService extends DatabaseService<TeamMember> {
     });
   }
 
+  @CaptureSpan()
   public async updateSubscriptionSeatsByUniqueTeamMembersInProject(
     projectId: ObjectID,
   ): Promise<void> {

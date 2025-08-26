@@ -5,13 +5,15 @@ import ArrayUtil from "../../Utils/Array";
 import { BrightColors } from "../../Types/BrandColors";
 import BadDataException from "../../Types/Exception/BadDataException";
 import ObjectID from "../../Types/ObjectID";
-import Model from "Common/Models/DatabaseModels/TelemetryService";
+import Model from "../../Models/DatabaseModels/TelemetryService";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export class Service extends DatabaseService<Model> {
   public constructor() {
     super(Model);
   }
 
+  @CaptureSpan()
   protected override async onBeforeCreate(
     createBy: CreateBy<Model>,
   ): Promise<OnCreate<Model>> {
@@ -26,6 +28,7 @@ export class Service extends DatabaseService<Model> {
     };
   }
 
+  @CaptureSpan()
   public async getTelemetryDataRetentionInDays(
     telemetryServiceId: ObjectID,
   ): Promise<number> {

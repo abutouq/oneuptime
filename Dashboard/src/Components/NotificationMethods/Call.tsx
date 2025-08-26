@@ -1,4 +1,4 @@
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import HTTPErrorResponse from "Common/Types/API/HTTPErrorResponse";
 import HTTPResponse from "Common/Types/API/HTTPResponse";
 import URL from "Common/Types/API/URL";
@@ -43,14 +43,15 @@ const Call: () => JSX.Element = (): ReactElement => {
     <>
       <ModelTable<UserCall>
         modelType={UserCall}
+        userPreferencesKey={"user-call-table"}
         query={{
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
           userId: User.getUserId().toString(),
         }}
         filters={[]}
         refreshToggle={refreshToggle}
         onBeforeCreate={(model: UserCall): Promise<UserCall> => {
-          model.projectId = DashboardNavigation.getProjectId()!;
+          model.projectId = ProjectUtil.getCurrentProjectId()!;
           model.userId = User.getUserId();
           return Promise.resolve(model);
         }}
@@ -135,6 +136,7 @@ const Call: () => JSX.Element = (): ReactElement => {
             validation: {
               minLength: 2,
             },
+            disableSpellCheck: true,
           },
         ]}
         showRefreshButton={true}
@@ -174,7 +176,7 @@ const Call: () => JSX.Element = (): ReactElement => {
                   ),
                   {
                     code: item["code"],
-                    projectId: DashboardNavigation.getProjectId()!,
+                    projectId: ProjectUtil.getCurrentProjectId()!,
                     itemId: currentItem["_id"],
                   },
                 );
@@ -238,7 +240,7 @@ const Call: () => JSX.Element = (): ReactElement => {
                     "/user-call/resend-verification-code",
                   ),
                   {
-                    projectId: DashboardNavigation.getProjectId()!,
+                    projectId: ProjectUtil.getCurrentProjectId()!,
                     itemId: currentItem["_id"],
                   },
                 );

@@ -75,7 +75,7 @@ const Projects: FunctionComponent = (): ReactElement => {
             minLength: 6,
           },
           footerElement: getFooter(),
-          fieldType: FormFieldSchemaType.RadioButton,
+          fieldType: FormFieldSchemaType.OptionChooserButton,
           radioButtonOptions: SubscriptionPlan.getSubscriptionPlans(
             getAllEnvVars(),
           ).map((plan: SubscriptionPlan): RadioButton => {
@@ -241,8 +241,10 @@ const Projects: FunctionComponent = (): ReactElement => {
             },
             title: "Created At",
             type: FieldType.DateTime,
+            hideOnMobile: true,
           },
         ]}
+        userPreferencesKey="admin-projects-table"
       />
     </Page>
   );

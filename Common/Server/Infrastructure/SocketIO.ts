@@ -1,9 +1,10 @@
 import Express from "../Utils/Express";
 import Redis from "./Redis";
-import { RealtimeRoute } from "Common/ServiceRoute";
-import DatabaseNotConnectedException from "Common/Types/Exception/DatabaseNotConnectedException";
+import { RealtimeRoute } from "../../ServiceRoute";
+import DatabaseNotConnectedException from "../../Types/Exception/DatabaseNotConnectedException";
 import http from "http";
 import SocketIO from "socket.io";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export type Socket = SocketIO.Socket;
 export type SocketServer = SocketIO.Server;
@@ -11,6 +12,7 @@ export type SocketServer = SocketIO.Server;
 export default abstract class IO {
   private static socketServer: SocketIO.Server | null = null;
 
+  @CaptureSpan()
   public static init(): void {
     const server: http.Server = Express.getHttpServer();
 
@@ -30,6 +32,7 @@ export default abstract class IO {
     // this.socketServer.adapter(createAdapter(pubClient, subClient));
   }
 
+  @CaptureSpan()
   public static getSocketServer(): SocketIO.Server | null {
     if (!this.socketServer) {
       this.init();

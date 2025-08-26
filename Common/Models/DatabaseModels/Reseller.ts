@@ -182,6 +182,7 @@ export default class Reseller extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -268,6 +269,7 @@ export default class Reseller extends BaseModel {
     canReadOnRelationQuery: true,
     title: "Enable Telemetry Features",
     description: "Should we enable telemetry features for this reseller?",
+    defaultValue: false,
   })
   @Column({
     nullable: true,

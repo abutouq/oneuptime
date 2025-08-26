@@ -1,4 +1,4 @@
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageComponentProps from "../PageComponentProps";
 import { ErrorFunction, VoidFunction } from "Common/Types/FunctionTypes";
 import IconProp from "Common/Types/Icon/IconProp";
@@ -43,8 +43,9 @@ const Domains: FunctionComponent<PageComponentProps> = (): ReactElement => {
         modelType={Domain}
         showViewIdButton={true}
         name="Settings > Domain"
+        userPreferencesKey={"domains-table"}
         query={{
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         id="domains-table"
         isDeleteable={true}
@@ -99,6 +100,7 @@ const Domains: FunctionComponent<PageComponentProps> = (): ReactElement => {
             validation: {
               minLength: 2,
             },
+            disableSpellCheck: true,
           },
         ]}
         selectMoreFields={{

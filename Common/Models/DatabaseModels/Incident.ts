@@ -27,6 +27,7 @@ import IconProp from "../../Types/Icon/IconProp";
 import { JSONObject } from "../../Types/JSON";
 import ObjectID from "../../Types/ObjectID";
 import Permission from "../../Types/Permission";
+import StatusPageSubscriberNotificationStatus from "../../Types/StatusPage/StatusPageSubscriberNotificationStatus";
 import {
   Column,
   Entity,
@@ -37,6 +38,7 @@ import {
   ManyToOne,
 } from "typeorm";
 import { TelemetryQuery } from "../../Types/Telemetry/TelemetryQuery";
+import NotificationRuleWorkspaceChannel from "../../Types/Workspace/NotificationRules/NotificationRuleWorkspaceChannel";
 
 @EnableDocumentation()
 @AccessControlColumn("labels")
@@ -228,12 +230,7 @@ export default class Incident extends BaseModel {
 
   @Index()
   @ColumnAccessControl({
-    create: [
-      Permission.ProjectOwner,
-      Permission.ProjectAdmin,
-      Permission.ProjectMember,
-      Permission.CreateProjectIncident,
-    ],
+    create: [],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -246,6 +243,7 @@ export default class Incident extends BaseModel {
     required: true,
     unique: true,
     type: TableColumnType.Slug,
+    computed: true,
     title: "Slug",
     description: "Friendly globally unique name for your object",
   })
@@ -331,6 +329,7 @@ export default class Incident extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -529,6 +528,7 @@ export default class Incident extends BaseModel {
   @TableColumn({
     manyToOneRelationColumn: "currentIncidentStateId",
     type: TableColumnType.Entity,
+    computed: true,
     modelType: IncidentState,
     title: "Current Incident State",
     description:
@@ -570,6 +570,7 @@ export default class Incident extends BaseModel {
   @Index()
   @TableColumn({
     type: TableColumnType.ObjectID,
+    isDefaultValueColumn: true,
     required: true,
     title: "Current Incident State ID",
     description: "Current Incident State ID",
@@ -669,7 +670,12 @@ export default class Incident extends BaseModel {
       Permission.ProjectMember,
       Permission.ReadProjectIncident,
     ],
-    update: [],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditProjectIncident,
+    ],
   })
   @TableColumn({
     manyToOneRelationColumn: "changeMonitorStatusToId",
@@ -728,26 +734,74 @@ export default class Incident extends BaseModel {
   public changeMonitorStatusToId?: ObjectID = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectIncident,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
       Permission.ProjectMember,
       Permission.ReadProjectIncident,
     ],
-    update: [],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditProjectIncident,
+    ],
   })
   @TableColumn({
     isDefaultValueColumn: true,
-    type: TableColumnType.Boolean,
-    title: "Are subscribers notified?",
-    description: "Are subscribers notified about this incident?",
+    computed: true,
+    hideColumnInDocumentation: true,
+    type: TableColumnType.ShortText,
+    title: "Subscriber Notification Status",
+    description:
+      "Status of notification sent to subscribers about this incident",
+    defaultValue: StatusPageSubscriberNotificationStatus.Pending,
   })
   @Column({
-    type: ColumnType.Boolean,
-    default: false,
+    type: ColumnType.ShortText,
+    default: StatusPageSubscriberNotificationStatus.Pending,
   })
-  public isStatusPageSubscribersNotifiedOnIncidentCreated?: boolean = undefined;
+  public subscriberNotificationStatusOnIncidentCreated?: StatusPageSubscriberNotificationStatus =
+    undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectIncident,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectIncident,
+    ],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditProjectIncident,
+    ],
+  })
+  @TableColumn({
+    type: TableColumnType.VeryLongText,
+    title: "Notification Status Message",
+    description:
+      "Status message for subscriber notifications - includes success messages, failure reasons, or skip reasons",
+    required: false,
+  })
+  @Column({
+    type: ColumnType.VeryLongText,
+    nullable: true,
+  })
+  public subscriberNotificationStatusMessage?: string = undefined;
 
   @ColumnAccessControl({
     create: [
@@ -769,6 +823,7 @@ export default class Incident extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Should subscribers be notified?",
     description: "Should subscribers be notified about this incident?",
+    defaultValue: true,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -811,12 +866,7 @@ export default class Incident extends BaseModel {
   public customFields?: JSONObject = undefined;
 
   @ColumnAccessControl({
-    create: [
-      Permission.ProjectOwner,
-      Permission.ProjectAdmin,
-      Permission.ProjectMember,
-      Permission.CreateProjectIncident,
-    ],
+    create: [],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -828,10 +878,13 @@ export default class Incident extends BaseModel {
   @Index()
   @TableColumn({
     type: TableColumnType.Boolean,
+    computed: true,
+    hideColumnInDocumentation: true,
     required: true,
     isDefaultValueColumn: true,
     title: "Are Owners Notified Of Resource Creation?",
     description: "Are owners notified of when this resource is created?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -853,7 +906,12 @@ export default class Incident extends BaseModel {
       Permission.ProjectMember,
       Permission.ReadProjectIncident,
     ],
-    update: [],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditProjectIncident,
+    ],
   })
   @TableColumn({
     type: TableColumnType.Markdown,
@@ -1014,6 +1072,7 @@ export default class Incident extends BaseModel {
     title: "Is created automatically?",
     description:
       "Is this incident created by OneUptime Probe or Workers automatically (and not created manually by a user)?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -1086,4 +1145,82 @@ export default class Incident extends BaseModel {
     nullable: true,
   })
   public telemetryQuery?: TelemetryQuery = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectIncident,
+    ],
+    update: [],
+  })
+  @Index()
+  @TableColumn({
+    isDefaultValueColumn: false,
+    required: false,
+    type: TableColumnType.Number,
+    title: "Incident Number",
+    description: "Incident Number",
+    computed: true,
+  })
+  @Column({
+    type: ColumnType.Number,
+    nullable: true,
+  })
+  public incidentNumber?: number = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [],
+    update: [],
+  })
+  @TableColumn({
+    isDefaultValueColumn: false,
+    required: false,
+    type: TableColumnType.JSON,
+    title: "Post Updates To Workspace Channel Name",
+    description: "Post Updates To Workspace Channel Name",
+  })
+  @Column({
+    type: ColumnType.JSON,
+    nullable: true,
+  })
+  public postUpdatesToWorkspaceChannels?: Array<NotificationRuleWorkspaceChannel> =
+    undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectIncident,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectIncident,
+    ],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditProjectIncident,
+    ],
+  })
+  @TableColumn({
+    isDefaultValueColumn: true,
+    type: TableColumnType.Boolean,
+    title: "Should be visible on status page?",
+    description: "Should this incident be visible on the status page?",
+    defaultValue: true,
+  })
+  @Column({
+    type: ColumnType.Boolean,
+    default: true,
+    nullable: true,
+  })
+  public isVisibleOnStatusPage?: boolean = undefined;
 }

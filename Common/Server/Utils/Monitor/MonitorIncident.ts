@@ -17,9 +17,11 @@ import IncidentService from "../../Services/IncidentService";
 import IncidentSeverityService from "../../Services/IncidentSeverityService";
 import IncidentStateTimelineService from "../../Services/IncidentStateTimelineService";
 import logger from "../Logger";
+import CaptureSpan from "../Telemetry/CaptureSpan";
 import DataToProcess from "./DataToProcess";
 
 export default class MonitorIncident {
+  @CaptureSpan()
   public static async checkOpenIncidentsAndCloseIfResolved(input: {
     monitorId: ObjectID;
     autoResolveCriteriaInstanceIdIncidentIdsDictionary: Dictionary<
@@ -73,6 +75,7 @@ export default class MonitorIncident {
     return openIncidents;
   }
 
+  @CaptureSpan()
   public static async criteriaMetCreateIncidentsAndUpdateMonitorStatus(input: {
     criteriaInstance: MonitorCriteriaInstance;
     monitor: Monitor;

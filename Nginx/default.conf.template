@@ -1,3 +1,8 @@
+## Hash tuning for many/long server names. Can be overridden via env vars.
+## Defaults are provided by envsubst-on-templates.sh if not set.
+server_names_hash_bucket_size ${SERVER_NAMES_HASH_BUCKET_SIZE};
+server_names_hash_max_size ${SERVER_NAMES_HASH_MAX_SIZE};
+
 upstream accounts {
     server ${SERVER_ACCOUNTS_HOSTNAME}:${ACCOUNTS_PORT} weight=10 max_fails=3 fail_timeout=30s;
 }
@@ -12,6 +17,11 @@ upstream probe-ingest {
 
 upstream open-telemetry-ingest {
     server ${SERVER_OPEN_TELEMETRY_INGEST_HOSTNAME}:${OPEN_TELEMETRY_INGEST_PORT} weight=10 max_fails=3 fail_timeout=30s; 
+}
+
+
+upstream server-monitor-ingest {
+    server ${SERVER_SERVER_MONITOR_INGEST_HOSTNAME}:${SERVER_MONITOR_INGEST_PORT} weight=10 max_fails=3 fail_timeout=30s; 
 }
 
 upstream incoming-request-ingest {
@@ -71,6 +81,9 @@ upstream opentelemetry-collector-grpc {
 
 server {
 
+    server_tokens off;
+    
+
     gzip on;
     gzip_types      text/plain application/xml application/javascript text/javascript text/css application/json;
     gzip_proxied    no-cache no-store private expired auth;
@@ -114,12 +127,15 @@ server {
 
 server {
 
+    server_tokens off;
+    
+
     gzip on;
     gzip_types      text/plain application/xml application/javascript text/javascript text/css application/json;
     gzip_proxied    no-cache no-store private expired auth;
     gzip_min_length 1000;
    
-    listen 7849;
+    listen ${NGINX_LISTEN_ADDRESS}7849 ${NGINX_LISTEN_OPTIONS};
     http2  on;
 
     server_name oneuptime-fluentd-collector ${FLUENTD_HOST};
@@ -152,12 +168,15 @@ server {
 
 server {
 
+    server_tokens off;
+    
+
     gzip on;
     gzip_types      text/plain application/xml application/javascript text/javascript text/css application/json;
     gzip_proxied    no-cache no-store private expired auth;
     gzip_min_length 1000;
    
-    listen 7849 default_server;
+    listen ${NGINX_LISTEN_ADDRESS}7849 default_server ${NGINX_LISTEN_OPTIONS};
 
     server_name  _; # All domains. 
 
@@ -277,12 +296,15 @@ server {
 
 server {
 
+    server_tokens off;
+    
+
     gzip on;
     gzip_types      text/plain application/xml application/javascript text/javascript text/css application/json;
     gzip_proxied    no-cache no-store private expired auth;
     gzip_min_length 1000;
 
-    listen 7850 ssl default_server; # Port HTTPS
+    listen ${NGINX_LISTEN_ADDRESS}7850 ssl default_server ${NGINX_LISTEN_OPTIONS}; # Port HTTPS
 
 
     ssl_certificate /etc/nginx/certs/StatusPageCerts/$ssl_server_name.crt; 
@@ -383,12 +405,15 @@ server {
 
 server {
 
+    server_tokens off;
+    
+
     gzip on;
     gzip_types      text/plain application/xml application/javascript text/javascript text/css application/json;
     gzip_proxied    no-cache no-store private expired auth;
     gzip_min_length 1000;
     
-    listen 7849;
+    listen ${NGINX_LISTEN_ADDRESS}7849 ${NGINX_LISTEN_OPTIONS};
     http2  on;
 
     server_name localhost ingress ${HOST}; #All domains
@@ -416,6 +441,35 @@ server {
         proxy_set_header Connection "upgrade";
         
         # If billing_enabled is true then proxy to home otherwise to dashboard because we dont need marketing paages for on-prem install.
+        if ($billing_enabled = true) {
+            proxy_pass http://home;
+        }
+
+        if ($billing_enabled != true) {
+            proxy_pass http://dashboard;
+        }
+    }
+
+    # PWA manifest and service worker with proper headers for home
+    location ~* ^/(manifest\.json|service-worker\.js)$ {
+        resolver 127.0.0.1 valid=30s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Cache manifest for 1 hour, service worker for no cache
+        if ($uri ~* "service-worker\.js$") {
+            add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+            add_header Pragma "no-cache" always;
+            add_header Expires "0" always;
+        }
+        
+        if ($uri ~* "manifest\.json$") {
+            add_header Cache-Control "public, max-age=3600" always;
+        }
+        
+        # Serve from home if billing enabled, dashboard otherwise
         if ($billing_enabled = true) {
             proxy_pass http://home;
         }
@@ -630,7 +684,7 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_pass http://probe-ingest/server-monitor;
+        proxy_pass http://server-monitor-ingest/server-monitor;
 
         client_max_body_size 50M;
     }
@@ -647,6 +701,39 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
+        
+        # PWA Headers for proper caching
+        add_header Cache-Control "public, max-age=31536000" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        
+        proxy_pass http://dashboard;
+    }
+
+    # PWA manifest and service worker with proper headers
+    location ~* ^/dashboard/(manifest\.json|sw\.js|browserconfig\.xml)$ {
+        resolver 127.0.0.1 valid=30s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Cache manifest for 1 hour, service worker for no cache
+        if ($uri ~* "sw\.js$") {
+            add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+            add_header Pragma "no-cache" always;
+            add_header Expires "0" always;
+        }
+        
+        if ($uri ~* "manifest\.json$") {
+            add_header Cache-Control "public, max-age=3600" always;
+        }
+        
+        if ($uri ~* "browserconfig\.xml$") {
+            add_header Cache-Control "public, max-age=86400" always;
+        }
+        
         proxy_pass http://dashboard;
     }
 

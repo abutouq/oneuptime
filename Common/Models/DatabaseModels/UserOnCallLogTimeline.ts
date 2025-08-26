@@ -1,4 +1,5 @@
 import Incident from "./Incident";
+import Alert from "./Alert";
 import OnCallDutyPolicy from "./OnCallDutyPolicy";
 import OnCallDutyPolicyEscalationRule from "./OnCallDutyPolicyEscalationRule";
 import OnCallDutyPolicyExecutionLog from "./OnCallDutyPolicyExecutionLog";
@@ -9,6 +10,7 @@ import User from "./User";
 import UserCall from "./UserCall";
 import UserEmail from "./UserEmail";
 import UserNotificationRule from "./UserNotificationRule";
+import UserPush from "./UserPush";
 import UserOnCallLog from "./UserOnCallLog";
 import UserSMS from "./UserSMS";
 import BaseModel from "./DatabaseBaseModel/DatabaseBaseModel";
@@ -50,6 +52,9 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
 @Entity({
   name: "UserOnCallLogTimeline",
 })
+@Index(["userId", "createdAt"])
+@Index(["onCallDutyPolicyExecutionLogId", "status"])
+@Index(["projectId", "status"])
 @TableMetadata({
   tableName: "UserOnCallLogTimeline",
   singularName: "User On-Call Log Timeline",
@@ -325,17 +330,63 @@ export default class UserOnCallLogTimeline extends BaseModel {
   @Index()
   @TableColumn({
     type: TableColumnType.ObjectID,
-    required: true,
+    required: false,
     canReadOnRelationQuery: true,
     title: "Incident ID",
     description: "ID of your OneUptime Incident in which this object belongs",
   })
   @Column({
     type: ColumnType.ObjectID,
-    nullable: false,
+    nullable: true,
     transformer: ObjectID.getDatabaseTransformer(),
   })
   public triggeredByIncidentId?: ObjectID = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [Permission.CurrentUser],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "triggeredByAlertId",
+    type: TableColumnType.Entity,
+    modelType: Alert,
+    title: "Alert",
+    description: "Relation to Alert Resource in which this object belongs",
+  })
+  @ManyToOne(
+    () => {
+      return Alert;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "CASCADE",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "triggeredByAlertId" })
+  public triggeredByAlert?: Alert = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [Permission.CurrentUser],
+    update: [],
+  })
+  @Index()
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    required: false,
+    canReadOnRelationQuery: true,
+    title: "Alert ID",
+    description: "ID of your OneUptime Alert in which this object belongs",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public triggeredByAlertId?: ObjectID = undefined;
 
   @ColumnAccessControl({
     create: [],
@@ -638,6 +689,7 @@ export default class UserOnCallLogTimeline extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -827,6 +879,52 @@ export default class UserOnCallLogTimeline extends BaseModel {
     transformer: ObjectID.getDatabaseTransformer(),
   })
   public userEmailId?: ObjectID = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [Permission.CurrentUser],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "userPushId",
+    type: TableColumnType.Entity,
+    modelType: UserPush,
+    title: "User Push",
+    description: "Relation to User Push Resource in which this object belongs",
+  })
+  @ManyToOne(
+    () => {
+      return UserPush;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "CASCADE",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "userPushId" })
+  public userPush?: UserPush = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [Permission.CurrentUser],
+    update: [],
+  })
+  @Index()
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    required: false,
+    canReadOnRelationQuery: true,
+    title: "User Push ID",
+    description: "ID of User Push in which this object belongs",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public userPushId?: ObjectID = undefined;
 
   @ColumnAccessControl({
     create: [],

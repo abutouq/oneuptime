@@ -7,23 +7,24 @@ import logger from "../Utils/Logger";
 import DatabaseService from "./DatabaseService";
 import MonitorService from "./MonitorService";
 import UserService from "./UserService";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 import SortOrder from "../../Types/BaseDatabase/SortOrder";
 import OneUptimeDate from "../../Types/Date";
 import BadDataException from "../../Types/Exception/BadDataException";
 import ObjectID from "../../Types/ObjectID";
 import PositiveNumber from "../../Types/PositiveNumber";
-import MonitorStatusTimeline from "Common/Models/DatabaseModels/MonitorStatusTimeline";
-import User from "Common/Models/DatabaseModels/User";
-import { IsBillingEnabled } from "../EnvironmentConfig";
+import MonitorStatusTimeline from "../../Models/DatabaseModels/MonitorStatusTimeline";
+import MonitorFeedService from "./MonitorFeedService";
+import { MonitorFeedEventType } from "../../Models/DatabaseModels/MonitorFeed";
+import MonitorStatus from "../../Models/DatabaseModels/MonitorStatus";
+import MonitorStatusService from "./MonitorStatusService";
 
 export class Service extends DatabaseService<MonitorStatusTimeline> {
   public constructor() {
     super(MonitorStatusTimeline);
-    if (IsBillingEnabled) {
-      this.hardDeleteItemsOlderThanInDays("createdAt", 120);
-    }
   }
 
+  @CaptureSpan()
   protected override async onBeforeCreate(
     createBy: CreateBy<MonitorStatusTimeline>,
   ): Promise<OnCreate<MonitorStatusTimeline>> {
@@ -36,7 +37,7 @@ export class Service extends DatabaseService<MonitorStatusTimeline> {
     try {
       mutex = await Semaphore.lock({
         key: createBy.data.monitorId.toString(),
-        namespace: "MonitorStatusTimeline.onBeforeCreate",
+        namespace: "MonitorStatusTimeline.create",
       });
     } catch (e) {
       logger.error(e);
@@ -62,55 +63,114 @@ export class Service extends DatabaseService<MonitorStatusTimeline> {
         userId = createBy.data.createdByUser.id;
       }
 
-      const user: User | null = await UserService.findOneBy({
-        query: {
-          _id: userId?.toString() as string,
-        },
-        select: {
-          _id: true,
-          name: true,
-          email: true,
-        },
-        props: {
-          isRoot: true,
-        },
-      });
-
-      if (user) {
-        createBy.data.rootCause = `Monitor status created by ${user.name} (${user.email})`;
+      if (userId) {
+        createBy.data.rootCause = `Monitor status created by ${await UserService.getUserMarkdownString(
+          {
+            userId: userId!,
+            projectId: createBy.data.projectId || createBy.props.tenantId!,
+          },
+        )}`;
       }
     }
 
-    const lastMonitorStatusTimeline: MonitorStatusTimeline | null =
-      await this.findOneBy({
-        query: {
-          monitorId: createBy.data.monitorId,
-        },
-        sort: {
-          createdAt: SortOrder.Descending,
-        },
-        props: {
-          isRoot: true,
-        },
-        select: {
-          _id: true,
-        },
-      });
+    const monitorStatusId: ObjectID | undefined | null =
+      createBy.data.monitorStatusId || createBy.data.monitorStatus?.id;
 
-    if (!lastMonitorStatusTimeline) {
+    if (!monitorStatusId) {
+      throw new BadDataException("monitorStatusId is null");
+    }
+
+    const stateBeforeThis: MonitorStatusTimeline | null = await this.findOneBy({
+      query: {
+        monitorId: createBy.data.monitorId,
+        startsAt: QueryHelper.lessThanEqualTo(createBy.data.startsAt),
+      },
+      sort: {
+        startsAt: SortOrder.Descending,
+      },
+      props: {
+        isRoot: true,
+      },
+      select: {
+        monitorStatusId: true,
+        startsAt: true,
+        endsAt: true,
+      },
+    });
+
+    logger.debug("State Before this");
+    logger.debug(stateBeforeThis);
+
+    // If this is the first state, then do not notify the owner.
+    if (!stateBeforeThis) {
       // since this is the first status, do not notify the owner.
       createBy.data.isOwnerNotified = true;
     }
 
+    // check if this new state and the previous state are same.
+    // if yes, then throw bad data exception.
+
+    if (stateBeforeThis && stateBeforeThis.monitorStatusId && monitorStatusId) {
+      if (
+        stateBeforeThis.monitorStatusId.toString() ===
+        monitorStatusId.toString()
+      ) {
+        throw new BadDataException(
+          "Monitor Status cannot be same as previous status.",
+        );
+      }
+    }
+
+    const stateAfterThis: MonitorStatusTimeline | null = await this.findOneBy({
+      query: {
+        monitorId: createBy.data.monitorId,
+        startsAt: QueryHelper.greaterThan(createBy.data.startsAt),
+      },
+      sort: {
+        startsAt: SortOrder.Ascending,
+      },
+      props: {
+        isRoot: true,
+      },
+      select: {
+        monitorStatusId: true,
+        startsAt: true,
+        endsAt: true,
+      },
+    });
+
+    // compute ends at. It's the start of the next status.
+    if (stateAfterThis && stateAfterThis.startsAt) {
+      createBy.data.endsAt = stateAfterThis.startsAt;
+    }
+
+    // check if this new state and the previous state are same.
+    // if yes, then throw bad data exception.
+
+    if (stateAfterThis && stateAfterThis.monitorStatusId && monitorStatusId) {
+      if (
+        stateAfterThis.monitorStatusId.toString() === monitorStatusId.toString()
+      ) {
+        throw new BadDataException(
+          "Monitor Status cannot be same as next status.",
+        );
+      }
+    }
+
+    logger.debug("State After this");
+    logger.debug(stateAfterThis);
+
     return {
       createBy,
       carryForward: {
-        lastMonitorStatusTimelineId: lastMonitorStatusTimeline?.id || null,
+        statusTimelineBeforeThisStatus: stateBeforeThis || null,
+        statusTimelineAfterThisStatus: stateAfterThis || null,
         mutex: mutex,
       },
     };
   }
 
+  @CaptureSpan()
   protected override async onCreateSuccess(
     onCreate: OnCreate<MonitorStatusTimeline>,
     createdItem: MonitorStatusTimeline,
@@ -125,36 +185,139 @@ export class Service extends DatabaseService<MonitorStatusTimeline> {
 
     // update the last status as ended.
 
-    if (onCreate.carryForward.lastMonitorStatusTimelineId) {
+    logger.debug("Status Timeline Before this");
+    logger.debug(onCreate.carryForward.statusTimelineBeforeThisStatus);
+
+    logger.debug("Status Timeline After this");
+    logger.debug(onCreate.carryForward.statusTimelineAfterThisStatus);
+
+    logger.debug("Created Item");
+    logger.debug(createdItem);
+
+    // now there are three cases.
+    // 1. This is the first status OR there's no status after this.
+    if (!onCreate.carryForward.statusTimelineBeforeThisStatus) {
+      // This is the first status, no need to update previous status.
+      logger.debug("This is the first status.");
+    } else if (!onCreate.carryForward.statusTimelineAfterThisStatus) {
+      // 2. This is the last status.
+      // Update the previous status to end at the start of this status.
       await this.updateOneById({
-        id: onCreate.carryForward.lastMonitorStatusTimelineId!,
+        id: onCreate.carryForward.statusTimelineBeforeThisStatus.id!,
         data: {
-          endsAt: createdItem.createdAt || OneUptimeDate.getCurrentDate(),
+          endsAt: createdItem.startsAt!,
         },
         props: {
           isRoot: true,
         },
       });
+      logger.debug("This is the last status.");
+    } else {
+      // 3. This is in the middle.
+      // Update the previous status to end at the start of this status.
+      await this.updateOneById({
+        id: onCreate.carryForward.statusTimelineBeforeThisStatus.id!,
+        data: {
+          endsAt: createdItem.startsAt!,
+        },
+        props: {
+          isRoot: true,
+        },
+      });
+
+      // Update the next status to start at the end of this status.
+      await this.updateOneById({
+        id: onCreate.carryForward.statusTimelineAfterThisStatus.id!,
+        data: {
+          startsAt: createdItem.endsAt!,
+        },
+        props: {
+          isRoot: true,
+        },
+      });
+      logger.debug("This status is in the middle.");
     }
 
-    await MonitorService.updateOneBy({
-      query: {
-        _id: createdItem.monitorId?.toString(),
-      },
-      data: {
-        currentMonitorStatusId: createdItem.monitorStatusId,
-      },
-      props: onCreate.createBy.props,
-    });
+    if (!createdItem.endsAt) {
+      // if this is the last status, then update the monitor status.
+
+      await MonitorService.updateOneBy({
+        query: {
+          _id: createdItem.monitorId?.toString(),
+        },
+        data: {
+          currentMonitorStatusId: createdItem.monitorStatusId,
+        },
+        props: onCreate.createBy.props,
+      });
+    }
 
     if (onCreate.carryForward.mutex) {
       const mutex: SemaphoreMutex = onCreate.carryForward.mutex;
       await Semaphore.release(mutex);
     }
 
+    const monitorStatus: MonitorStatus | null =
+      await MonitorStatusService.findOneBy({
+        query: {
+          _id: createdItem.monitorStatusId.toString()!,
+        },
+        props: {
+          isRoot: true,
+        },
+        select: {
+          _id: true,
+          isOfflineState: true,
+          isOperationalState: true,
+          color: true,
+          name: true,
+        },
+      });
+
+    const stateName: string = monitorStatus?.name || "";
+    let stateEmoji: string = "➡️";
+
+    // if resolved state then change emoji to 🟢.
+
+    if (monitorStatus?.isOperationalState) {
+      stateEmoji = "🟢";
+    } else if (monitorStatus?.isOfflineState) {
+      stateEmoji = "🔴";
+    }
+
+    const monitorName: string | null = await MonitorService.getMonitorName({
+      monitorId: createdItem.monitorId,
+    });
+
+    const projectId: ObjectID = createdItem.projectId!;
+    const monitorId: ObjectID = createdItem.monitorId!;
+
+    await MonitorFeedService.createMonitorFeedItem({
+      monitorId: createdItem.monitorId!,
+      projectId: createdItem.projectId!,
+      monitorFeedEventType: MonitorFeedEventType.MonitorStatusChanged,
+      displayColor: monitorStatus?.color,
+      feedInfoInMarkdown:
+        stateEmoji +
+        ` Changed Monitor **[${monitorName}](${(await MonitorService.getMonitorLinkInDashboard(projectId!, monitorId!)).toString()}) State** to **` +
+        stateName +
+        "**",
+      moreInformationInMarkdown: `**Cause:** 
+    ${createdItem.rootCause}`,
+      userId: createdItem.createdByUserId || onCreate.createBy.props.userId,
+      workspaceNotification: {
+        sendWorkspaceNotification: true,
+        notifyUserId:
+          createdItem.createdByUserId ||
+          onCreate.createBy.props.userId ||
+          undefined,
+      },
+    });
+
     return createdItem;
   }
 
+  @CaptureSpan()
   protected override async onBeforeDelete(
     deleteBy: DeleteBy<MonitorStatusTimeline>,
   ): Promise<OnDelete<MonitorStatusTimeline>> {
@@ -165,6 +328,7 @@ export class Service extends DatabaseService<MonitorStatusTimeline> {
           select: {
             monitorId: true,
             startsAt: true,
+            endsAt: true,
           },
           props: {
             isRoot: true,
@@ -184,82 +348,104 @@ export class Service extends DatabaseService<MonitorStatusTimeline> {
           },
         });
 
+        if (!monitorStatusTimelineToBeDeleted) {
+          throw new BadDataException("Monitor status timeline not found.");
+        }
+
         if (monitorStatusTimeline.isOne()) {
           throw new BadDataException(
             "Cannot delete the only status timeline. Monitor should have at least one status timeline.",
           );
         }
 
-        // adjust times of other timeline events. get the state before this status timeline.
+        // There are three cases.
+        // 1. This is the first status.
+        // 2. This is the last status.
+        // 3. This is in the middle.
 
-        if (monitorStatusTimelineToBeDeleted?.startsAt) {
-          const beforeState: MonitorStatusTimeline | null =
-            await this.findOneBy({
-              query: {
-                monitorId: monitorId,
-                startsAt: QueryHelper.lessThan(
-                  monitorStatusTimelineToBeDeleted?.startsAt,
-                ),
-              },
-              sort: {
-                createdAt: SortOrder.Descending,
-              },
-              props: {
-                isRoot: true,
-              },
-              select: {
-                _id: true,
-                startsAt: true,
-              },
-            });
+        const stateBeforeThis: MonitorStatusTimeline | null =
+          await this.findOneBy({
+            query: {
+              _id: QueryHelper.notEquals(deleteBy.query._id as string),
+              monitorId: monitorId,
+              startsAt: QueryHelper.lessThanEqualTo(
+                monitorStatusTimelineToBeDeleted.startsAt!,
+              ),
+            },
+            sort: {
+              startsAt: SortOrder.Descending,
+            },
+            props: {
+              isRoot: true,
+            },
+            select: {
+              monitorStatusId: true,
+              startsAt: true,
+              endsAt: true,
+            },
+          });
 
-          if (beforeState) {
-            const afterState: MonitorStatusTimeline | null =
-              await this.findOneBy({
-                query: {
-                  monitorId: monitorId,
-                  startsAt: QueryHelper.greaterThan(
-                    monitorStatusTimelineToBeDeleted?.startsAt,
-                  ),
-                },
-                sort: {
-                  createdAt: SortOrder.Ascending,
-                },
-                props: {
-                  isRoot: true,
-                },
-                select: {
-                  _id: true,
-                  startsAt: true,
-                },
-              });
+        const stateAfterThis: MonitorStatusTimeline | null =
+          await this.findOneBy({
+            query: {
+              monitorId: monitorId,
+              startsAt: QueryHelper.greaterThan(
+                monitorStatusTimelineToBeDeleted.startsAt!,
+              ),
+            },
+            sort: {
+              startsAt: SortOrder.Ascending,
+            },
+            props: {
+              isRoot: true,
+            },
+            select: {
+              monitorStatusId: true,
+              startsAt: true,
+              endsAt: true,
+            },
+          });
 
-            if (!afterState) {
-              // if there's nothing after then end date of before state is null.
+        if (!stateBeforeThis) {
+          // This is the first status, no need to update previous status.
+          logger.debug("This is the first status.");
+        } else if (!stateAfterThis) {
+          // This is the last status.
+          // Update the previous status to end at the start of this status.
+          await this.updateOneById({
+            id: stateBeforeThis.id!,
+            data: {
+              endsAt: monitorStatusTimelineToBeDeleted.endsAt!,
+            },
+            props: {
+              isRoot: true,
+            },
+          });
+          logger.debug("This is the last status.");
+        } else {
+          // This status is in the middle.
+          // Update the previous status to end at the start of this status.
+          await this.updateOneById({
+            id: stateBeforeThis.id!,
+            data: {
+              endsAt: stateAfterThis.startsAt!,
+            },
+            props: {
+              isRoot: true,
+            },
+          });
 
-              await this.updateOneById({
-                id: beforeState.id!,
-                data: {
-                  endsAt: null as any,
-                },
-                props: {
-                  isRoot: true,
-                },
-              });
-            } else {
-              // if there's something after then end date of before state is start date of after state.
-
-              await this.updateOneById({
-                id: beforeState.id!,
-                data: {
-                  endsAt: afterState.startsAt!,
-                },
-                props: {
-                  isRoot: true,
-                },
-              });
-            }
-          }
+          // Update the next status to start at the end of this status.
+          await this.updateOneById({
+            id: stateAfterThis.id!,
+            data: {
+              startsAt: monitorStatusTimelineToBeDeleted.startsAt!,
+            },
+            props: {
+              isRoot: true,
+            },
+          });
+          logger.debug("This status is in the middle.");
         }
       }
 
@@ -269,6 +455,7 @@ export class Service extends DatabaseService<MonitorStatusTimeline> {
     return { deleteBy, carryForward: null };
   }
 
+  @CaptureSpan()
   protected override async onDeleteSuccess(
     onDelete: OnDelete<MonitorStatusTimeline>,
     _itemIdsBeforeDelete: ObjectID[],
@@ -284,7 +471,7 @@ export class Service extends DatabaseService<MonitorStatusTimeline> {
             monitorId: monitorId,
           },
           sort: {
-            createdAt: SortOrder.Descending,
+            startsAt: SortOrder.Descending,
           },
           props: {
             isRoot: true,

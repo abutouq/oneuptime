@@ -1,7 +1,7 @@
 import Button, { ButtonSize, ButtonStyleType } from "../Button/Button";
 import Input, { InputType } from "../Input/Input";
-import InBetween from "Common/Types/BaseDatabase/InBetween";
-import OneUptimeDate from "Common/Types/Date";
+import InBetween from "../../../Types/BaseDatabase/InBetween";
+import OneUptimeDate from "../../../Types/Date";
 import React, { ReactElement, useEffect } from "react";
 
 export enum StartAndEndDateType {
@@ -126,36 +126,33 @@ const StartAndEndDate: DateFilterFunction = (
   ) {
     return (
       <div>
-        <div className="flex space-x-3 mt-1">
-          <div className="w-1/2">
+        <div className="flex flex-col md:flex-row md:space-x-3 space-y-3 md:space-y-0 mt-1">
+          <div className="w-full md:w-1/2">
             <div className="text-xs text-gray-500">From:</div>
             <div>
               <Input
                 error={startDateError}
                 onChange={(changedValue: string | Date) => {
                   if (!changedValue) {
-                    props.onValueChanged &&
-                      props.onValueChanged(
-                        new InBetween<Date>(
-                          OneUptimeDate.getCurrentDate(),
-                          endDateTime || OneUptimeDate.getCurrentDate(),
-                        ),
-                      );
+                    props.onValueChanged?.(
+                      new InBetween<Date>(
+                        OneUptimeDate.getCurrentDate(),
+                        endDateTime || OneUptimeDate.getCurrentDate(),
+                      ),
+                    );
                   }
 
                   if (
                     changedValue &&
-                    endDateTime &&
                     (props.type === StartAndEndDateType.Date ||
                       props.type === StartAndEndDateType.DateTime)
                   ) {
-                    props.onValueChanged &&
-                      props.onValueChanged(
-                        new InBetween<Date>(
-                          OneUptimeDate.fromString(changedValue as string),
-                          endDateTime,
-                        ),
-                      );
+                    props.onValueChanged?.(
+                      new InBetween<Date>(
+                        OneUptimeDate.fromString(changedValue as string),
+                        endDateTime || OneUptimeDate.getCurrentDate(),
+                      ),
+                    );
                   }
                 }}
                 value={startDateTime || ""}
@@ -164,35 +161,32 @@ const StartAndEndDate: DateFilterFunction = (
               />
             </div>
           </div>
-          <div className="w-1/2">
+          <div className="w-full md:w-1/2">
             <div className="text-xs text-gray-500">To:</div>
             <div>
               <Input
                 error={endDateError}
                 onChange={(changedValue: string | Date) => {
                   if (!changedValue) {
-                    props.onValueChanged &&
-                      props.onValueChanged(
-                        new InBetween<Date>(
-                          startDateTime || OneUptimeDate.getCurrentDate(),
-                          OneUptimeDate.getCurrentDate(),
-                        ),
-                      );
+                    props.onValueChanged?.(
+                      new InBetween<Date>(
+                        startDateTime || OneUptimeDate.getCurrentDate(),
+                        OneUptimeDate.getCurrentDate(),
+                      ),
+                    );
                   }
 
                   if (
                     changedValue &&
-                    startDateTime &&
                     (props.type === StartAndEndDateType.Date ||
                       props.type === StartAndEndDateType.DateTime)
                   ) {
-                    props.onValueChanged &&
-                      props.onValueChanged(
-                        new InBetween<Date>(
-                          startDateTime,
-                          OneUptimeDate.fromString(changedValue as string),
-                        ),
-                      );
+                    props.onValueChanged?.(
+                      new InBetween<Date>(
+                        startDateTime || OneUptimeDate.getCurrentDate(),
+                        OneUptimeDate.fromString(changedValue as string),
+                      ),
+                    );
                   }
                 }}
                 value={endDateTime || ""}
@@ -219,10 +213,9 @@ const StartAndEndDate: DateFilterFunction = (
                     -1,
                   );
 
-                  props.onValueChanged &&
-                    props.onValueChanged(
-                      new InBetween<Date>(startDate, endDate),
-                    );
+                  props.onValueChanged?.(
+                    new InBetween<Date>(startDate, endDate),
+                  );
                 }}
                 title="1 hour"
               />
@@ -242,12 +235,12 @@ const StartAndEndDate: DateFilterFunction = (
                     -3,
                   );
 
-                  props.onValueChanged &&
-                    props.onValueChanged(
-                      new InBetween<Date>(startDate, endDate),
-                    );
+                  props.onValueChanged?.(
+                    new InBetween<Date>(startDate, endDate),
+                  );
                 }}
                 title="3 hours"
+                className="hidden md:block"
               />
             )}
 
@@ -264,8 +257,7 @@ const StartAndEndDate: DateFilterFunction = (
                   -1,
                 );
 
-                props.onValueChanged &&
-                  props.onValueChanged(new InBetween<Date>(startDate, endDate));
+                props.onValueChanged?.(new InBetween<Date>(startDate, endDate));
               }}
               title="1 day"
             />
@@ -283,8 +275,7 @@ const StartAndEndDate: DateFilterFunction = (
                   -7,
                 );
 
-                props.onValueChanged &&
-                  props.onValueChanged(new InBetween<Date>(startDate, endDate));
+                props.onValueChanged?.(new InBetween<Date>(startDate, endDate));
               }}
               title="1 week"
             />
@@ -302,10 +293,10 @@ const StartAndEndDate: DateFilterFunction = (
                   -14,
                 );
 
-                props.onValueChanged &&
-                  props.onValueChanged(new InBetween<Date>(startDate, endDate));
+                props.onValueChanged?.(new InBetween<Date>(startDate, endDate));
               }}
               title="2 weeks"
+              className="hidden md:block"
             />
 
             <Button
@@ -321,10 +312,10 @@ const StartAndEndDate: DateFilterFunction = (
                   -21,
                 );
 
-                props.onValueChanged &&
-                  props.onValueChanged(new InBetween<Date>(startDate, endDate));
+                props.onValueChanged?.(new InBetween<Date>(startDate, endDate));
               }}
               title="3 weeks"
+              className="hidden md:block"
             />
 
             <Button
@@ -340,10 +331,10 @@ const StartAndEndDate: DateFilterFunction = (
                   -1,
                 );
 
-                props.onValueChanged &&
-                  props.onValueChanged(new InBetween<Date>(startDate, endDate));
+                props.onValueChanged?.(new InBetween<Date>(startDate, endDate));
               }}
               title="1 month"
+              className="hidden md:block"
             />
 
             <Button
@@ -359,10 +350,10 @@ const StartAndEndDate: DateFilterFunction = (
                   -3,
                 );
 
-                props.onValueChanged &&
-                  props.onValueChanged(new InBetween<Date>(startDate, endDate));
+                props.onValueChanged?.(new InBetween<Date>(startDate, endDate));
               }}
               title="3 months"
+              className="hidden md:block"
             />
           </div>
         )}

@@ -14,10 +14,10 @@ jobs:
       CI_PIPELINE_ID: ${{github.run_number}}
       BILLING_PRIVATE_KEY: ${{secrets.TEST_BILLING_PRIVATE_KEY}}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18.3.0 
+          node-version: latest 
       - run: cd Common && bash test-setup.sh
       - run: cd Common && npm install && rm -rf build && npm run test
   

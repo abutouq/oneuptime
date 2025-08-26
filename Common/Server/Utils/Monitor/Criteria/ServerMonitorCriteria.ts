@@ -1,20 +1,22 @@
 import DataToProcess from "../DataToProcess";
 import CompareCriteria from "./CompareCriteria";
 import EvaluateOverTime from "./EvaluateOverTime";
-import OneUptimeDate from "Common/Types/Date";
-import { BasicDiskMetrics } from "Common/Types/Infrastructure/BasicMetrics";
-import { JSONObject } from "Common/Types/JSON";
+import OneUptimeDate from "../../../../Types/Date";
+import { BasicDiskMetrics } from "../../../../Types/Infrastructure/BasicMetrics";
+import { JSONObject } from "../../../../Types/JSON";
 import {
   CheckOn,
   CriteriaFilter,
   FilterType,
-} from "Common/Types/Monitor/CriteriaFilter";
+} from "../../../../Types/Monitor/CriteriaFilter";
 import ServerMonitorResponse, {
   ServerProcess,
-} from "Common/Types/Monitor/ServerMonitor/ServerMonitorResponse";
+} from "../../../../Types/Monitor/ServerMonitor/ServerMonitorResponse";
 import logger from "../../Logger";
+import CaptureSpan from "../../Telemetry/CaptureSpan";
 
 export default class ServerMonitorCriteria {
+  @CaptureSpan()
   public static async isMonitorInstanceCriteriaFilterMet(input: {
     dataToProcess: DataToProcess;
     criteriaFilter: CriteriaFilter;
@@ -30,28 +32,37 @@ export default class ServerMonitorCriteria {
       input.criteriaFilter.eveluateOverTime &&
       input.criteriaFilter.evaluateOverTimeOptions
     ) {
-      overTimeValue = await EvaluateOverTime.getValueOverTime({
-        monitorId: input.dataToProcess.monitorId!,
-        evaluateOverTimeOptions: input.criteriaFilter.evaluateOverTimeOptions,
-        metricType: input.criteriaFilter.checkOn,
-        miscData: input.criteriaFilter.serverMonitorOptions as JSONObject,
-      });
+      try {
+        overTimeValue = await EvaluateOverTime.getValueOverTime({
+          projectId: (input.dataToProcess as ServerMonitorResponse).projectId,
+          monitorId: input.dataToProcess.monitorId!,
+          evaluateOverTimeOptions: input.criteriaFilter.evaluateOverTimeOptions,
+          metricType: input.criteriaFilter.checkOn,
+          miscData: input.criteriaFilter.serverMonitorOptions as JSONObject,
+        });
 
-      if (Array.isArray(overTimeValue) && overTimeValue.length === 0) {
-        return null;
-      }
-
-      if (overTimeValue === undefined) {
-        return null;
+        if (Array.isArray(overTimeValue) && overTimeValue.length === 0) {
+          overTimeValue = undefined;
+        }
+      } catch (err) {
+        logger.error(
+          `Error in getting over time value for ${input.criteriaFilter.checkOn}`,
+        );
+        logger.error(err);
+        overTimeValue = undefined;
       }
     }
 
     const lastCheckTime: Date = (input.dataToProcess as ServerMonitorResponse)
       .requestReceivedAt;
 
+    const timeNow: Date =
+      (input.dataToProcess as ServerMonitorResponse).timeNow ||
+      OneUptimeDate.getCurrentDate();
+
     const differenceInMinutes: number = OneUptimeDate.getDifferenceInMinutes(
       lastCheckTime,
-      OneUptimeDate.getCurrentDate(),
+      timeNow,
     );
 
     let offlineIfNotCheckedInMinutes: number = 3;

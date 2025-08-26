@@ -208,6 +208,7 @@ export default class CopilotCodeRepository extends BaseModel {
     required: true,
     unique: true,
     type: TableColumnType.Slug,
+    computed: true,
     title: "Slug",
     description: "Friendly globally unique name for your object",
   })
@@ -334,6 +335,7 @@ export default class CopilotCodeRepository extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -425,12 +427,7 @@ export default class CopilotCodeRepository extends BaseModel {
   public labels?: Array<Label> = undefined;
 
   @ColumnAccessControl({
-    create: [
-      Permission.ProjectOwner,
-      Permission.ProjectAdmin,
-      Permission.ProjectMember,
-      Permission.CreateCopilotCodeRepository,
-    ],
+    create: [],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -449,6 +446,7 @@ export default class CopilotCodeRepository extends BaseModel {
   @TableColumn({
     type: TableColumnType.ObjectID,
     isDefaultValueColumn: false,
+    computed: true,
     title: "Secret Token",
     description:
       "Secret Token for this code repository. This is used to connect this code repository to OneUptime.",

@@ -1,4 +1,3 @@
-import DashboardNavigation from "../../../Utils/Navigation";
 import PageComponentProps from "../../PageComponentProps";
 import CustomFieldType from "Common/Types/CustomField/CustomFieldType";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
@@ -11,6 +10,7 @@ import OnCallDutyPolicyCustomField from "Common/Models/DatabaseModels/OnCallDuty
 import ScheduledMaintenanceCustomField from "Common/Models/DatabaseModels/ScheduledMaintenanceCustomField";
 import StatusPageCustomField from "Common/Models/DatabaseModels/StatusPageCustomField";
 import React, { Fragment, ReactElement } from "react";
+import ProjectUtil from "Common/UI/Utils/Project";
 
 export type CustomFieldsBaseModels =
   | MonitorCustomField
@@ -34,8 +34,9 @@ const CustomFieldsPageBase: (
     <Fragment>
       <ModelTable<CustomFieldsBaseModels>
         modelType={props.modelType}
+        userPreferencesKey="custom-fields-table"
         query={{
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         showViewIdButton={true}
         id="custom-fields-table"
@@ -74,7 +75,7 @@ const CustomFieldsPageBase: (
           },
           {
             field: {
-              type: true,
+              customFieldType: true,
             },
             title: "Field Type",
             fieldType: FormFieldSchemaType.Dropdown,
@@ -108,7 +109,7 @@ const CustomFieldsPageBase: (
           },
           {
             field: {
-              type: true,
+              customFieldType: true,
             },
             title: "Field Type",
             type: FieldType.Text,
@@ -132,7 +133,7 @@ const CustomFieldsPageBase: (
           },
           {
             field: {
-              type: true,
+              customFieldType: true,
             },
             title: "Field Type",
             type: FieldType.Text,

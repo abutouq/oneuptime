@@ -1,13 +1,18 @@
-import { ExpressRequest, ExpressResponse } from "../../../Utils/Express";
+import {
+  ExpressRequest,
+  ExpressResponse,
+  NextFunction,
+} from "../../../Utils/Express";
 import Response from "../../../Utils/Response";
 import { RunOptions, RunReturnType } from "../ComponentCode";
 import TriggerCode, { ExecuteWorkflowType, InitProps } from "../TriggerCode";
-import BadDataException from "Common/Types/Exception/BadDataException";
-import { JSONObject } from "Common/Types/JSON";
-import ObjectID from "Common/Types/ObjectID";
-import ComponentMetadata, { Port } from "Common/Types/Workflow/Component";
-import ComponentID from "Common/Types/Workflow/ComponentID";
-import WebhookComponents from "Common/Types/Workflow/Components/Webhook";
+import BadDataException from "../../../../Types/Exception/BadDataException";
+import { JSONObject } from "../../../../Types/JSON";
+import ObjectID from "../../../../Types/ObjectID";
+import ComponentMetadata, { Port } from "../../../../Types/Workflow/Component";
+import ComponentID from "../../../../Types/Workflow/ComponentID";
+import WebhookComponents from "../../../../Types/Workflow/Components/Webhook";
+import CaptureSpan from "../../../Utils/Telemetry/CaptureSpan";
 
 export default class WebhookTrigger extends TriggerCode {
   public constructor() {
@@ -23,6 +28,7 @@ export default class WebhookTrigger extends TriggerCode {
     this.setMetadata(WebhookComponent);
   }
 
+  @CaptureSpan()
   public override async run(
     args: JSONObject,
     options: RunOptions,
@@ -45,22 +51,32 @@ export default class WebhookTrigger extends TriggerCode {
     };
   }
 
+  @CaptureSpan()
   public override async init(props: InitProps): Promise<void> {
     props.router.get(
       `/trigger/:workflowId`,
-      async (req: ExpressRequest, res: ExpressResponse) => {
-        await this.initTrigger(req, res, props);
+      async (req: ExpressRequest, res: ExpressResponse, next: NextFunction) => {
+        try {
+          await this.initTrigger(req, res, props);
+        } catch (e) {
+          next(e);
+        }
       },
     );
 
     props.router.post(
       `/trigger/:workflowId`,
-      async (req: ExpressRequest, res: ExpressResponse) => {
-        await this.initTrigger(req, res, props);
+      async (req: ExpressRequest, res: ExpressResponse, next: NextFunction) => {
+        try {
+          await this.initTrigger(req, res, props);
+        } catch (e) {
+          next(e);
+        }
       },
     );
   }
 
+  @CaptureSpan()
   public async initTrigger(
     req: ExpressRequest,
     res: ExpressResponse,

@@ -1,22 +1,20 @@
-import AnalyticsBaseModel from "Common/Models/AnalyticsModels/AnalyticsBaseModel/AnalyticsBaseModel";
-import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import HTTPErrorResponse from "Common/Types/API/HTTPErrorResponse";
-import HTTPResponse from "Common/Types/API/HTTPResponse";
 import URL from "Common/Types/API/URL";
 import OneUptimeDate from "Common/Types/Date";
 import BadDataException from "Common/Types/Exception/BadDataException";
-import { JSONArray, JSONObject, JSONObjectOrArray } from "Common/Types/JSON";
+import { JSONArray, JSONObject } from "Common/Types/JSON";
 import JSONFunctions from "Common/Types/JSONFunctions";
 import Text from "Common/Types/Text";
-import API from "Common/Utils/API";
-import LocalCache from "Common/Server/Infrastructure/LocalCache";
 import Markdown, { MarkdownContentType } from "Common/Server/Types/Markdown";
+import { BlogRootPath } from "./Config";
+import LocalFile from "Common/Server/Utils/LocalFile";
+import DatabaseConfig from "Common/Server/DatabaseConfig";
 
 export interface BlogPostAuthor {
   username: string;
   githubUrl: string;
   profileImageUrl: string;
   name: string;
+  bio?: string | undefined; // optional bio from Authors.json
 }
 
 export interface BlogPostBaseProps {
@@ -41,31 +39,52 @@ export interface BlogPost extends BlogPostBaseProps {
   author: BlogPostAuthor | null;
 }
 
-const GitHubRawUrl: string =
-  "https://raw.githubusercontent.com/oneuptime/blog/master";
-
 export default class BlogPostUtil {
+  // Cache Blogs.json contents to avoid repeated disk reads and external calls.
+  private static blogsMetaCache: Array<JSONObject> | null = null;
+  // Cache Authors.json (keyed by github username)
+  private static authorsMetaCache: JSONObject | null = null;
+  private static async getBlogsMeta(): Promise<Array<JSONObject>> {
+    if (this.blogsMetaCache) {
+      return this.blogsMetaCache;
+    }
+
+    const filePath: string = `${BlogRootPath}/Blogs.json`;
+    let jsonContent: string | JSONArray = await LocalFile.read(filePath);
+    if (typeof jsonContent === "string") {
+      jsonContent = JSONFunctions.parseJSONArray(jsonContent);
+    }
+    const blogs: Array<JSONObject> = JSONFunctions.deserializeArray(
+      jsonContent as Array<JSONObject>,
+    );
+    this.blogsMetaCache = blogs;
+    return blogs;
+  }
+
+  private static async getAuthorsMeta(): Promise<JSONObject> {
+    if (this.authorsMetaCache) {
+      return this.authorsMetaCache;
+    }
+    const filePath: string = `${BlogRootPath}/Authors.json`;
+    try {
+      let jsonContent: string | JSONObject = await LocalFile.read(filePath);
+      if (typeof jsonContent === "string") {
+        jsonContent = JSONFunctions.parse(jsonContent) as JSONObject;
+      }
+      this.authorsMetaCache = jsonContent as JSONObject;
+      return this.authorsMetaCache || ({} as JSONObject);
+    } catch {
+      this.authorsMetaCache = {} as JSONObject;
+      return this.authorsMetaCache;
+    }
+  }
+
   public static async getBlogPostList(
     tagName?: string | undefined,
   ): Promise<BlogPostHeader[]> {
-    const fileUrl: URL = URL.fromString(`${GitHubRawUrl}/Blogs.json`);
+    const filePath: string = `${BlogRootPath}/Blogs.json`;
 
-    const fileData:
-      | HTTPResponse<
-          | JSONObjectOrArray
-          | BaseModel
-          | BaseModel[]
-          | AnalyticsBaseModel
-          | AnalyticsBaseModel[]
-        >
-      | HTTPErrorResponse = await API.get(fileUrl);
-
-    if (fileData.isFailure()) {
-      throw fileData as HTTPErrorResponse;
-    }
-
-    let jsonContent: string | JSONArray =
-      (fileData.data as string | JSONArray) || [];
+    let jsonContent: string | JSONArray = await LocalFile.read(filePath);
 
     if (typeof jsonContent === "string") {
       jsonContent = JSONFunctions.parseJSONArray(jsonContent);
@@ -91,7 +110,7 @@ export default class BlogPostUtil {
         postDate,
         tags: blog["tags"] as string[],
         authorGitHubUsername: blog["authorGitHubUsername"] as string,
-        blogUrl: `/blog/post/${fileName}`,
+        blogUrl: `/blog/post/${fileName}/view`,
       });
     }
 
@@ -109,100 +128,22 @@ export default class BlogPostUtil {
   }
 
   public static async getBlogPost(fileName: string): Promise<BlogPost | null> {
-    let blogPost: BlogPost | null = this.getBlogPostFromCache(fileName);
-
-    if (blogPost) {
-      return Promise.resolve(blogPost);
-    }
-
-    blogPost = await this.getBlogPostFromGitHub(fileName);
-
-    // save this to cache
-    LocalCache.setJSON(
-      "blog",
-      fileName,
-      JSONFunctions.serialize(blogPost as any),
-    );
+    const blogPost: BlogPost | null = await this.getBlogPostFromFile(fileName);
 
     return blogPost;
   }
 
-  public static async getNameOfGitHubUser(username: string): Promise<string> {
-    const fileUrl: URL = URL.fromString(
-      `https://api.github.com/users/${username}`,
-    );
-
-    const fileData:
-      | HTTPResponse<
-          | JSONObjectOrArray
-          | BaseModel
-          | BaseModel[]
-          | AnalyticsBaseModel
-          | AnalyticsBaseModel[]
-        >
-      | HTTPErrorResponse = await API.get(fileUrl);
-
-    if (fileData.isFailure()) {
-      throw fileData as HTTPErrorResponse;
-    }
-
-    const name: string =
-      (fileData.data as JSONObject)?.["name"]?.toString() || "";
-    return name;
-  }
-
-  public static async getGitHubMarkdownFileContent(
-    githubPath: string,
-  ): Promise<string | null> {
-    const fileUrl: URL = URL.fromString(`${GitHubRawUrl}/${githubPath}`);
-
-    const fileData:
-      | HTTPResponse<
-          | JSONObjectOrArray
-          | BaseModel
-          | BaseModel[]
-          | AnalyticsBaseModel
-          | AnalyticsBaseModel[]
-        >
-      | HTTPErrorResponse = await API.get(fileUrl);
-
-    if (fileData.isFailure()) {
-      if ((fileData as HTTPErrorResponse).statusCode === 404) {
-        return null;
-      }
-
-      throw fileData as HTTPErrorResponse;
-    }
-
-    const markdownContent: string =
-      (fileData.data as JSONObject)?.["data"]?.toString() || "";
-    return markdownContent;
-  }
-
   public static async getTags(): Promise<string[]> {
     // check if tags are in cache
-    let tags: string[] = LocalCache.getJSON("blog-tags", "tags") as string[];
 
-    if (tags && tags.length > 0) {
-      return tags;
-    }
-
-    tags = await this.getAllTagsFromGitHub();
-
-    // save this to cache
-
-    LocalCache.setJSON(
-      "blog-tags",
-      "tags",
-      JSONFunctions.serialize(tags as any),
-    );
-
+    const tags: string[] = await this.getAllTagsFromGitHub();
     return tags;
   }
 
   public static async getAllTagsFromGitHub(): Promise<string[]> {
-    const tagsMarkdownContent: string | null =
-      await this.getGitHubMarkdownFileContent("Tags.md");
+    const filePath: string = `${BlogRootPath}/Tags.md`;
+
+    const tagsMarkdownContent: string | null = await LocalFile.read(filePath);
 
     if (!tagsMarkdownContent) {
       return [];
@@ -223,40 +164,58 @@ export default class BlogPostUtil {
     return tags;
   }
 
-  public static async getBlogPostFromGitHub(
+  public static async getHomeUrl(): Promise<URL> {
+    return await DatabaseConfig.getHomeUrl();
+  }
+
+  public static async getBlogPostFromFile(
     fileName: string,
   ): Promise<BlogPost | null> {
-    const fileUrl: URL = URL.fromString(
-      `${GitHubRawUrl}/posts/${fileName}/README.md`,
-    );
+    const filePath: string = `${BlogRootPath}/posts/${fileName}/README.md`;
 
     const postDate: string = this.getPostDateFromFileName(fileName);
     const formattedPostDate: string =
       this.getFormattedPostDateFromFileName(fileName);
 
-    const fileData:
-      | HTTPResponse<
-          | JSONObjectOrArray
-          | BaseModel
-          | BaseModel[]
-          | AnalyticsBaseModel
-          | AnalyticsBaseModel[]
-        >
-      | HTTPErrorResponse = await API.get(fileUrl);
+    let markdownContent: string = await LocalFile.read(filePath);
 
-    if (fileData.isFailure()) {
-      if ((fileData as HTTPErrorResponse).statusCode === 404) {
-        return null;
+    // Resolve author WITHOUT hitting GitHub API. Use Blogs.json to get username, Authors.json for name/bio.
+    let blogPostAuthor: BlogPostAuthor | null = null;
+    try {
+      const blogsMeta: Array<JSONObject> = await this.getBlogsMeta();
+      const blogMeta: JSONObject | undefined = blogsMeta.find(
+        (b: JSONObject) => {
+          return (b["post"] as string) === fileName;
+        },
+      );
+      const username: string | undefined = blogMeta?.[
+        "authorGitHubUsername"
+      ] as string | undefined;
+      if (username) {
+        const authorsMeta: JSONObject = await this.getAuthorsMeta();
+        const authorMeta: JSONObject | undefined = authorsMeta[username] as
+          | JSONObject
+          | undefined;
+        const authorName: string | undefined =
+          (authorMeta?.["authorName"] as string) || undefined;
+        const authorBio: string | undefined =
+          (authorMeta?.["authorBio"] as string) || undefined;
+        blogPostAuthor = {
+          username,
+          githubUrl: `https://github.com/${username}`,
+          profileImageUrl: `https://avatars.githubusercontent.com/${username}`,
+          name: authorName || username,
+          bio: authorBio,
+        };
       }
-
-      throw fileData as HTTPErrorResponse;
+    } catch {
+      // ignore and fallback
     }
 
-    let markdownContent: string =
-      (fileData.data as JSONObject)?.["data"]?.toString() || "";
-
-    const blogPostAuthor: BlogPostAuthor | null =
-      await this.getAuthorFromFileContent(markdownContent);
+    // Fallback to parsing markdown (no network) if metadata missing.
+    if (!blogPostAuthor) {
+      blogPostAuthor = await this.getAuthorFromFileContent(markdownContent);
+    }
 
     const title: string = this.getTitleFromFileContent(markdownContent);
     const description: string =
@@ -280,8 +239,8 @@ export default class BlogPostUtil {
       tags,
       postDate,
       formattedPostDate,
-      socialMediaImageUrl: `${GitHubRawUrl}/posts/${fileName}/social-media.png`,
-      blogUrl: `https://oneuptime.com/blog/post/${fileName}`, // this has to be oneuptime.com because its used in twitter cards and faceboomk cards. Please dont change this.
+      socialMediaImageUrl: `${(await this.getHomeUrl()).toString()}blog/post/${fileName}/social-media.png`,
+      blogUrl: `${(await this.getHomeUrl()).toString()}blog/post/${fileName}/view`,
     };
 
     return blogPost;
@@ -363,14 +322,6 @@ export default class BlogPostUtil {
     return lines.join("\n").trim();
   }
 
-  public static getBlogPostFromCache(fileName: string): BlogPost | null {
-    const blogPost: BlogPost | null = LocalCache.getJSON(
-      "blog",
-      fileName,
-    ) as BlogPost | null;
-    return blogPost;
-  }
-
   public static getTitleFromFileContent(fileContent: string): string {
     // title is the first line that stars with "#"
 
@@ -441,7 +392,8 @@ export default class BlogPostUtil {
       username: authorUsername,
       githubUrl: authorGitHubUrl,
       profileImageUrl: authorProfileImageUrl,
-      name: await this.getNameOfGitHubUser(authorUsername),
+      // Do NOT call GitHub; use username as name placeholder.
+      name: authorUsername,
     };
   }
 }

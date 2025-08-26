@@ -8,17 +8,20 @@ import UserService from "./UserService";
 import { LIMIT_PER_PROJECT } from "../../Types/Database/LimitMax";
 import BadDataException from "../../Types/Exception/BadDataException";
 import ObjectID from "../../Types/ObjectID";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 import OnCallDutyExecutionLogTimelineStatus from "../../Types/OnCallDutyPolicy/OnCalDutyExecutionLogTimelineStatus";
 import OnCallDutyPolicyStatus from "../../Types/OnCallDutyPolicy/OnCallDutyPolicyStatus";
 import UserNotificationExecutionStatus from "../../Types/UserNotification/UserNotificationExecutionStatus";
-import User from "Common/Models/DatabaseModels/User";
-import Model from "Common/Models/DatabaseModels/UserOnCallLogTimeline";
+import User from "../../Models/DatabaseModels/User";
+import Model from "../../Models/DatabaseModels/UserOnCallLogTimeline";
+import AlertService from "./AlertService";
 
 export class Service extends DatabaseService<Model> {
   public constructor() {
     super(Model);
   }
 
+  @CaptureSpan()
   protected override async onUpdateSuccess(
     onUpdate: OnUpdate<Model>,
     _updatedItemIds: ObjectID[],
@@ -36,6 +39,7 @@ export class Service extends DatabaseService<Model> {
           userNotificationLogId: true,
           onCallDutyPolicyExecutionLogId: true,
           triggeredByIncidentId: true,
+          triggeredByAlertId: true,
           onCallDutyPolicyExecutionLogTimelineId: true,
         },
         skip: 0,
@@ -46,6 +50,9 @@ export class Service extends DatabaseService<Model> {
       });
 
       for (const item of items) {
+        const isIncident: boolean = Boolean(item.triggeredByIncidentId);
+        const isAlert: boolean = Boolean(item.triggeredByAlertId);
+
         // this incident is acknowledged.
 
         // now we need to ack the parent log.
@@ -66,14 +73,15 @@ export class Service extends DatabaseService<Model> {
           throw new BadDataException("User not found.");
         }
 
+        const statusMessage: string = `${isIncident ? "Incident" : "Alert"} acknowledged by ${user.name} (${user.email})`;
+
         await UserOnCallLogService.updateOneById({
           id: item.userNotificationLogId!,
           data: {
             acknowledgedAt: onUpdate.updateBy.data.acknowledgedAt,
             acknowledgedByUserId: item.userId!,
             status: UserNotificationExecutionStatus.Completed,
-            statusMessage:
-              "Incident acknowledged by " + user.name + " (" + user.email + ")",
+            statusMessage: statusMessage,
           },
           props: {
             isRoot: true,
@@ -88,8 +96,7 @@ export class Service extends DatabaseService<Model> {
             acknowledgedAt: onUpdate.updateBy.data.acknowledgedAt,
             acknowledgedByUserId: item.userId!,
             status: OnCallDutyPolicyStatus.Completed,
-            statusMessage:
-              "Incident acknowledged by " + user.name + " (" + user.email + ")",
+            statusMessage: statusMessage,
           },
           props: {
             isRoot: true,
@@ -104,19 +111,28 @@ export class Service extends DatabaseService<Model> {
             isAcknowledged: true,
             status:
               OnCallDutyExecutionLogTimelineStatus.SuccessfullyAcknowledged,
-            statusMessage:
-              "Incident acknowledged by " + user.name + " (" + user.email + ")",
+            statusMessage: statusMessage,
           },
           props: {
             isRoot: true,
           },
         });
 
-        // incident.
-        await IncidentService.acknowledgeIncident(
-          item.triggeredByIncidentId!,
-          item.userId!,
-        );
+        if (isIncident) {
+          // incident.
+          await IncidentService.acknowledgeIncident(
+            item.triggeredByIncidentId!,
+            item.userId!,
+          );
+        }
+
+        if (isAlert) {
+          // alert.
+          await AlertService.acknowledgeAlert(
+            item.triggeredByAlertId!,
+            item.userId!,
+          );
+        }
       }
     }
 

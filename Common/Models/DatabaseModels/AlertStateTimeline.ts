@@ -60,6 +60,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
 @Entity({
   name: "AlertStateTimeline",
 })
+@Index(["alertId", "startsAt"])
 @TableMetadata({
   tableName: "AlertStateTimeline",
   singularName: "Alert State Timeline",
@@ -274,6 +275,7 @@ export default class AlertStateTimeline extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -387,12 +389,7 @@ export default class AlertStateTimeline extends BaseModel {
   public alertStateId?: ObjectID = undefined;
 
   @ColumnAccessControl({
-    create: [
-      Permission.ProjectOwner,
-      Permission.ProjectAdmin,
-      Permission.ProjectMember,
-      Permission.CreateAlertStateTimeline,
-    ],
+    create: [],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -404,10 +401,13 @@ export default class AlertStateTimeline extends BaseModel {
   @Index()
   @TableColumn({
     type: TableColumnType.Boolean,
+    computed: true,
+    hideColumnInDocumentation: true,
     required: true,
     isDefaultValueColumn: true,
     title: "Are Owners Notified",
     description: "Are owners notified of state change?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -514,7 +514,7 @@ export default class AlertStateTimeline extends BaseModel {
   @TableColumn({
     type: TableColumnType.Date,
     title: "Starts At",
-    description: "When did this status change start?",
+    description: "When did this status change?",
   })
   @Column({
     type: ColumnType.Date,

@@ -17,6 +17,16 @@ export function getOnCallDutyBreadcrumbs(
       "On-Call Duty",
       "Policies",
     ]),
+    //slack connection
+    ...BuildBreadcrumbLinksByTitles(
+      PageMap.ON_CALL_DUTY_WORKSPACE_CONNECTION_SLACK,
+      ["Project", "On-Call Duty", "Slack"],
+    ),
+    // ms teams connection
+    ...BuildBreadcrumbLinksByTitles(
+      PageMap.ON_CALL_DUTY_WORKSPACE_CONNECTION_MICROSOFT_TEAMS,
+      ["Project", "On-Call Duty", "Microsoft Teams"],
+    ),
     ...BuildBreadcrumbLinksByTitles(PageMap.ON_CALL_DUTY_SCHEDULES, [
       "Project",
       "On-Call Duty",
@@ -27,6 +37,27 @@ export function getOnCallDutyBreadcrumbs(
       "On-Call Duty",
       "Execution Logs",
     ]),
+
+    // user overrides
+    ...BuildBreadcrumbLinksByTitles(
+      PageMap.ON_CALL_DUTY_POLICY_USER_OVERRIDES,
+      ["Project", "On-Call Duty", "User Overrides"],
+    ),
+
+    // policy view user override
+
+    ...BuildBreadcrumbLinksByTitles(
+      PageMap.ON_CALL_DUTY_POLICY_VIEW_USER_OVERRIDES,
+      ["Project", "On-Call Duty", "View On-Call Policy", "User Overrides"],
+    ),
+
+    ...BuildBreadcrumbLinksByTitles(PageMap.ON_CALL_DUTY_POLICY_VIEW_OWNERS, [
+      "Project",
+      "On-Call Duty",
+      "View On-Call Policy",
+      "Owners",
+    ]),
+
     ...BuildBreadcrumbLinksByTitles(
       PageMap.ON_CALL_DUTY_EXECUTION_LOGS_TIMELINE,
       ["Project", "On-Call Duty", "Execution Logs", "Timeline"],
@@ -80,6 +111,11 @@ export function getOnCallDutyBreadcrumbs(
       "On-Call Duty",
       "View On-Call Schedule",
       "Delete On-Call Schedule",
+    ]),
+    ...BuildBreadcrumbLinksByTitles(PageMap.ON_CALLDUTY_USER_TIME_LOGS, [
+      "Project",
+      "On-Call Duty",
+      "User Time Logs",
     ]),
   };
   return breadcrumpLinksMap[path];

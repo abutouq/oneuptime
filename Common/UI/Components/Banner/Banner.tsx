@@ -1,6 +1,6 @@
 import Link from "../Link/Link";
-import Route from "Common/Types/API/Route";
-import URL from "Common/Types/API/URL";
+import Route from "../../../Types/API/Route";
+import URL from "../../../Types/API/URL";
 import React, { FunctionComponent, ReactElement } from "react";
 import { GetReactElementFunction } from "../../Types/FunctionTypes";
 
@@ -9,6 +9,7 @@ export interface ComponentProps {
   description: string;
   link?: URL | Route | undefined;
   openInNewTab?: boolean | undefined;
+  hideOnMobile?: boolean | undefined;
 }
 
 const Banner: FunctionComponent<ComponentProps> = (
@@ -32,7 +33,9 @@ const Banner: FunctionComponent<ComponentProps> = (
   };
 
   return (
-    <div className="flex border-gray-200 rounded-xl border-2 py-2.5 px-6 sm:px-3.5">
+    <div
+      className={`flex border-gray-200 rounded-xl border-2 py-2.5 px-6 sm:px-3.5${props.hideOnMobile ? " hidden md:flex" : ""}`}
+    >
       <p className="text-sm text-gray-400 hover:text-gray-500">
         {props.link && (
           <Link to={props.link} openInNewTab={props.openInNewTab}>

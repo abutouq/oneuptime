@@ -1,10 +1,11 @@
-import Recurring from "Common/Types/Events/Recurring";
+import Recurring from "../../../Types/Events/Recurring";
 import React, { FunctionComponent, ReactElement } from "react";
 import RecurringViewElement from "./RecurringViewElement";
 
 export interface ComponentProps {
   value?: Array<Recurring> | undefined;
   postfix?: string | undefined;
+  noItemsMessage?: string | undefined;
 }
 
 const RecurringArrayViewElement: FunctionComponent<ComponentProps> = (
@@ -29,7 +30,7 @@ const RecurringArrayViewElement: FunctionComponent<ComponentProps> = (
             />
           );
         })}
-      {(!items || items.length === 0) && <p>-</p>}
+      {(!items || items.length === 0) && <p>{props.noItemsMessage || "-"}</p>}
     </div>
   );
 };

@@ -6,18 +6,20 @@ import AccessTokenService from "./AccessTokenService";
 import DatabaseService from "./DatabaseService";
 import TeamMemberService from "./TeamMemberService";
 import TeamService from "./TeamService";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 import LIMIT_MAX, { LIMIT_PER_PROJECT } from "../../Types/Database/LimitMax";
 import BadDataException from "../../Types/Exception/BadDataException";
 import ObjectID from "../../Types/ObjectID";
-import Team from "Common/Models/DatabaseModels/Team";
-import TeamMember from "Common/Models/DatabaseModels/TeamMember";
-import Model from "Common/Models/DatabaseModels/TeamPermission";
+import Team from "../../Models/DatabaseModels/Team";
+import TeamMember from "../../Models/DatabaseModels/TeamMember";
+import Model from "../../Models/DatabaseModels/TeamPermission";
 
 export class Service extends DatabaseService<Model> {
   public constructor() {
     super(Model);
   }
 
+  @CaptureSpan()
   protected override async onBeforeCreate(
     createBy: CreateBy<Model>,
   ): Promise<OnCreate<Model>> {
@@ -116,6 +118,7 @@ export class Service extends DatabaseService<Model> {
     return { createBy, carryForward: null };
   }
 
+  @CaptureSpan()
   protected override async onCreateSuccess(
     onCreate: OnCreate<Model>,
     createdItem: Model,
@@ -150,6 +153,7 @@ export class Service extends DatabaseService<Model> {
     return createdItem;
   }
 
+  @CaptureSpan()
   protected override async onBeforeUpdate(
     updateBy: UpdateBy<Model>,
   ): Promise<OnUpdate<Model>> {
@@ -240,6 +244,7 @@ export class Service extends DatabaseService<Model> {
     return { updateBy, carryForward: teamPermissions };
   }
 
+  @CaptureSpan()
   protected override async onUpdateSuccess(
     onUpdate: OnUpdate<Model>,
     _updatedItemIds: ObjectID[],
@@ -283,6 +288,7 @@ export class Service extends DatabaseService<Model> {
     return onUpdate;
   }
 
+  @CaptureSpan()
   protected override async onBeforeDelete(
     deleteBy: DeleteBy<Model>,
   ): Promise<OnDelete<Model>> {
@@ -335,6 +341,7 @@ export class Service extends DatabaseService<Model> {
     return { deleteBy, carryForward: teamMembers };
   }
 
+  @CaptureSpan()
   protected override async onDeleteSuccess(
     onDelete: OnDelete<Model>,
     _itemIdsBeforeDelete: ObjectID[],

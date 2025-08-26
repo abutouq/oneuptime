@@ -11,6 +11,7 @@ import DeleteBy from "../Types/AnalyticsDatabase/DeleteBy";
 import FindBy from "../Types/AnalyticsDatabase/FindBy";
 import FindOneBy from "../Types/AnalyticsDatabase/FindOneBy";
 import FindOneByID from "../Types/AnalyticsDatabase/FindOneByID";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 import {
   DatabaseTriggerType,
   OnCreate,
@@ -29,9 +30,9 @@ import logger from "../Utils/Logger";
 import Realtime from "../Utils/Realtime";
 import StreamUtil from "../Utils/Stream";
 import BaseService from "./BaseService";
-import { ExecResult } from "@clickhouse/client";
-import AnalyticsBaseModel from "Common/Models/AnalyticsModels/AnalyticsBaseModel/AnalyticsBaseModel";
-import { WorkflowRoute } from "Common/ServiceRoute";
+import { ExecResult, ResponseJSON, ResultSet } from "@clickhouse/client";
+import AnalyticsBaseModel from "../../Models/AnalyticsModels/AnalyticsBaseModel/AnalyticsBaseModel";
+import { WorkflowRoute } from "../../ServiceRoute";
 import Protocol from "../../Types/API/Protocol";
 import Route from "../../Types/API/Route";
 import URL from "../../Types/API/URL";
@@ -46,7 +47,7 @@ import ObjectID from "../../Types/ObjectID";
 import PositiveNumber from "../../Types/PositiveNumber";
 import Text from "../../Types/Text";
 import Typeof from "../../Types/Typeof";
-import API from "Common/Utils/API";
+import API from "../../Utils/API";
 import { Stream } from "node:stream";
 import AggregateBy from "../Types/AnalyticsDatabase/AggregateBy";
 import AggregatedResult from "../../Types/BaseDatabase/AggregatedResult";
@@ -84,6 +85,7 @@ export default class AnalyticsDatabaseService<
     });
   }
 
+  @CaptureSpan()
   public async doesColumnExistInDatabase(columnName: string): Promise<boolean> {
     const statement: string =
       this.statementGenerator.toDoesColumnExistStatement(columnName);
@@ -97,6 +99,7 @@ export default class AnalyticsDatabaseService<
     return strResult.trim().length > 0;
   }
 
+  @CaptureSpan()
   public async getColumnTypeInDatabase(
     column: AnalyticsTableColumn,
   ): Promise<TableColumnType | null> {
@@ -134,6 +137,7 @@ export default class AnalyticsDatabaseService<
     );
   }
 
+  @CaptureSpan()
   public async countBy(countBy: CountBy<TBaseModel>): Promise<PositiveNumber> {
     try {
       const checkReadPermissionType: CheckReadPermissionType<TBaseModel> =
@@ -148,18 +152,29 @@ export default class AnalyticsDatabaseService<
 
       const countStatement: Statement = this.toCountStatement(countBy);
 
-      const dbResult: ExecResult<Stream> = await this.execute(countStatement);
+      const dbResult: ResultSet<"JSON"> =
+        await this.executeQuery(countStatement);
 
-      const strResult: string = await StreamUtil.convertStreamToText(
-        dbResult.stream,
-      );
+      logger.debug(`${this.model.tableName} Count Statement executed`);
+      logger.debug(countStatement);
 
-      let countPositive: PositiveNumber = new PositiveNumber(strResult || 0);
+      const resultInJSON: ResponseJSON<JSONObject> =
+        await dbResult.json<JSONObject>();
 
-      if (countBy.groupBy && Object.keys(countBy.groupBy).length > 0) {
-        // this usually happens when group by is used. In this case we count the total number of groups and not rows in those groups.
-        countPositive = new PositiveNumber(strResult.split("\n").length - 1); // -1 because the last line is empty.
+      let countPositive: PositiveNumber = new PositiveNumber(0);
+      if (
+        resultInJSON.data &&
+        resultInJSON.data[0] &&
+        resultInJSON.data[0]["count"] &&
+        typeof resultInJSON.data[0]["count"] === "string"
+      ) {
+        countPositive = new PositiveNumber(
+          resultInJSON.data[0]["count"] as string,
+        );
       }
+
+      logger.debug(`Result: `);
+      logger.debug(countPositive.toNumber());
 
       countPositive = await this.onCountSuccess(countPositive);
       return countPositive;
@@ -169,6 +184,7 @@ export default class AnalyticsDatabaseService<
     }
   }
 
+  @CaptureSpan()
   public async addColumnInDatabase(
     column: AnalyticsTableColumn,
   ): Promise<void> {
@@ -177,16 +193,19 @@ export default class AnalyticsDatabaseService<
     await this.execute(statement);
   }
 
+  @CaptureSpan()
   public async dropColumnInDatabase(columnName: string): Promise<void> {
     await this.execute(
       this.statementGenerator.toDropColumnStatement(columnName),
     );
   }
 
+  @CaptureSpan()
   public async findBy(findBy: FindBy<TBaseModel>): Promise<Array<TBaseModel>> {
     return await this._findBy(findBy);
   }
 
+  @CaptureSpan()
   public async aggregateBy(
     aggregateBy: AggregateBy<TBaseModel>,
   ): Promise<AggregatedResult> {
@@ -240,20 +259,18 @@ export default class AnalyticsDatabaseService<
         columns: Array<string>;
       } = this.toAggregateStatement(aggregateBy);
 
-      const dbResult: ExecResult<Stream> = await this.execute(
+      const dbResult: ResultSet<"JSON"> = await this.executeQuery(
         findStatement.statement,
       );
 
-      const strResult: string = await StreamUtil.convertStreamToText(
-        dbResult.stream,
-      );
+      logger.debug(`${this.model.tableName} Aggregate Statement executed`);
 
-      const jsonItems: Array<JSONObject> = this.convertSelectReturnedDataToJson(
-        strResult,
-        findStatement.columns,
-      );
+      const responseJSON: ResponseJSON<JSONObject> =
+        await dbResult.json<JSONObject>();
 
-      const items: Array<JSONObject> = jsonItems as any;
+      const items: Array<JSONObject> = responseJSON.data
+        ? responseJSON.data
+        : [];
 
       const aggregatedItems: Array<AggregatedModel> = [];
 
@@ -314,16 +331,6 @@ export default class AnalyticsDatabaseService<
     }
   }
 
-  public async executeQuery(query: string): Promise<string> {
-    const dbResult: ExecResult<Stream> = await this.execute(query);
-
-    const strResult: string = await StreamUtil.convertStreamToText(
-      dbResult.stream,
-    );
-
-    return strResult;
-  }
-
   private async _findBy(
     findBy: FindBy<TBaseModel>,
   ): Promise<Array<TBaseModel>> {
@@ -379,21 +386,17 @@ export default class AnalyticsDatabaseService<
         columns: Array<string>;
       } = this.toFindStatement(onBeforeFind);
 
-      const dbResult: ExecResult<Stream> = await this.execute(
+      const dbResult: ResultSet<"JSON"> = await this.executeQuery(
         findStatement.statement,
       );
 
       logger.debug(`${this.model.tableName} Find Statement executed`);
       logger.debug(findStatement.statement);
 
-      const strResult: string = await StreamUtil.convertStreamToText(
-        dbResult.stream,
-      );
+      const responseJSON: ResponseJSON<JSONObject> =
+        await dbResult.json<JSONObject>();
 
-      const jsonItems: Array<JSONObject> = this.convertSelectReturnedDataToJson(
-        strResult,
-        findStatement.columns,
-      );
+      const jsonItems: Array<JSONObject> = responseJSON.data;
 
       let items: Array<TBaseModel> =
         AnalyticsBaseModel.fromJSONArray<TBaseModel>(jsonItems, this.modelType);
@@ -411,7 +414,7 @@ export default class AnalyticsDatabaseService<
     }
   }
 
-  private convertSelectReturnedDataToJson(
+  public convertSelectReturnedDataToJson(
     strResult: string,
     columns: string[],
   ): JSONObject[] {
@@ -484,35 +487,39 @@ export default class AnalyticsDatabaseService<
     /* eslint-disable prettier/prettier */
     const statement: Statement = SQL`
             SELECT
-                count()
-            FROM ${databaseName}.${this.model.tableName}
-            WHERE TRUE `.append(whereStatement);
-
+                count(`;
 
     if (countBy.groupBy && Object.keys(countBy.groupBy).length > 0) {
+      const groupByKey: string = Object.keys(countBy.groupBy)[0] as string;
+
       statement.append(
-        SQL`
-            GROUP BY `.append(
-          this.statementGenerator.toGroupByStatement(countBy.groupBy),
-        ),
+        SQL`DISTINCT ${groupByKey}`
       );
     }
+
+    statement
+      .append(
+        SQL`) as count
+            FROM ${databaseName}.${this.model.tableName}
+            WHERE TRUE `
+      )
+      .append(whereStatement);
 
     if (countBy.limit) {
       statement.append(SQL`
             LIMIT ${{
-          value: Number(countBy.limit),
-          type: TableColumnType.Number,
-        }}
+              value: Number(countBy.limit),
+              type: TableColumnType.Number,
+            }}
             `);
     }
 
     if (countBy.skip) {
       statement.append(SQL`
             OFFSET ${{
-          value: Number(countBy.skip),
-          type: TableColumnType.Number,
-        }}
+              value: Number(countBy.skip),
+              type: TableColumnType.Number,
+            }}
             `);
     }
     logger.debug(`${this.model.tableName} Count Statement`);
@@ -520,7 +527,6 @@ export default class AnalyticsDatabaseService<
 
     return statement;
   }
-
 
   public toAggregateStatement(aggregateBy: AggregateBy<TBaseModel>): {
     statement: Statement;
@@ -536,11 +542,11 @@ export default class AnalyticsDatabaseService<
       this.statementGenerator.toAggregateSelectStatement(aggregateBy);
 
     const whereStatement: Statement = this.statementGenerator.toWhereStatement(
-      aggregateBy.query,
+      aggregateBy.query
     );
 
     const sortStatement: Statement = this.statementGenerator.toSortStatement(
-      aggregateBy.sort!,
+      aggregateBy.sort!
     );
 
     const statement: Statement = SQL``;
@@ -549,10 +555,16 @@ export default class AnalyticsDatabaseService<
     statement.append(SQL` FROM ${databaseName}.${this.model.tableName}`);
     statement.append(SQL` WHERE TRUE `).append(whereStatement);
 
-    statement.append(SQL` GROUP BY `).append(`${aggregateBy.aggregationTimestampColumnName.toString()}`);
+    statement
+      .append(SQL` GROUP BY `)
+      .append(`${aggregateBy.aggregationTimestampColumnName.toString()}`);
 
     if (aggregateBy.groupBy && Object.keys(aggregateBy.groupBy).length > 0) {
-      statement.append(SQL` , `).append(this.statementGenerator.toGroupByStatement(aggregateBy.groupBy));
+      statement
+        .append(SQL` , `)
+        .append(
+          this.statementGenerator.toGroupByStatement(aggregateBy.groupBy)
+        );
     }
 
     statement.append(SQL` ORDER BY `).append(sortStatement);
@@ -561,7 +573,7 @@ export default class AnalyticsDatabaseService<
       SQL` LIMIT ${{
         value: Number(aggregateBy.limit),
         type: TableColumnType.Number,
-      }}`,
+      }}`
     );
 
     statement.append(SQL` OFFSET ${{
@@ -569,8 +581,6 @@ export default class AnalyticsDatabaseService<
       type: TableColumnType.Number,
     }}
         `);
-
-
 
     logger.debug(`${this.model.tableName} Aggregate Statement`);
     logger.debug(statement);
@@ -596,7 +606,7 @@ export default class AnalyticsDatabaseService<
       };
 
       groupByStatement = this.statementGenerator.toGroupByStatement(
-        findBy.groupBy,
+        findBy.groupBy
       );
     }
 
@@ -604,11 +614,11 @@ export default class AnalyticsDatabaseService<
       this.statementGenerator.toSelectStatement(findBy.select!);
 
     const whereStatement: Statement = this.statementGenerator.toWhereStatement(
-      findBy.query,
+      findBy.query
     );
 
     const sortStatement: Statement = this.statementGenerator.toSortStatement(
-      findBy.sort!,
+      findBy.sort!
     );
 
     const statement: Statement = SQL``;
@@ -627,7 +637,7 @@ export default class AnalyticsDatabaseService<
       SQL` LIMIT ${{
         value: Number(findBy.limit),
         type: TableColumnType.Number,
-      }}`,
+      }}`
     );
 
     statement.append(SQL` OFFSET ${{
@@ -635,8 +645,6 @@ export default class AnalyticsDatabaseService<
       type: TableColumnType.Number,
     }}
         `);
-
-
 
     logger.debug(`${this.model.tableName} Find Statement`);
     logger.debug(statement);
@@ -651,7 +659,7 @@ export default class AnalyticsDatabaseService<
 
     const databaseName: string = this.database.getDatasourceOptions().database!;
     const whereStatement: Statement = this.statementGenerator.toWhereStatement(
-      deleteBy.query,
+      deleteBy.query
     );
 
     /* eslint-disable prettier/prettier */
@@ -659,15 +667,15 @@ export default class AnalyticsDatabaseService<
             ALTER TABLE ${databaseName}.${this.model.tableName}
             DELETE WHERE TRUE `.append(whereStatement);
 
-
     logger.debug(`${this.model.tableName} Delete Statement`);
     logger.debug(statement);
 
     return statement;
   }
 
+  @CaptureSpan()
   public async findOneBy(
-    findOneBy: FindOneBy<TBaseModel>,
+    findOneBy: FindOneBy<TBaseModel>
   ): Promise<TBaseModel | null> {
     const findBy: FindBy<TBaseModel> = findOneBy as FindBy<TBaseModel>;
     findBy.limit = new PositiveNumber(1);
@@ -681,6 +689,7 @@ export default class AnalyticsDatabaseService<
     return null;
   }
 
+  @CaptureSpan()
   public async deleteBy(deleteBy: DeleteBy<TBaseModel>): Promise<void> {
     return await this._deleteBy(deleteBy);
   }
@@ -696,7 +705,7 @@ export default class AnalyticsDatabaseService<
       beforeDeleteBy.query = await ModelPermission.checkDeletePermission(
         this.modelType,
         beforeDeleteBy.query,
-        deleteBy.props,
+        deleteBy.props
       );
 
       const select: Select<TBaseModel> = {};
@@ -708,21 +717,21 @@ export default class AnalyticsDatabaseService<
         (select as any)[tenantColumnName] = true;
       }
 
-      const deleteStatement: Statement = this.toDeleteStatement(beforeDeleteBy); 
+      const deleteStatement: Statement = this.toDeleteStatement(beforeDeleteBy);
 
       await this.execute(deleteStatement);
 
       logger.debug(`${this.model.tableName} Delete Statement executed`);
       logger.debug(deleteStatement);
-
     } catch (error) {
       await this.onDeleteError(error as Exception);
       throw this.getException(error as Exception);
     }
   }
 
+  @CaptureSpan()
   public async findOneById(
-    findOneById: FindOneByID<TBaseModel>,
+    findOneById: FindOneByID<TBaseModel>
   ): Promise<TBaseModel | null> {
     if (!findOneById.id) {
       throw new BadDataException("findOneById.id is required");
@@ -737,6 +746,7 @@ export default class AnalyticsDatabaseService<
     });
   }
 
+  @CaptureSpan()
   public async updateBy(updateBy: UpdateBy<TBaseModel>): Promise<void> {
     await this._updateBy(updateBy);
   }
@@ -753,7 +763,7 @@ export default class AnalyticsDatabaseService<
         this.modelType,
         beforeUpdateBy.query,
         beforeUpdateBy.data,
-        beforeUpdateBy.props,
+        beforeUpdateBy.props
       );
 
       const select: Select<TBaseModel> = {};
@@ -765,17 +775,13 @@ export default class AnalyticsDatabaseService<
         (select as any)[tenantColumnName] = true;
       }
 
-      const statement: Statement = this.statementGenerator.toUpdateStatement(
-        beforeUpdateBy,
-      );
+      const statement: Statement =
+        this.statementGenerator.toUpdateStatement(beforeUpdateBy);
 
-      await this.execute(
-        statement,
-      );
+      await this.execute(statement);
 
       logger.debug(`${this.model.tableName} Update Statement executed`);
       logger.debug(statement);
-      
     } catch (error) {
       await this.onUpdateError(error as Exception);
       throw this.getException(error as Exception);
@@ -799,25 +805,46 @@ export default class AnalyticsDatabaseService<
     this.databaseClient = this.database.getDataSource() as ClickhouseClient;
   }
 
+  @CaptureSpan()
   public async execute(
-    statement: Statement | string,
+    statement: Statement | string
   ): Promise<ExecResult<Stream>> {
     if (!this.databaseClient) {
       this.useDefaultDatabase();
     }
 
-    return await this.databaseClient.exec(
+    return (await this.databaseClient.exec(
       statement instanceof Statement
         ? statement
         : {
-          query: statement, // TODO remove and only accept Statements
-        },
-    ) as ExecResult<Stream>;
+            query: statement, // TODO remove and only accept Statements
+          }
+    )) as ExecResult<Stream>;
+  }
+
+  @CaptureSpan()
+  public async executeQuery(
+    statement: Statement | string
+  ): Promise<ResultSet<"JSON">> {
+    if (!this.databaseClient) {
+      this.useDefaultDatabase();
+    }
+
+    const query: string =
+      statement instanceof Statement ? statement.query : statement;
+    const queryParams: Record<string, unknown> | undefined =
+      statement instanceof Statement ? statement.query_params : undefined;
+
+    return await this.databaseClient.query({
+      query: query,
+      format: "JSON",
+      query_params: queryParams || (undefined as any), // undefined is not specified in the type for query_params, but its ok to pass undefined.
+    });
   }
 
   protected async onUpdateSuccess(
     onUpdate: OnUpdate<TBaseModel>,
-    _updatedItemIds: Array<ObjectID>,
+    _updatedItemIds: Array<ObjectID>
   ): Promise<OnUpdate<TBaseModel>> {
     // A place holder method used for overriding.
     return Promise.resolve(onUpdate);
@@ -830,7 +857,7 @@ export default class AnalyticsDatabaseService<
 
   protected async onDeleteSuccess(
     onDelete: OnDelete<TBaseModel>,
-    _itemIdsBeforeDelete: Array<ObjectID>,
+    _itemIdsBeforeDelete: Array<ObjectID>
   ): Promise<OnDelete<TBaseModel>> {
     // A place holder method used for overriding.
     return Promise.resolve(onDelete);
@@ -843,7 +870,7 @@ export default class AnalyticsDatabaseService<
 
   protected async onFindSuccess(
     onFind: OnFind<TBaseModel>,
-    items: Array<TBaseModel>,
+    items: Array<TBaseModel>
   ): Promise<OnFind<TBaseModel>> {
     // A place holder method used for overriding.
     return Promise.resolve({ ...onFind, carryForward: items });
@@ -855,7 +882,7 @@ export default class AnalyticsDatabaseService<
   }
 
   protected async onCountSuccess(
-    count: PositiveNumber,
+    count: PositiveNumber
   ): Promise<PositiveNumber> {
     // A place holder method used for overriding.
     return Promise.resolve(count);
@@ -868,14 +895,14 @@ export default class AnalyticsDatabaseService<
 
   protected async onCreateSuccess(
     _onCreate: OnCreate<TBaseModel>,
-    createdItem: TBaseModel,
+    createdItem: TBaseModel
   ): Promise<TBaseModel> {
     // A place holder method used for overriding.
     return Promise.resolve(createdItem);
   }
 
   protected async onBeforeCreate(
-    createBy: CreateBy<TBaseModel>,
+    createBy: CreateBy<TBaseModel>
   ): Promise<OnCreate<TBaseModel>> {
     // A place holder method used for overriding.
     return Promise.resolve({
@@ -885,7 +912,7 @@ export default class AnalyticsDatabaseService<
   }
 
   private async _onBeforeCreate(
-    createBy: CreateBy<TBaseModel>,
+    createBy: CreateBy<TBaseModel>
   ): Promise<OnCreate<TBaseModel>> {
     // Private method that runs before create.
     const projectIdColumn: string | null =
@@ -898,8 +925,9 @@ export default class AnalyticsDatabaseService<
     return await this.onBeforeCreate(createBy);
   }
 
+  @CaptureSpan()
   public async createMany(
-    createBy: CreateManyBy<TBaseModel>,
+    createBy: CreateManyBy<TBaseModel>
   ): Promise<Array<TBaseModel>> {
     // add tenantId if present.
     const tenantColumnName: string | null =
@@ -913,16 +941,16 @@ export default class AnalyticsDatabaseService<
 
       const onCreate: OnCreate<TBaseModel> = createBy.props.ignoreHooks
         ? {
-          createBy: {
+            createBy: {
+              data: data,
+              props: createBy.props,
+            },
+            carryForward: [],
+          }
+        : await this._onBeforeCreate({
             data: data,
             props: createBy.props,
-          },
-          carryForward: [],
-        }
-        : await this._onBeforeCreate({
-          data: data,
-          props: createBy.props,
-        });
+          });
 
       data = onCreate.createBy.data;
 
@@ -947,7 +975,7 @@ export default class AnalyticsDatabaseService<
       ModelPermission.checkCreatePermissions(
         this.modelType,
         data,
-        createBy.props,
+        createBy.props
       );
 
       items.push(data);
@@ -955,11 +983,10 @@ export default class AnalyticsDatabaseService<
 
     try {
       const insertStatement: string = this.statementGenerator.toCreateStatement(
-        { item: items },
+        { item: items }
       );
 
       await this.execute(insertStatement);
-
 
       logger.debug(`${this.model.tableName} Create Statement executed`);
       logger.debug(insertStatement);
@@ -978,7 +1005,7 @@ export default class AnalyticsDatabaseService<
               },
               carryForward: carryForwards[i],
             },
-            items[i]!,
+            items[i]!
           );
         }
       }
@@ -990,7 +1017,7 @@ export default class AnalyticsDatabaseService<
         for (const item of items) {
           if (!tenantId && this.getModel().getTenantColumn()) {
             tenantId = item.getColumnValue<ObjectID>(
-              this.getModel().getTenantColumn()!.key,
+              this.getModel().getTenantColumn()!.key
             );
           }
 
@@ -1021,15 +1048,16 @@ export default class AnalyticsDatabaseService<
                 tenantId: tenantId,
                 eventType: ModelEventType.Create,
                 modelType: this.modelType,
-              }),
+              })
             );
           }
 
           await Promise.allSettled(promises);
         } else {
           logger.warn(
-            `Realtime is not initialized. Skipping emitModelEvent for ${this.getModel().tableName
-            }`,
+            `Realtime is not initialized. Skipping emitModelEvent for ${
+              this.getModel().tableName
+            }`
           );
         }
       }
@@ -1041,6 +1069,7 @@ export default class AnalyticsDatabaseService<
     }
   }
 
+  @CaptureSpan()
   public async create(createBy: CreateBy<TBaseModel>): Promise<TBaseModel> {
     const items: Array<TBaseModel> = await this.createMany({
       props: createBy.props,
@@ -1057,7 +1086,7 @@ export default class AnalyticsDatabaseService<
   }
 
   private sanitizeCreate<TBaseModel extends AnalyticsBaseModel>(
-    data: TBaseModel,
+    data: TBaseModel
   ): TBaseModel {
     if (!data.id) {
       data.id = ObjectID.generate();
@@ -1086,10 +1115,11 @@ export default class AnalyticsDatabaseService<
     return true;
   }
 
+  @CaptureSpan()
   public async onTrigger(
     id: ObjectID,
     projectId: ObjectID,
-    triggerType: DatabaseTriggerType,
+    triggerType: DatabaseTriggerType
   ): Promise<void> {
     if (this.getModel().enableWorkflowOn) {
       API.post(
@@ -1098,9 +1128,9 @@ export default class AnalyticsDatabaseService<
           WorkflowHostname,
           new Route(
             `/${WorkflowRoute.toString()}/analytics-model/${projectId.toString()}/${Text.pascalCaseToDashes(
-              this.getModel().tableName!,
-            )}/${triggerType}`,
-          ),
+              this.getModel().tableName!
+            )}/${triggerType}`
+          )
         ),
         {
           data: {
@@ -1109,7 +1139,7 @@ export default class AnalyticsDatabaseService<
         },
         {
           ...ClusterKeyAuthorization.getClusterKeyHeaders(),
-        },
+        }
       ).catch((error: Error) => {
         logger.error(error);
       });
@@ -1129,7 +1159,7 @@ export default class AnalyticsDatabaseService<
         ) {
           data.setColumnValue(
             requiredField,
-            data.getDefaultValueForColumn(requiredField),
+            data.getDefaultValueForColumn(requiredField)
           );
         } else {
           throw new BadDataException(`${requiredField} is required`);
@@ -1142,7 +1172,7 @@ export default class AnalyticsDatabaseService<
         // add default value.
         data.setColumnValue(
           requiredField,
-          data.getDefaultValueForColumn(requiredField),
+          data.getDefaultValueForColumn(requiredField)
         );
       } else if (
         ((data as any)[requiredField] === null ||

@@ -1,5 +1,14 @@
 import Project from "./Project";
+import Incident from "./Incident";
+import Alert from "./Alert";
+import ScheduledMaintenance from "./ScheduledMaintenance";
+import StatusPage from "./StatusPage";
+import StatusPageAnnouncement from "./StatusPageAnnouncement";
 import User from "./User";
+import OnCallDutyPolicy from "./OnCallDutyPolicy";
+import OnCallDutyPolicyEscalationRule from "./OnCallDutyPolicyEscalationRule";
+import OnCallDutyPolicySchedule from "./OnCallDutyPolicySchedule";
+import Team from "./Team";
 import BaseModel from "./DatabaseBaseModel/DatabaseBaseModel";
 import Route from "../../Types/API/Route";
 import CallStatus from "../../Types/Call/CallStatus";
@@ -247,6 +256,7 @@ export default class CallLog extends BaseModel {
     description: "Call Cost in USD Cents",
     canReadOnRelationQuery: false,
     isDefaultValueColumn: true,
+    defaultValue: 0,
   })
   @Column({
     nullable: false,
@@ -254,6 +264,575 @@ export default class CallLog extends BaseModel {
     type: ColumnType.Number,
   })
   public callCostInUSDCents?: number = undefined;
+
+  // Relations to resources that triggered this Call (nullable)
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "incidentId",
+    type: TableColumnType.Entity,
+    modelType: Incident,
+    title: "Incident",
+    description: "Incident associated with this Call (if any)",
+  })
+  @ManyToOne(
+    () => {
+      return Incident;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "CASCADE",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "incidentId" })
+  public incident?: Incident = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @Index()
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    required: false,
+    canReadOnRelationQuery: true,
+    title: "Incident ID",
+    description: "ID of Incident associated with this Call (if any)",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public incidentId?: ObjectID = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "userId",
+    type: TableColumnType.Entity,
+    modelType: User,
+    title: "User",
+    description: "User who initiated this Call (if any)",
+  })
+  @ManyToOne(
+    () => {
+      return User;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "CASCADE",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "userId" })
+  public user?: User = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @Index()
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    required: false,
+    canReadOnRelationQuery: true,
+    title: "User ID",
+    description: "ID of User who initiated this Call (if any)",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public userId?: ObjectID = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "alertId",
+    type: TableColumnType.Entity,
+    modelType: Alert,
+    title: "Alert",
+    description: "Alert associated with this Call (if any)",
+  })
+  @ManyToOne(
+    () => {
+      return Alert;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "CASCADE",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "alertId" })
+  public alert?: Alert = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @Index()
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    required: false,
+    canReadOnRelationQuery: true,
+    title: "Alert ID",
+    description: "ID of Alert associated with this Call (if any)",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public alertId?: ObjectID = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "scheduledMaintenanceId",
+    type: TableColumnType.Entity,
+    modelType: ScheduledMaintenance,
+    title: "Scheduled Maintenance",
+    description: "Scheduled Maintenance associated with this Call (if any)",
+  })
+  @ManyToOne(
+    () => {
+      return ScheduledMaintenance;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "CASCADE",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "scheduledMaintenanceId" })
+  public scheduledMaintenance?: ScheduledMaintenance = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @Index()
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    required: false,
+    canReadOnRelationQuery: true,
+    title: "Scheduled Maintenance ID",
+    description:
+      "ID of Scheduled Maintenance associated with this Call (if any)",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public scheduledMaintenanceId?: ObjectID = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "statusPageId",
+    type: TableColumnType.Entity,
+    modelType: StatusPage,
+    title: "Status Page",
+    description: "Status Page associated with this Call (if any)",
+  })
+  @ManyToOne(
+    () => {
+      return StatusPage;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "CASCADE",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "statusPageId" })
+  public statusPage?: StatusPage = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @Index()
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    required: false,
+    canReadOnRelationQuery: true,
+    title: "Status Page ID",
+    description: "ID of Status Page associated with this Call (if any)",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public statusPageId?: ObjectID = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "statusPageAnnouncementId",
+    type: TableColumnType.Entity,
+    modelType: StatusPageAnnouncement,
+    title: "Status Page Announcement",
+    description: "Status Page Announcement associated with this Call (if any)",
+  })
+  @ManyToOne(
+    () => {
+      return StatusPageAnnouncement;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "CASCADE",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "statusPageAnnouncementId" })
+  public statusPageAnnouncement?: StatusPageAnnouncement = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @Index()
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    required: false,
+    canReadOnRelationQuery: true,
+    title: "Status Page Announcement ID",
+    description:
+      "ID of Status Page Announcement associated with this Call (if any)",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public statusPageAnnouncementId?: ObjectID = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "onCallDutyPolicyId",
+    type: TableColumnType.Entity,
+    modelType: OnCallDutyPolicy,
+    title: "On-Call Duty Policy",
+    description: "On-Call Duty Policy associated with this Call (if any)",
+  })
+  @ManyToOne(
+    () => {
+      return OnCallDutyPolicy;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "CASCADE",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "onCallDutyPolicyId" })
+  public onCallDutyPolicy?: OnCallDutyPolicy = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @Index()
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    required: false,
+    canReadOnRelationQuery: true,
+    title: "On-Call Duty Policy ID",
+    description: "ID of On-Call Duty Policy associated with this Call (if any)",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public onCallDutyPolicyId?: ObjectID = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "onCallDutyPolicyEscalationRuleId",
+    type: TableColumnType.Entity,
+    modelType: OnCallDutyPolicyEscalationRule,
+    title: "On-Call Duty Policy Escalation Rule",
+    description:
+      "On-Call Duty Policy Escalation Rule associated with this Call (if any)",
+  })
+  @ManyToOne(
+    () => {
+      return OnCallDutyPolicyEscalationRule;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "CASCADE",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "onCallDutyPolicyEscalationRuleId" })
+  public onCallDutyPolicyEscalationRule?: OnCallDutyPolicyEscalationRule =
+    undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @Index()
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    required: false,
+    canReadOnRelationQuery: true,
+    title: "On-Call Duty Policy Escalation Rule ID",
+    description:
+      "ID of On-Call Duty Policy Escalation Rule associated with this Call (if any)",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public onCallDutyPolicyEscalationRuleId?: ObjectID = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "onCallDutyPolicyScheduleId",
+    type: TableColumnType.Entity,
+    modelType: OnCallDutyPolicySchedule,
+    title: "On-Call Duty Policy Schedule",
+    description:
+      "On-Call Duty Policy Schedule associated with this Call (if any)",
+  })
+  @ManyToOne(
+    () => {
+      return OnCallDutyPolicySchedule;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "CASCADE",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "onCallDutyPolicyScheduleId" })
+  public onCallDutyPolicySchedule?: OnCallDutyPolicySchedule = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @Index()
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    required: false,
+    canReadOnRelationQuery: true,
+    title: "On-Call Duty Policy Schedule ID",
+    description:
+      "ID of On-Call Duty Policy Schedule associated with this Call (if any)",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public onCallDutyPolicyScheduleId?: ObjectID = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "teamId",
+    type: TableColumnType.Entity,
+    modelType: Team,
+    title: "Team",
+    description: "Team associated with this Call (if any)",
+  })
+  @ManyToOne(
+    () => {
+      return Team;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "CASCADE",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "teamId" })
+  public team?: Team = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadCallLog,
+    ],
+    update: [],
+  })
+  @Index()
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    required: false,
+    canReadOnRelationQuery: true,
+    title: "Team ID",
+    description: "ID of Team associated with this Call (if any)",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public teamId?: ObjectID = undefined;
 
   @ColumnAccessControl({
     create: [],
@@ -264,6 +843,7 @@ export default class CallLog extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })

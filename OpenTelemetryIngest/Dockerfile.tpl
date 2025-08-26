@@ -3,7 +3,7 @@
 #
 
 # Pull base image nodejs image.
-FROM public.ecr.aws/docker/library/node:22.9
+FROM public.ecr.aws/docker/library/node:23.8
 RUN mkdir /tmp/npm &&  chmod 2777 /tmp/npm && chown 1000:1000 /tmp/npm && npm config set cache /tmp/npm --global
 
 RUN npm config set fetch-retries 5
@@ -77,6 +77,8 @@ CMD [ "npm", "run", "dev" ]
 COPY ./OpenTelemetryIngest /usr/src/app
 # Bundle app source
 RUN npm run compile
+# Set permission to write logs and cache in case container run as non root
+RUN chown -R 1000:1000 "/tmp/npm" && chmod -R 2777 "/tmp/npm"
 #Run the app
 CMD [ "npm", "start" ]
 {{ end }}

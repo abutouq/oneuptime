@@ -5,8 +5,8 @@ import Card from "../Card/Card";
 import ComponentLoader from "../ComponentLoader/ComponentLoader";
 import ErrorMessage from "../ErrorMessage/ErrorMessage";
 import ProgressBar from "../ProgressBar/ProgressBar";
-import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import { PromiseVoidFunction } from "Common/Types/FunctionTypes";
+import BaseModel from "../../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import { PromiseVoidFunction } from "../../../Types/FunctionTypes";
 import React, { ReactElement, useEffect, useState } from "react";
 
 export interface ComponentProps<TBaseModel extends BaseModel> {
@@ -55,7 +55,7 @@ const ModelProgress: <TBaseModel extends BaseModel>(
       <div className="w-full -mt-6">
         {!error && (
           <div>
-            <ErrorMessage error={error} />
+            <ErrorMessage message={error} />
           </div>
         )}
         {isLoading && <ComponentLoader />}

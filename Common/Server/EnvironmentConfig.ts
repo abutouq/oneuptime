@@ -2,24 +2,20 @@ import {
   AccountsRoute,
   AdminDashboardRoute,
   DashboardRoute,
-} from "Common/ServiceRoute";
+  AppApiRoute,
+  StatusPageApiRoute,
+  DocsRoute,
+} from "../ServiceRoute";
 import BillingConfig from "./BillingConfig";
-import Hostname from "Common/Types/API/Hostname";
-import Protocol from "Common/Types/API/Protocol";
-import URL from "Common/Types/API/URL";
-import SubscriptionPlan from "Common/Types/Billing/SubscriptionPlan";
-import Email from "Common/Types/Email";
-import { JSONObject } from "Common/Types/JSON";
-import ObjectID from "Common/Types/ObjectID";
-import Port from "Common/Types/Port";
-
-export enum ConfigLogLevel {
-  INFO = "INFO",
-  WARN = "WARN",
-  ERROR = "ERROR",
-  DEBUG = "DEBUG",
-  OFF = "OFF",
-}
+import Protocol from "../Types/API/Protocol";
+import URL from "../Types/API/URL";
+import SubscriptionPlan from "../Types/Billing/SubscriptionPlan";
+import Email from "../Types/Email";
+import { JSONObject } from "../Types/JSON";
+import ObjectID from "../Types/ObjectID";
+import Port from "../Types/Port";
+import Hostname from "../Types/API/Hostname";
+import ConfigLogLevel from "./Types/ConfigLogLevel";
 
 export const getAllEnvVars: () => JSONObject = (): JSONObject => {
   return process.env;
@@ -155,6 +151,12 @@ export const AdminDashboardHostname: Hostname = Hostname.fromString(
   }`,
 );
 
+export const DocsHostname: Hostname = Hostname.fromString(
+  `${process.env["SERVER_DOCS_HOSTNAME"] || "localhost"}:${
+    process.env["DOCS_PORT"] || 80
+  }`,
+);
+
 export const Env: string = process.env["NODE_ENV"] || "production";
 
 // Redis does not require password.
@@ -259,6 +261,10 @@ export const WorkflowScriptTimeoutInMS: number = process.env[
   ? parseInt(process.env["WORKFLOW_SCRIPT_TIMEOUT_IN_MS"].toString())
   : 5000;
 
+export const WorkflowTimeoutInMs: number = process.env["WORKFLOW_TIMEOUT_IN_MS"]
+  ? parseInt(process.env["WORKFLOW_TIMEOUT_IN_MS"].toString())
+  : 5000;
+
 export const AllowedActiveMonitorCountInFreePlan: number = process.env[
   "ALLOWED_ACTIVE_MONITOR_COUNT_IN_FREE_PLAN"
 ]
@@ -279,13 +285,32 @@ export const AllowedSubscribersCountInFreePlan: number = process.env[
   ? parseInt(process.env["ALLOWED_SUBSCRIBERS_COUNT_IN_FREE_PLAN"].toString())
   : 100;
 
-export const NotificationWebhookOnCreateUser: string =
-  process.env["NOTIFICATION_WEBHOOK_ON_CREATED_USER"] || "";
+export const NotificationSlackWebhookOnCreateUser: string =
+  process.env["NOTIFICATION_SLACK_WEBHOOK_ON_CREATED_USER"] || "";
+
+export const NotificationSlackWebhookOnCreateProject: string =
+  process.env["NOTIFICATION_SLACK_WEBHOOK_ON_CREATED_PROJECT"] || "";
+
+// notification delete project
+export const NotificationSlackWebhookOnDeleteProject: string =
+  process.env["NOTIFICATION_SLACK_WEBHOOK_ON_DELETED_PROJECT"] || "";
+
+// notification subscripton update.
+export const NotificationSlackWebhookOnSubscriptionUpdate: string =
+  process.env["NOTIFICATION_SLACK_WEBHOOK_ON_SUBSCRIPTION_UPDATE"] || "";
 
 export const AdminDashboardClientURL: URL = new URL(
   HttpProtocol,
   Host,
   AdminDashboardRoute,
+);
+
+export const AppApiClientUrl: URL = new URL(HttpProtocol, Host, AppApiRoute);
+
+export const StatusPageApiClientUrl: URL = new URL(
+  HttpProtocol,
+  Host,
+  StatusPageApiRoute,
 );
 
 export const DashboardClientUrl: URL = new URL(
@@ -300,5 +325,24 @@ export const AccountsClientUrl: URL = new URL(
   AccountsRoute,
 );
 
+export const DocsClientUrl: URL = new URL(HttpProtocol, Host, DocsRoute);
+
 export const DisableTelemetry: boolean =
   process.env["DISABLE_TELEMETRY"] === "true";
+
+export const SlackAppClientId: string | null =
+  process.env["SLACK_APP_CLIENT_ID"] || null;
+export const SlackAppClientSecret: string | null =
+  process.env["SLACK_APP_CLIENT_SECRET"] || null;
+export const SlackAppSigningSecret: string | null =
+  process.env["SLACK_APP_SIGNING_SECRET"] || null;
+
+// VAPID Configuration for Web Push Notifications
+export const VapidPublicKey: string | undefined =
+  process.env["VAPID_PUBLIC_KEY"] || undefined;
+
+export const VapidPrivateKey: string | undefined =
+  process.env["VAPID_PRIVATE_KEY"] || undefined;
+
+export const VapidSubject: string =
+  process.env["VAPID_SUBJECT"] || "mailto:support@oneuptime.com";

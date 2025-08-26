@@ -134,7 +134,26 @@ export default class UptimeUtil {
           eventList[eventList.length - 1]!.endDate,
         )
       ) {
-        if (monitorEvent.priority > eventList[eventList.length - 1]!.priority) {
+        let isEndDateOfCurrenteventAfterLastEvent: boolean = false;
+        if (
+          eventList[eventList.length - 1] &&
+          eventList[eventList.length - 1]?.endDate
+        ) {
+          isEndDateOfCurrenteventAfterLastEvent =
+            OneUptimeDate.isAfter(
+              monitorEvent.endDate,
+              eventList[eventList.length - 1]!.endDate,
+            ) ||
+            OneUptimeDate.isEqualBySeconds(
+              monitorEvent.endDate,
+              eventList[eventList.length - 1]!.endDate,
+            );
+        }
+
+        if (
+          monitorEvent.priority > eventList[eventList.length - 1]!.priority ||
+          isEndDateOfCurrenteventAfterLastEvent
+        ) {
           // end the last event at the start of this event.
 
           const tempLastEvent: Event = {
@@ -349,6 +368,32 @@ export default class UptimeUtil {
       ((totalSecondsInTimePeriod - totalDowntimeInSeconds) /
         totalSecondsInTimePeriod) *
       100;
+
+    return this.roundToPrecision({
+      number: percentage,
+      precision,
+    });
+  }
+
+  public static calculateAvgUptimePercentage(data: {
+    uptimePercentages: Array<number>;
+    precision: UptimePrecision;
+  }): number {
+    // calculate percentage.
+
+    const { uptimePercentages, precision } = data;
+
+    if (uptimePercentages.length === 0) {
+      return 100;
+    }
+
+    let totalUptimePercentage: number = 0;
+
+    for (const uptimePercentage of uptimePercentages) {
+      totalUptimePercentage += uptimePercentage;
+    }
+
+    const percentage: number = totalUptimePercentage / uptimePercentages.length;
 
     return this.roundToPrecision({
       number: percentage,

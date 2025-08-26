@@ -121,6 +121,22 @@ const SubscribePage: FunctionComponent<SubscribePageProps> = (
     },
     {
       field: {
+        slackWorkspaceName: true,
+      },
+      showEvenIfPermissionDoesNotExist: true,
+      title: "Slack Workspace Name",
+      fieldType: FormFieldSchemaType.Text,
+      required: (model: FormValues<StatusPageSubscriber>) => {
+        return model && Boolean(model.slackWorkspaceName);
+      },
+      disabled: true,
+      placeholder: "your-slack-workspace-name",
+      showIf: (model: FormValues<StatusPageSubscriber>) => {
+        return model && Boolean(model.slackWorkspaceName);
+      },
+    },
+    {
+      field: {
         subscriberPhone: true,
       },
       showEvenIfPermissionDoesNotExist: true,
@@ -211,7 +227,7 @@ const SubscribePage: FunctionComponent<SubscribePageProps> = (
     <Page>
       {isLaoding ? <PageLoader isVisible={isLaoding} /> : <></>}
 
-      {error ? <ErrorMessage error={error} /> : <></>}
+      {error ? <ErrorMessage message={error} /> : <></>}
 
       {!isLaoding && !error ? (
         <div className="justify-center">

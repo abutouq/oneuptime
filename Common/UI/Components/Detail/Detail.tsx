@@ -11,16 +11,15 @@ import FieldType from "../Types/FieldType";
 import Field from "./Field";
 import FieldLabelElement from "./FieldLabel";
 import PlaceholderText from "./PlaceholderText";
-import FileModel from "Common/Models/DatabaseModels/DatabaseBaseModel/FileModel";
-import CodeType from "Common/Types/Code/CodeType";
-import Color from "Common/Types/Color";
-import DatabaseProperty from "Common/Types/Database/DatabaseProperty";
-import OneUptimeDate from "Common/Types/Date";
-import Dictionary from "Common/Types/Dictionary";
-import BadDataException from "Common/Types/Exception/BadDataException";
-import GenericObject from "Common/Types/GenericObject";
-import get from "lodash/get";
-import React, { ReactElement } from "react";
+import FileModel from "../../../Models/DatabaseModels/DatabaseBaseModel/FileModel";
+import CodeType from "../../../Types/Code/CodeType";
+import Color from "../../../Types/Color";
+import DatabaseProperty from "../../../Types/Database/DatabaseProperty";
+import OneUptimeDate from "../../../Types/Date";
+import Dictionary from "../../../Types/Dictionary";
+import BadDataException from "../../../Types/Exception/BadDataException";
+import GenericObject from "../../../Types/GenericObject";
+import React, { ReactElement, useEffect, useState } from "react";
 
 export interface ComponentProps<T extends GenericObject> {
   item: T;
@@ -36,6 +35,22 @@ type DetailFunction = <T extends GenericObject>(
 const Detail: DetailFunction = <T extends GenericObject>(
   props: ComponentProps<T>,
 ): ReactElement => {
+  // Track mobile view for responsive behavior
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+
+  useEffect(() => {
+    const checkMobile: () => void = (): void => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+    };
+  }, []);
+
   type GetMarkdownViewerFunction = (text: string) => ReactElement;
 
   const getMarkdownViewer: GetMarkdownViewerFunction = (
@@ -128,6 +143,16 @@ const Detail: DetailFunction = <T extends GenericObject>(
 
   type GetFieldFunction = (field: Field<T>, index: number) => ReactElement;
 
+  // Helper function to get nested property values using dot notation
+  const getNestedValue: (obj: any, path: string) => any = (
+    obj: any,
+    path: string,
+  ): any => {
+    return path.split(".").reduce((current: any, key: string) => {
+      return current?.[key];
+    }, obj);
+  };
+
   const getField: GetFieldFunction = (
     field: Field<T>,
     index: number,
@@ -144,8 +169,11 @@ const Detail: DetailFunction = <T extends GenericObject>(
 
     let data: string | ReactElement = "";
 
-    if (get(props.item, fieldKey)) {
-      data = (get(props.item, fieldKey, "") as any) || "";
+    // Use helper function for both simple and nested property access
+    const fieldKeyStr: string = String(fieldKey);
+    const value: any = getNestedValue(props.item, fieldKeyStr);
+    if (value !== undefined && value !== null) {
+      data = value;
     }
 
     if (field.fieldType === FieldType.Date) {
@@ -230,12 +258,13 @@ const Detail: DetailFunction = <T extends GenericObject>(
       if (
         props.item[fieldKey] &&
         (props.item[fieldKey] as unknown as FileModel).file &&
-        (props.item[fieldKey] as unknown as FileModel).type
+        (props.item[fieldKey] as unknown as FileModel).fileType
       ) {
         const blob: Blob = new Blob(
           [(props.item[fieldKey] as unknown as FileModel).file as Uint8Array],
           {
-            type: (props.item[fieldKey] as unknown as FileModel).type as string,
+            type: (props.item[fieldKey] as unknown as FileModel)
+              .fileType as string,
           },
         );
 
@@ -306,7 +335,9 @@ const Detail: DetailFunction = <T extends GenericObject>(
               "Cant format json for field: " +
                 field.title +
                 " with value: " +
-                data,
+                data +
+                " Error: " +
+                e,
             );
           }
         }
@@ -389,7 +420,7 @@ const Detail: DetailFunction = <T extends GenericObject>(
                 )}
             </div>
           )}
-          {!data && field.placeholder && (
+          {(data === null || data === undefined) && field.placeholder && (
             <PlaceholderText text={field.placeholder} />
           )}
         </div>
@@ -407,6 +438,11 @@ const Detail: DetailFunction = <T extends GenericObject>(
         props.fields.length > 0 &&
         props.fields
           .filter((field: Field<T>) => {
+            // Filter out fields with hideOnMobile on mobile devices
+            if (field.hideOnMobile && isMobile) {
+              return false;
+            }
+
             // check if showIf exists.
             if (field.showIf) {
               return field.showIf(props.item);

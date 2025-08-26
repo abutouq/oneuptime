@@ -1,8 +1,10 @@
 import { MigrationInterface, QueryRunner, Table } from "typeorm";
+import CaptureSpan from "../../../Utils/Telemetry/CaptureSpan";
 
 export default class InitialMigration implements MigrationInterface {
   public name: string = "InitialMigration1717605043663";
 
+  @CaptureSpan()
   public async up(queryRunner: QueryRunner): Promise<void> {
     // check if File table already exists, then dont run the migration
     const fileTable: Table | undefined = await queryRunner.getTable("File");
@@ -2776,6 +2778,7 @@ export default class InitialMigration implements MigrationInterface {
     );
   }
 
+  @CaptureSpan()
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       `ALTER TABLE "WorkflowLabel" DROP CONSTRAINT "FK_4e72fad380eca9abfa3b9895546"`,

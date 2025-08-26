@@ -86,9 +86,6 @@ Backups/*.tar
 
 .env
 
-Haraka/dkim/keys/private_base64.txt
-Haraka/dkim/keys/public_base64.txt
-
 .eslintcache
 
 HelmChart/Values/*.values.yaml
@@ -112,3 +109,22 @@ App/greenlock/greenlock.d/config.json
 App/greenlock/greenlock.d/config.json.bak
 Examples/otel-dotnet/bin/Debug/net6.0/Grpc.Core.Api.dll.txt
 InfrastructureAgent/oneuptime-infrastructure-agent
+
+# ESLint cache
+.eslintcache*
+
+# Terraform generated files
+openapi.json
+
+Terraform/**
+
+TerraformTest/**
+
+terraform-provider-example/**
+
+# MCP Server
+MCP/build/
+MCP/.env
+MCP/node_modules 
+Dashboard/public/sw.js
+.claude/settings.local.json

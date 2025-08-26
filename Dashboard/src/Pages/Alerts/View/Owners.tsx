@@ -1,6 +1,5 @@
 import TeamElement from "../../../Components/Team/Team";
 import UserElement from "../../../Components/User/User";
-import DashboardNavigation from "../../../Utils/Navigation";
 import ProjectUser from "../../../Utils/ProjectUser";
 import PageComponentProps from "../../PageComponentProps";
 import BadDataException from "Common/Types/Exception/BadDataException";
@@ -13,6 +12,7 @@ import AlertOwnerTeam from "Common/Models/DatabaseModels/AlertOwnerTeam";
 import AlertOwnerUser from "Common/Models/DatabaseModels/AlertOwnerUser";
 import Team from "Common/Models/DatabaseModels/Team";
 import User from "Common/Models/DatabaseModels/User";
+import ProjectUtil from "Common/UI/Utils/Project";
 import React, { Fragment, FunctionComponent, ReactElement } from "react";
 
 const AlertOwners: FunctionComponent<PageComponentProps> = (): ReactElement => {
@@ -24,6 +24,7 @@ const AlertOwners: FunctionComponent<PageComponentProps> = (): ReactElement => {
         modelType={AlertOwnerTeam}
         id="table-alert-owner-team"
         name="Alert > Owner Team"
+        userPreferencesKey="alert-owner-team-table"
         singularName="Team"
         isDeleteable={true}
         createVerb={"Add"}
@@ -32,11 +33,11 @@ const AlertOwners: FunctionComponent<PageComponentProps> = (): ReactElement => {
         showViewIdButton={true}
         query={{
           alertId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(item: AlertOwnerTeam): Promise<AlertOwnerTeam> => {
           item.alertId = modelId;
-          item.projectId = DashboardNavigation.getProjectId()!;
+          item.projectId = ProjectUtil.getCurrentProjectId()!;
           return Promise.resolve(item);
         }}
         cardProps={{
@@ -72,7 +73,7 @@ const AlertOwners: FunctionComponent<PageComponentProps> = (): ReactElement => {
             title: "Team",
             filterEntityType: Team,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -119,6 +120,7 @@ const AlertOwners: FunctionComponent<PageComponentProps> = (): ReactElement => {
         modelType={AlertOwnerUser}
         id="table-alert-owner-team"
         name="Alert > Owner Team"
+        userPreferencesKey="alert-owner-user-table"
         isDeleteable={true}
         singularName="User"
         isCreateable={true}
@@ -127,11 +129,11 @@ const AlertOwners: FunctionComponent<PageComponentProps> = (): ReactElement => {
         createVerb={"Add"}
         query={{
           alertId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(item: AlertOwnerUser): Promise<AlertOwnerUser> => {
           item.alertId = modelId;
-          item.projectId = DashboardNavigation.getProjectId()!;
+          item.projectId = ProjectUtil.getCurrentProjectId()!;
           return Promise.resolve(item);
         }}
         cardProps={{
@@ -151,7 +153,7 @@ const AlertOwners: FunctionComponent<PageComponentProps> = (): ReactElement => {
             placeholder: "Select User",
             fetchDropdownOptions: async () => {
               return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-                DashboardNavigation.getProjectId()!,
+                ProjectUtil.getCurrentProjectId()!,
               );
             },
           },
@@ -168,7 +170,7 @@ const AlertOwners: FunctionComponent<PageComponentProps> = (): ReactElement => {
             filterEntityType: User,
             fetchFilterDropdownOptions: async () => {
               return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-                DashboardNavigation.getProjectId()!,
+                ProjectUtil.getCurrentProjectId()!,
               );
             },
             filterDropdownField: {

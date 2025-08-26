@@ -35,7 +35,12 @@ import Alert from "./Alert";
 @EnableDocumentation()
 @TenantColumn("projectId")
 @TableAccessControl({
-  create: [],
+  create: [
+    Permission.ProjectOwner,
+    Permission.ProjectAdmin,
+    Permission.ProjectMember,
+    Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+  ],
   read: [
     Permission.ProjectOwner,
     Permission.ProjectAdmin,
@@ -58,7 +63,12 @@ import Alert from "./Alert";
 })
 export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -89,7 +99,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public project?: Project = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -114,7 +129,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public projectId?: ObjectID = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -146,7 +166,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public onCallDutyPolicy?: OnCallDutyPolicy = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -172,7 +197,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public onCallDutyPolicyId?: ObjectID = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -204,7 +234,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public triggeredByIncident?: Incident = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -216,6 +251,7 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   @TableColumn({
     type: TableColumnType.ObjectID,
     title: "Triggered By Incident ID",
+    required: false,
     description:
       "ID of the incident which triggered this on-call escalation policy.",
   })
@@ -227,7 +263,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public triggeredByIncidentId?: ObjectID = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -258,7 +299,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public triggeredByAlert?: Alert = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -270,6 +316,7 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   @TableColumn({
     type: TableColumnType.ObjectID,
     title: "Triggered By Alert ID",
+    required: false,
     description:
       "ID of the incident which triggered this on-call escalation policy.",
   })
@@ -281,7 +328,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public triggeredByAlertId?: ObjectID = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -305,7 +357,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public status?: OnCallDutyPolicyStatus = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -329,7 +386,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public statusMessage?: string = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -353,7 +415,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public userNotificationEventType?: UserNotificationEventType = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -385,7 +452,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public createdByUser?: User = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -408,7 +480,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public createdByUserId?: ObjectID = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [],
     update: [],
   })
@@ -416,6 +493,7 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -435,7 +513,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public deletedByUser?: User = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -458,7 +541,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public deletedByUserId?: ObjectID = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -491,7 +579,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public acknowledgedByUser?: User = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -514,7 +607,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public acknowledgedByUserId?: ObjectID = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -533,7 +631,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public acknowledgedAt?: Date = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [],
     update: [],
   })
@@ -560,7 +663,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public acknowledgedByTeam?: Team = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -583,7 +691,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public acknowledgedByTeamId?: ObjectID = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [],
     update: [],
   })
@@ -602,7 +715,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public lastExecutedEscalationRuleOrder?: number = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [],
     update: [],
   })
@@ -621,7 +739,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public lastEscalationRuleExecutedAt?: Date = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -653,7 +776,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
     undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -678,7 +806,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public lastExecutedEscalationRuleId?: ObjectID = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [],
     update: [],
   })
@@ -698,7 +831,12 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
   public executeNextEscalationRuleInMinutes?: number = undefined;
 
   @ColumnAccessControl({
-    create: [],
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
     read: [],
     update: [],
   })
@@ -710,6 +848,7 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
     canReadOnRelationQuery: true,
     title: "On-Call Policy Execution Repeat Count",
     description: "How many times did we execute this on-call policy?",
+    defaultValue: 1,
   })
   @Column({
     type: ColumnType.Number,
@@ -717,4 +856,67 @@ export default class OnCallDutyPolicyExecutionLog extends BaseModel {
     default: 1,
   })
   public onCallPolicyExecutionRepeatCount?: number = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectOnCallDutyPolicyExecutionLog,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "triggeredByUserId",
+    type: TableColumnType.Entity,
+    modelType: User,
+    title: "Triggered by User",
+    description: "Relation to User who triggered on-clal policy",
+  })
+  @ManyToOne(
+    () => {
+      return User;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "SET NULL",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "triggeredByUserId" })
+  public triggeredByUser?: User = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectOnCallDutyPolicyExecutionLog,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    title: "Triggered by User ID",
+    description: "User ID who triggered this on-call policy",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public triggeredByUserId?: ObjectID = undefined;
 }

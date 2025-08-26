@@ -1,4 +1,3 @@
-import DashboardNavigation from "../../../Utils/Navigation";
 import PageComponentProps from "../../PageComponentProps";
 import HTTPErrorResponse from "Common/Types/API/HTTPErrorResponse";
 import HTTPResponse from "Common/Types/API/HTTPResponse";
@@ -27,6 +26,7 @@ import React, {
 } from "react";
 import OneUptimeDate from "Common/Types/Date";
 import FormValues from "Common/UI/Components/Forms/Types/FormValues";
+import ProjectUtil from "Common/UI/Utils/Project";
 
 const StatusPageDelete: FunctionComponent<PageComponentProps> = (
   props: PageComponentProps,
@@ -56,10 +56,11 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
         <ModelTable<StatusPageDomain>
           modelType={StatusPageDomain}
           query={{
-            projectId: DashboardNavigation.getProjectId()!,
+            projectId: ProjectUtil.getCurrentProjectId()!,
             statusPageId: modelId,
           }}
           name="Status Page > Domains"
+          userPreferencesKey="status-page-domains-table"
           id="domains-table"
           isDeleteable={true}
           isCreateable={true}
@@ -169,6 +170,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
                 minLength: 2,
               },
               stepId: "basic",
+              disableSpellCheck: true,
             },
             {
               field: {
@@ -209,6 +211,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
               stepId: "more",
               placeholder:
                 "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+              disableSpellCheck: true,
               showIf: (item: FormValues<StatusPageDomain>): boolean => {
                 return Boolean(item.isCustomCertificate);
               },
@@ -223,6 +226,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
               placeholder:
                 "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----",
               stepId: "more",
+              disableSpellCheck: true,
               showIf: (item: FormValues<StatusPageDomain>): boolean => {
                 return Boolean(item.isCustomCertificate);
               },
@@ -348,7 +352,12 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
                 <div>
                   <span>
                     Custom Domains not enabled for this OneUptime installation.
-                    Please contact your server admin to enable this feature.
+                    Please contact your server admin to enable this feature. To
+                    enable this feature, if you are using Docker compose, the
+                    <b>STATUS_PAGE_CNAME_RECORD</b> environment variable must be
+                    set when starting the OneUptime cluster. If you are using
+                    Helm and Kubernetes then set statusPage.cnameRecord in the
+                    values.yaml file.
                   </span>
                 </div>
               )

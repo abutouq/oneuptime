@@ -1,4 +1,4 @@
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageComponentProps from "../PageComponentProps";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
 import ModelTable from "Common/UI/Components/ModelTable/ModelTable";
@@ -23,9 +23,10 @@ const Workflows: FunctionComponent<PageComponentProps> = (): ReactElement => {
           description:
             "Here is a list of global secrets and variables for this project.",
         }}
+        userPreferencesKey="workflow-variable-table"
         query={{
           workflowId: new IsNull(),
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         noItemsMessage={"No global variables found."}
         showViewIdButton={true}
@@ -88,7 +89,7 @@ const Workflows: FunctionComponent<PageComponentProps> = (): ReactElement => {
               description: true,
             },
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
           {
             field: {
@@ -119,7 +120,8 @@ const Workflows: FunctionComponent<PageComponentProps> = (): ReactElement => {
             },
             noValueMessage: "-",
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
+            hideOnMobile: true,
           },
           {
             field: {
@@ -134,6 +136,7 @@ const Workflows: FunctionComponent<PageComponentProps> = (): ReactElement => {
             },
             title: "Created At",
             type: FieldType.DateTime,
+            hideOnMobile: true,
           },
         ]}
       />

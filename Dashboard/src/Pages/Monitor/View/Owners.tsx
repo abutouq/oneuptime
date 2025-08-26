@@ -1,7 +1,6 @@
 import DisabledWarning from "../../../Components/Monitor/DisabledWarning";
 import TeamElement from "../../../Components/Team/Team";
 import UserElement from "../../../Components/User/User";
-import DashboardNavigation from "../../../Utils/Navigation";
 import ProjectUser from "../../../Utils/ProjectUser";
 import PageComponentProps from "../../PageComponentProps";
 import BadDataException from "Common/Types/Exception/BadDataException";
@@ -15,6 +14,7 @@ import MonitorOwnerUser from "Common/Models/DatabaseModels/MonitorOwnerUser";
 import Team from "Common/Models/DatabaseModels/Team";
 import User from "Common/Models/DatabaseModels/User";
 import React, { Fragment, FunctionComponent, ReactElement } from "react";
+import ProjectUtil from "Common/UI/Utils/Project";
 
 const MonitorOwners: FunctionComponent<
   PageComponentProps
@@ -28,6 +28,7 @@ const MonitorOwners: FunctionComponent<
         modelType={MonitorOwnerTeam}
         id="table-monitor-owner-team"
         name="Monitor > Owner Team"
+        userPreferencesKey="monitor-owner-team-table"
         singularName="Team"
         isDeleteable={true}
         createVerb={"Add"}
@@ -36,11 +37,11 @@ const MonitorOwners: FunctionComponent<
         showViewIdButton={true}
         query={{
           monitorId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(item: MonitorOwnerTeam): Promise<MonitorOwnerTeam> => {
           item.monitorId = modelId;
-          item.projectId = DashboardNavigation.getProjectId()!;
+          item.projectId = ProjectUtil.getCurrentProjectId()!;
           return Promise.resolve(item);
         }}
         cardProps={{
@@ -76,7 +77,7 @@ const MonitorOwners: FunctionComponent<
             title: "Team",
             filterEntityType: Team,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -114,6 +115,7 @@ const MonitorOwners: FunctionComponent<
             },
             title: "Owner since",
             type: FieldType.DateTime,
+            hideOnMobile: true,
           },
         ]}
       />
@@ -122,6 +124,7 @@ const MonitorOwners: FunctionComponent<
         modelType={MonitorOwnerUser}
         id="table-monitor-owner-team"
         name="Monitor > Owner Team"
+        userPreferencesKey="monitor-owner-user-table"
         isDeleteable={true}
         singularName="User"
         isCreateable={true}
@@ -130,11 +133,11 @@ const MonitorOwners: FunctionComponent<
         createVerb={"Add"}
         query={{
           monitorId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(item: MonitorOwnerUser): Promise<MonitorOwnerUser> => {
           item.monitorId = modelId;
-          item.projectId = DashboardNavigation.getProjectId()!;
+          item.projectId = ProjectUtil.getCurrentProjectId()!;
           return Promise.resolve(item);
         }}
         cardProps={{
@@ -154,7 +157,7 @@ const MonitorOwners: FunctionComponent<
             placeholder: "Select User",
             fetchDropdownOptions: async () => {
               return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-                DashboardNavigation.getProjectId()!,
+                ProjectUtil.getCurrentProjectId()!,
               );
             },
           },
@@ -171,7 +174,7 @@ const MonitorOwners: FunctionComponent<
             filterEntityType: User,
             fetchFilterDropdownOptions: async () => {
               return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-                DashboardNavigation.getProjectId()!,
+                ProjectUtil.getCurrentProjectId()!,
               );
             },
             filterDropdownField: {
@@ -212,6 +215,7 @@ const MonitorOwners: FunctionComponent<
             },
             title: "Owner since",
             type: FieldType.DateTime,
+            hideOnMobile: true,
           },
         ]}
       />

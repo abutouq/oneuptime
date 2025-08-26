@@ -61,7 +61,7 @@ export default class GreenlockCertificate extends BaseModel {
     read: [],
     update: [],
   })
-  @TableColumn({ type: TableColumnType.Boolean })
+  @TableColumn({ type: TableColumnType.Boolean, defaultValue: false })
   @Column({
     type: ColumnType.Boolean,
     nullable: false,
@@ -79,6 +79,7 @@ export default class GreenlockCertificate extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })

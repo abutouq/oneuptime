@@ -10,20 +10,34 @@ import CallRequest from "../../Types/Call/CallRequest";
 import TwilioConfig from "../../Types/CallAndSMS/TwilioConfig";
 import { JSONObject } from "../../Types/JSON";
 import ObjectID from "../../Types/ObjectID";
-import API from "Common/Utils/API";
+import API from "../../Utils/API";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export class CallService extends BaseService {
   public constructor() {
     super();
   }
 
+  @CaptureSpan()
   public async makeCall(
     callRequest: CallRequest,
     options: {
       projectId?: ObjectID | undefined; // project id for sms log
       isSensitive?: boolean; // if true, message will not be logged
-      userOnCallLogTimelineId?: ObjectID;
+      userOnCallLogTimelineId?: ObjectID | undefined;
       customTwilioConfig?: TwilioConfig | undefined;
+      incidentId?: ObjectID | undefined;
+      alertId?: ObjectID | undefined;
+      scheduledMaintenanceId?: ObjectID | undefined;
+      statusPageId?: ObjectID | undefined;
+      statusPageAnnouncementId?: ObjectID | undefined;
+      userId?: ObjectID | undefined;
+      // On-call policy related fields
+      onCallPolicyId?: ObjectID | undefined;
+      onCallPolicyEscalationRuleId?: ObjectID | undefined;
+      teamId?: ObjectID | undefined;
+      onCallDutyPolicyExecutionLogTimelineId?: ObjectID | undefined;
+      onCallScheduleId?: ObjectID | undefined;
     },
   ): Promise<HTTPResponse<EmptyResponseData>> {
     const body: JSONObject = {
@@ -35,9 +49,25 @@ export class CallService extends BaseService {
         ? {
             accountSid: options.customTwilioConfig.accountSid!,
             authToken: options.customTwilioConfig.authToken!,
-            phoneNumber: options.customTwilioConfig.phoneNumber.toString(),
+            primaryPhoneNumber:
+              options.customTwilioConfig.primaryPhoneNumber.toString(),
+            secondaryPhoneNumbers:
+              options.customTwilioConfig.secondaryPhoneNumbers?.toString(),
           }
         : undefined,
+      incidentId: options.incidentId?.toString(),
+      alertId: options.alertId?.toString(),
+      scheduledMaintenanceId: options.scheduledMaintenanceId?.toString(),
+      statusPageId: options.statusPageId?.toString(),
+      statusPageAnnouncementId: options.statusPageAnnouncementId?.toString(),
+      userId: options.userId?.toString(),
+      onCallPolicyId: options.onCallPolicyId?.toString(),
+      onCallPolicyEscalationRuleId:
+        options.onCallPolicyEscalationRuleId?.toString(),
+      teamId: options.teamId?.toString(),
+      onCallDutyPolicyExecutionLogTimelineId:
+        options.onCallDutyPolicyExecutionLogTimelineId?.toString(),
+      onCallScheduleId: options.onCallScheduleId?.toString(),
     };
 
     return await API.post<EmptyResponseData>(

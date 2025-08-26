@@ -1,8 +1,9 @@
-import { ConfigLogLevel, LogLevel } from "../EnvironmentConfig";
+import { LogLevel } from "../EnvironmentConfig";
 import OneUptimeTelemetry, { TelemetryLogger } from "./Telemetry";
 import { SeverityNumber } from "@opentelemetry/api-logs";
-import Exception from "Common/Types/Exception/Exception";
-import { JSONObject } from "Common/Types/JSON";
+import Exception from "../../Types/Exception/Exception";
+import { JSONObject } from "../../Types/JSON";
+import ConfigLogLevel from "../Types/ConfigLogLevel";
 
 export type LogBody = string | JSONObject | Exception | Error | unknown;
 
@@ -103,5 +104,19 @@ export default class logger {
       body: this.serializeLogBody(data.body),
       severityNumber: data.severityNumber,
     });
+  }
+
+  public static trace(message: LogBody): void {
+    const logLevel: ConfigLogLevel = this.getLogLevel();
+
+    if (logLevel === ConfigLogLevel.DEBUG) {
+      // eslint-disable-next-line no-console
+      console.trace(message);
+
+      this.emit({
+        body: message,
+        severityNumber: SeverityNumber.DEBUG,
+      });
+    }
   }
 }

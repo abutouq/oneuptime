@@ -1,9 +1,14 @@
 import TraceMonitorResponse from "../../../../Types/Monitor/TraceMonitor/TraceMonitorResponse";
+import CaptureSpan from "../../Telemetry/CaptureSpan";
 import DataToProcess from "../DataToProcess";
 import CompareCriteria from "./CompareCriteria";
-import { CheckOn, CriteriaFilter } from "Common/Types/Monitor/CriteriaFilter";
+import {
+  CheckOn,
+  CriteriaFilter,
+} from "../../../../Types/Monitor/CriteriaFilter";
 
 export default class TraceMonitorCriteria {
+  @CaptureSpan()
   public static async isMonitorInstanceCriteriaFilterMet(input: {
     dataToProcess: DataToProcess;
     criteriaFilter: CriteriaFilter;

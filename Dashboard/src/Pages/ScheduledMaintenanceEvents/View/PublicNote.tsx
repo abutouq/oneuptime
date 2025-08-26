@@ -1,5 +1,5 @@
+import MarkdownUtil from "Common/UI/Utils/Markdown";
 import UserElement from "../../../Components/User/User";
-import DashboardNavigation from "../../../Utils/Navigation";
 import ProjectUser from "../../../Utils/ProjectUser";
 import PageComponentProps from "../../PageComponentProps";
 import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
@@ -10,7 +10,6 @@ import IconProp from "Common/Types/Icon/IconProp";
 import { JSONObject } from "Common/Types/JSON";
 import ObjectID from "Common/Types/ObjectID";
 import { ButtonStyleType } from "Common/UI/Components/Button/Button";
-import CheckboxViewer from "Common/UI/Components/Checkbox/CheckboxViewer";
 import BasicFormModal from "Common/UI/Components/FormModal/BasicFormModal";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
 import ConfirmModal from "Common/UI/Components/Modal/ConfirmModal";
@@ -26,6 +25,9 @@ import Navigation from "Common/UI/Utils/Navigation";
 import ScheduledMaintenanceNoteTemplate from "Common/Models/DatabaseModels/ScheduledMaintenanceNoteTemplate";
 import ScheduledMaintenancePublicNote from "Common/Models/DatabaseModels/ScheduledMaintenancePublicNote";
 import User from "Common/Models/DatabaseModels/User";
+import ProjectUtil from "Common/UI/Utils/Project";
+import StatusPageSubscriberNotificationStatus from "Common/Types/StatusPage/StatusPageSubscriberNotificationStatus";
+import SubscriberNotificationStatus from "../../../Components/StatusPageSubscribers/SubscriberNotificationStatus";
 import React, {
   Fragment,
   FunctionComponent,
@@ -52,6 +54,28 @@ const PublicNote: FunctionComponent<PageComponentProps> = (
     initialValuesForScheduledMaintenance,
     setInitialValuesForScheduledMaintenance,
   ] = useState<JSONObject>({});
+  const [refreshToggle, setRefreshToggle] = useState<boolean>(false);
+
+  const handleResendNotification: (
+    item: ScheduledMaintenancePublicNote,
+  ) => Promise<void> = async (
+    item: ScheduledMaintenancePublicNote,
+  ): Promise<void> => {
+    try {
+      await ModelAPI.updateById({
+        modelType: ScheduledMaintenancePublicNote,
+        id: item.id!,
+        data: {
+          subscriberNotificationStatusOnNoteCreated:
+            StatusPageSubscriberNotificationStatus.Pending,
+          subscriberNotificationStatusMessage: null,
+        },
+      });
+      setRefreshToggle(!refreshToggle);
+    } catch (err) {
+      setError(API.getFriendlyMessage(err));
+    }
+  };
 
   const fetchScheduledMaintenanceNoteTemplate: (
     id: ObjectID,
@@ -123,6 +147,7 @@ const PublicNote: FunctionComponent<PageComponentProps> = (
         modelType={ScheduledMaintenancePublicNote}
         id="table-scheduled-maintenance-internal-note"
         name="Scheduled Maintenance Events > Public Notes"
+        userPreferencesKey="scheduled-maintenance-public-note-table"
         isDeleteable={true}
         createEditModalWidth={ModalWidth.Large}
         isCreateable={true}
@@ -133,9 +158,10 @@ const PublicNote: FunctionComponent<PageComponentProps> = (
         }
         createInitialValues={initialValuesForScheduledMaintenance}
         isViewable={false}
+        refreshToggle={refreshToggle.toString()}
         query={{
           scheduledMaintenanceId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(
           item: ScheduledMaintenancePublicNote,
@@ -174,8 +200,9 @@ const PublicNote: FunctionComponent<PageComponentProps> = (
             title: "Public Scheduled Maintenance Note",
             fieldType: FormFieldSchemaType.Markdown,
             required: true,
-            description:
-              "This note is visible on your Status Page. This is in Markdown.",
+            description: MarkdownUtil.getMarkdownCheatsheet(
+              "This note is visible on your Status Page",
+            ),
           },
           {
             field: {
@@ -200,12 +227,17 @@ const PublicNote: FunctionComponent<PageComponentProps> = (
               "This is the date and time this note was posted. This is in " +
               OneUptimeDate.getCurrentTimezoneString() +
               ".",
-            defaultValue: OneUptimeDate.getCurrentDate(),
+            getDefaultValue: () => {
+              return OneUptimeDate.getCurrentDate();
+            },
           },
         ]}
         showRefreshButton={true}
         showAs={ShowAs.List}
         viewPageRoute={Navigation.getCurrentRoute()}
+        selectMoreFields={{
+          subscriberNotificationStatusMessage: true,
+        }}
         filters={[
           {
             field: {
@@ -216,7 +248,7 @@ const PublicNote: FunctionComponent<PageComponentProps> = (
             filterEntityType: User,
             fetchFilterDropdownOptions: async () => {
               return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-                DashboardNavigation.getProjectId()!,
+                ProjectUtil.getCurrentProjectId()!,
               );
             },
             filterDropdownField: {
@@ -288,29 +320,24 @@ const PublicNote: FunctionComponent<PageComponentProps> = (
           },
           {
             field: {
-              shouldStatusPageSubscribersBeNotifiedOnNoteCreated: true,
+              subscriberNotificationStatusOnNoteCreated: true,
             },
-            title: "",
-            type: FieldType.Boolean,
-            colSpan: 2,
+            title: "Subscriber Notification Status",
+            type: FieldType.Text,
+            colSpan: 1,
             getElement: (
               item: ScheduledMaintenancePublicNote,
             ): ReactElement => {
               return (
-                <div className="-mt-5">
-                  <CheckboxViewer
-                    isChecked={
-                      item[
-                        "shouldStatusPageSubscribersBeNotifiedOnNoteCreated"
-                      ] as boolean
-                    }
-                    text={
-                      item["shouldStatusPageSubscribersBeNotifiedOnNoteCreated"]
-                        ? "Status Page Subscribers Notified"
-                        : "Status Page Subscribers Not Notified"
-                    }
-                  />{" "}
-                </div>
+                <SubscriberNotificationStatus
+                  status={item.subscriberNotificationStatusOnNoteCreated}
+                  subscriberNotificationStatusMessage={
+                    item.subscriberNotificationStatusMessage
+                  }
+                  onResendNotification={() => {
+                    return handleResendNotification(item);
+                  }}
+                />
               );
             },
           },

@@ -1,7 +1,8 @@
 import DatabaseService from "./DatabaseService";
 import TwilioConfig from "../../Types/CallAndSMS/TwilioConfig";
 import BadDataException from "../../Types/Exception/BadDataException";
-import Model from "Common/Models/DatabaseModels/ProjectCallSMSConfig";
+import Model from "../../Models/DatabaseModels/ProjectCallSMSConfig";
+import Phone from "../../Types/Phone";
 
 export class Service extends DatabaseService<Model> {
   public constructor() {
@@ -25,7 +26,7 @@ export class Service extends DatabaseService<Model> {
       );
     }
 
-    if (!projectCallSmsConfig.twilioPhoneNumber) {
+    if (!projectCallSmsConfig.twilioPrimaryPhoneNumber) {
       throw new BadDataException(
         "Project Call and SMS Config twilio phone number is not set",
       );
@@ -40,7 +41,16 @@ export class Service extends DatabaseService<Model> {
     return {
       accountSid: projectCallSmsConfig.twilioAccountSID.toString(),
       authToken: projectCallSmsConfig.twilioAuthToken.toString(),
-      phoneNumber: projectCallSmsConfig.twilioPhoneNumber,
+      primaryPhoneNumber: projectCallSmsConfig.twilioPrimaryPhoneNumber,
+      secondaryPhoneNumbers:
+        projectCallSmsConfig.twilioSecondaryPhoneNumbers &&
+        projectCallSmsConfig.twilioSecondaryPhoneNumbers.length > 0
+          ? projectCallSmsConfig.twilioSecondaryPhoneNumbers
+              .split(",")
+              .map((phone: string) => {
+                return new Phone(phone);
+              })
+          : [],
     };
   }
 }

@@ -6,7 +6,7 @@ import BasicForm, {
   BaseComponentProps as BasicFormComponentProps,
 } from "../Forms/BasicForm";
 import Modal from "../Modal/Modal";
-import GenericObject from "Common/Types/GenericObject";
+import GenericObject from "../../../Types/GenericObject";
 import React, { ReactElement, useEffect, useRef, useState } from "react";
 
 export interface ComponentProps<T extends GenericObject> {
@@ -45,7 +45,7 @@ const BasicFormModal: <T extends GenericObject>(
       <>
         {isLoading && <ComponentLoader />}
 
-        {props.error && <ErrorMessage error={props.error} />}
+        {props.error && <ErrorMessage message={props.error} />}
 
         {!isLoading && (
           <BasicForm
@@ -56,7 +56,7 @@ const BasicFormModal: <T extends GenericObject>(
               setIsLoading(isFormLoading);
             }}
             onSubmit={(data: T) => {
-              props.onSubmit && props.onSubmit(data);
+              props.onSubmit?.(data);
             }}
           />
         )}

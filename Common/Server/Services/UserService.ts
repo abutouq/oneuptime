@@ -1,7 +1,7 @@
 import DatabaseConfig from "../DatabaseConfig";
 import {
   IsBillingEnabled,
-  NotificationWebhookOnCreateUser,
+  NotificationSlackWebhookOnCreateUser,
 } from "../EnvironmentConfig";
 import { OnCreate, OnUpdate } from "../Types/Database/Hooks";
 import UpdateBy from "../Types/Database/UpdateBy";
@@ -12,7 +12,7 @@ import MailService from "./MailService";
 import TeamMemberService from "./TeamMemberService";
 import UserNotificationRuleService from "./UserNotificationRuleService";
 import UserNotificationSettingService from "./UserNotificationSettingService";
-import { AccountsRoute } from "Common/ServiceRoute";
+import { AccountsRoute } from "../../ServiceRoute";
 import Hostname from "../../Types/API/Hostname";
 import Protocol from "../../Types/API/Protocol";
 import Route from "../../Types/API/Route";
@@ -25,26 +25,67 @@ import EmailTemplateType from "../../Types/Email/EmailTemplateType";
 import HashedString from "../../Types/HashedString";
 import ObjectID from "../../Types/ObjectID";
 import Text from "../../Types/Text";
-import EmailVerificationToken from "Common/Models/DatabaseModels/EmailVerificationToken";
-import TeamMember from "Common/Models/DatabaseModels/TeamMember";
-import Model from "Common/Models/DatabaseModels/User";
-import SlackUtil from "../Utils/Slack";
-import UserTwoFactorAuth from "Common/Models/DatabaseModels/UserTwoFactorAuth";
+import EmailVerificationToken from "../../Models/DatabaseModels/EmailVerificationToken";
+import TeamMember from "../../Models/DatabaseModels/TeamMember";
+import Model from "../../Models/DatabaseModels/User";
+import SlackUtil from "../Utils/Workspace/Slack/Slack";
+import UserTwoFactorAuth from "../../Models/DatabaseModels/UserTwoFactorAuth";
 import UserTwoFactorAuthService from "./UserTwoFactorAuthService";
 import BadDataException from "../../Types/Exception/BadDataException";
+import Name from "../../Types/Name";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
+import Timezone from "../../Types/Timezone";
 
 export class Service extends DatabaseService<Model> {
   public constructor() {
     super(Model);
   }
 
+  @CaptureSpan()
+  public async getUserMarkdownString(data: {
+    userId: ObjectID;
+    projectId: ObjectID;
+  }): Promise<string> {
+    const user: Model | null = await this.findOneBy({
+      query: {
+        _id: data.userId,
+      },
+      select: {
+        name: true,
+        email: true,
+      },
+      props: {
+        isRoot: true,
+      },
+    });
+
+    if (!user) {
+      return "";
+    }
+
+    return `[${user.name?.toString() || user.email?.toString() || "User"}](${(await this.getUserLinkInDashboard(data.projectId, data.userId)).toString()})`;
+  }
+
+  @CaptureSpan()
+  public async getUserLinkInDashboard(
+    projectId: ObjectID,
+    userId: ObjectID,
+  ): Promise<URL> {
+    const dashboardUrl: URL = await DatabaseConfig.getDashboardUrl();
+
+    return URL.fromString(dashboardUrl.toString()).addRoute(
+      `/${projectId.toString()}/settings/users/${userId.toString()}`,
+    );
+  }
+
+  @CaptureSpan()
   protected override async onCreateSuccess(
     _onCreate: OnCreate<Model>,
     createdItem: Model,
   ): Promise<Model> {
-    if (NotificationWebhookOnCreateUser) {
-      SlackUtil.sendMessageToChannel({
-        url: URL.fromString(NotificationWebhookOnCreateUser),
+    if (NotificationSlackWebhookOnCreateUser) {
+      SlackUtil.sendMessageToChannelViaIncomingWebhook({
+        url: URL.fromString(NotificationSlackWebhookOnCreateUser),
         text: `*New OneUptime User:* 
   *Email:* ${createdItem.email?.toString() || "N/A"}
   *Name:* ${createdItem.name?.toString() || "N/A"}
@@ -60,6 +101,7 @@ export class Service extends DatabaseService<Model> {
     return Promise.resolve(createdItem);
   }
 
+  @CaptureSpan()
   public async findByEmail(
     email: Email,
     props: DatabaseCommonInteractionProps,
@@ -75,6 +117,7 @@ export class Service extends DatabaseService<Model> {
     });
   }
 
+  @CaptureSpan()
   protected override async onBeforeUpdate(
     updateBy: UpdateBy<Model>,
   ): Promise<OnUpdate<Model>> {
@@ -139,6 +182,7 @@ export class Service extends DatabaseService<Model> {
     return { updateBy, carryForward: carryForward };
   }
 
+  @CaptureSpan()
   protected override async onUpdateSuccess(
     onUpdate: OnUpdate<Model>,
     _updatedItemIds: ObjectID[],
@@ -290,8 +334,10 @@ export class Service extends DatabaseService<Model> {
     return onUpdate;
   }
 
+  @CaptureSpan()
   public async createByEmail(data: {
     email: Email;
+    name: Name | undefined;
     isEmailVerified?: boolean;
     generateRandomPassword?: boolean;
     props: DatabaseCommonInteractionProps;
@@ -300,6 +346,9 @@ export class Service extends DatabaseService<Model> {
 
     const user: Model = new Model();
     user.email = email;
+    if (data.name) {
+      user.name = data.name;
+    }
     user.isEmailVerified = data.isEmailVerified || false;
 
     if (data.generateRandomPassword) {
@@ -315,6 +364,26 @@ export class Service extends DatabaseService<Model> {
       data: user,
       props: props,
     });
+  }
+
+  public async getTimezoneForUser(userId: ObjectID): Promise<Timezone | null> {
+    const user: Model | null = await this.findOneBy({
+      query: {
+        _id: userId,
+      },
+      select: {
+        timezone: true,
+      },
+      props: {
+        isRoot: true,
+      },
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    return user.timezone || null;
   }
 }
 

@@ -5,21 +5,39 @@ import Domain from "../Types/Domain";
 import DatabaseService from "./DatabaseService";
 import BadDataException from "../../Types/Exception/BadDataException";
 import Text from "../../Types/Text";
-import Model from "Common/Models/DatabaseModels/Domain";
-
+import Model from "../../Models/DatabaseModels/Domain";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 export class Service extends DatabaseService<Model> {
   public constructor() {
     super(Model);
   }
 
+  @CaptureSpan()
   protected override async onBeforeCreate(
     createBy: CreateBy<Model>,
   ): Promise<OnCreate<Model>> {
+    if (createBy.data.domain) {
+      let domain: string | undefined = undefined;
+
+      if (createBy.data.domain instanceof Domain) {
+        domain = createBy.data.domain.toString();
+      } else if (typeof createBy.data.domain === "string") {
+        domain = createBy.data.domain;
+      } else {
+        throw new BadDataException(
+          "Domain must be a string or an instance of Domain.",
+        );
+      }
+
+      createBy.data.domain = new Domain(domain.trim().toLowerCase());
+    }
+
     createBy.data.domainVerificationText =
       "oneuptime-verification-" + Text.generateRandomText(20);
     return Promise.resolve({ createBy, carryForward: null });
   }
 
+  @CaptureSpan()
   protected override async onBeforeUpdate(
     updateBy: UpdateBy<Model>,
   ): Promise<OnUpdate<Model>> {

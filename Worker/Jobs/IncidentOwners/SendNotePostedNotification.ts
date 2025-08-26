@@ -8,18 +8,23 @@ import EmailTemplateType from "Common/Types/Email/EmailTemplateType";
 import NotificationSettingEventType from "Common/Types/NotificationSetting/NotificationSettingEventType";
 import ObjectID from "Common/Types/ObjectID";
 import { SMSMessage } from "Common/Types/SMS/SMS";
+import PushNotificationMessage from "Common/Types/PushNotification/PushNotificationMessage";
 import { EVERY_MINUTE } from "Common/Utils/CronTime";
 import IncidentInternalNoteService from "Common/Server/Services/IncidentInternalNoteService";
 import IncidentPublicNoteService from "Common/Server/Services/IncidentPublicNoteService";
 import IncidentService from "Common/Server/Services/IncidentService";
 import ProjectService from "Common/Server/Services/ProjectService";
 import UserNotificationSettingService from "Common/Server/Services/UserNotificationSettingService";
+import PushNotificationUtil from "Common/Server/Utils/PushNotificationUtil";
 import Markdown, { MarkdownContentType } from "Common/Server/Types/Markdown";
 import Incident from "Common/Models/DatabaseModels/Incident";
 import IncidentInternalNote from "Common/Models/DatabaseModels/IncidentInternalNote";
 import IncidentPublicNote from "Common/Models/DatabaseModels/IncidentPublicNote";
 import Monitor from "Common/Models/DatabaseModels/Monitor";
 import User from "Common/Models/DatabaseModels/User";
+import IncidentFeedService from "Common/Server/Services/IncidentFeedService";
+import { IncidentFeedEventType } from "Common/Models/DatabaseModels/IncidentFeed";
+import { Blue500 } from "Common/Types/BrandColors";
 
 RunCron(
   "IncidentOwner:SendsNotePostedEmail",
@@ -94,6 +99,8 @@ RunCron(
     const notes: Array<BaseModel> = [...publicNotes, ...privateNotes];
 
     for (const noteObject of notes) {
+      let moreIncidentFeedInformationInMarkdown: string = "";
+
       const note: BaseModel = noteObject as BaseModel;
 
       // get all scheduled events of all the projects.
@@ -119,6 +126,7 @@ RunCron(
           monitors: {
             name: true,
           },
+          incidentNumber: true,
         },
       });
 
@@ -197,16 +205,54 @@ RunCron(
           ],
         };
 
+        const pushMessage: PushNotificationMessage =
+          PushNotificationUtil.createIncidentNotePostedNotification({
+            incidentTitle: incident.title!,
+            projectName: incident.project!.name!,
+            isPrivateNote: privateNoteIds.includes(note._id!),
+            incidentViewLink: (
+              await IncidentService.getIncidentLinkInDashboard(
+                incident.projectId!,
+                incident.id!,
+              )
+            ).toString(),
+          });
+
         await UserNotificationSettingService.sendUserNotification({
           userId: user.id!,
           projectId: incident.projectId!,
           emailEnvelope: emailMessage,
           smsMessage: sms,
           callRequestMessage: callMessage,
+          pushNotificationMessage: pushMessage,
           eventType:
             NotificationSettingEventType.SEND_INCIDENT_NOTE_POSTED_OWNER_NOTIFICATION,
         });
+
+        moreIncidentFeedInformationInMarkdown += `**Notified:** ${user.name} (${user.email})\n`;
       }
+
+      const isPrivateNote: boolean = privateNoteIds.includes(
+        note._id!.toString(),
+      );
+
+      const projectId: ObjectID = incident.projectId!;
+      const incidentId: ObjectID = incident.id!;
+      const incidentNumber: number = incident.incidentNumber!; // incident number is not null here.
+
+      const incidentFeedText: string = `🔔 **Owners Notified because ${isPrivateNote ? "private" : "public"} note is posted** Owners have been notified about the new ${isPrivateNote ? "private" : "public"} note posted on the [Incident ${incidentNumber}](${(await IncidentService.getIncidentLinkInDashboard(projectId, incidentId)).toString()}).`;
+
+      await IncidentFeedService.createIncidentFeedItem({
+        incidentId: incident.id!,
+        projectId: incident.projectId!,
+        incidentFeedEventType: IncidentFeedEventType.OwnerNotificationSent,
+        displayColor: Blue500,
+        feedInfoInMarkdown: incidentFeedText,
+        moreInformationInMarkdown: moreIncidentFeedInformationInMarkdown,
+        workspaceNotification: {
+          sendWorkspaceNotification: false,
+        },
+      });
     }
   },
 );

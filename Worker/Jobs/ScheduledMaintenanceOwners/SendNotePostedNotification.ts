@@ -8,17 +8,22 @@ import EmailTemplateType from "Common/Types/Email/EmailTemplateType";
 import NotificationSettingEventType from "Common/Types/NotificationSetting/NotificationSettingEventType";
 import ObjectID from "Common/Types/ObjectID";
 import { SMSMessage } from "Common/Types/SMS/SMS";
+import PushNotificationMessage from "Common/Types/PushNotification/PushNotificationMessage";
 import { EVERY_MINUTE } from "Common/Utils/CronTime";
 import ProjectService from "Common/Server/Services/ProjectService";
 import ScheduledMaintenanceInternalNoteService from "Common/Server/Services/ScheduledMaintenanceInternalNoteService";
 import ScheduledMaintenancePublicNoteService from "Common/Server/Services/ScheduledMaintenancePublicNoteService";
 import ScheduledMaintenanceService from "Common/Server/Services/ScheduledMaintenanceService";
 import UserNotificationSettingService from "Common/Server/Services/UserNotificationSettingService";
+import PushNotificationUtil from "Common/Server/Utils/PushNotificationUtil";
 import Markdown, { MarkdownContentType } from "Common/Server/Types/Markdown";
 import ScheduledMaintenance from "Common/Models/DatabaseModels/ScheduledMaintenance";
 import ScheduledMaintenanceInternalNote from "Common/Models/DatabaseModels/ScheduledMaintenanceInternalNote";
 import ScheduledMaintenancePublicNote from "Common/Models/DatabaseModels/ScheduledMaintenancePublicNote";
 import User from "Common/Models/DatabaseModels/User";
+import ScheduledMaintenanceFeedService from "Common/Server/Services/ScheduledMaintenanceFeedService";
+import { ScheduledMaintenanceFeedEventType } from "Common/Models/DatabaseModels/ScheduledMaintenanceFeed";
+import { Blue500 } from "Common/Types/BrandColors";
 
 RunCron(
   "ScheduledMaintenanceOwner:SendsNotePostedEmail",
@@ -93,6 +98,8 @@ RunCron(
     const notes: Array<BaseModel> = [...publicNotes, ...privateNotes];
 
     for (const noteObject of notes) {
+      let moreScheduledMaintenanceFeedInformationInMarkdown: string = "";
+
       const note: BaseModel = noteObject as BaseModel;
 
       // get all scheduled events of all the projects.
@@ -113,6 +120,7 @@ RunCron(
             currentScheduledMaintenanceState: {
               name: true,
             },
+            scheduledMaintenanceNumber: true,
           },
         });
 
@@ -186,16 +194,59 @@ RunCron(
           ],
         };
 
+        const pushMessage: PushNotificationMessage =
+          PushNotificationUtil.createGenericNotification({
+            title: "Scheduled Maintenance Note Posted",
+            body: `New note posted on scheduled maintenance: ${scheduledMaintenance.title}. Click to view details.`,
+            clickAction: (
+              await ScheduledMaintenanceService.getScheduledMaintenanceLinkInDashboard(
+                scheduledMaintenance.projectId!,
+                scheduledMaintenance.id!,
+              )
+            ).toString(),
+            tag: "scheduled-maintenance-note-posted",
+            requireInteraction: false,
+          });
+
         await UserNotificationSettingService.sendUserNotification({
           userId: user.id!,
           projectId: scheduledMaintenance.projectId!,
           emailEnvelope: emailMessage,
           smsMessage: sms,
           callRequestMessage: callMessage,
+          pushNotificationMessage: pushMessage,
+          scheduledMaintenanceId: scheduledMaintenance.id!,
           eventType:
             NotificationSettingEventType.SEND_SCHEDULED_MAINTENANCE_NOTE_POSTED_OWNER_NOTIFICATION,
         });
+
+        moreScheduledMaintenanceFeedInformationInMarkdown += `**Notified:** ${user.name} (${user.email})\n`;
       }
+
+      const isPrivateNote: boolean = privateNoteIds.includes(
+        note._id!.toString(),
+      );
+
+      const projectId: ObjectID = scheduledMaintenance.projectId!;
+      const scheduledMaintenanceId: ObjectID = scheduledMaintenance.id!;
+      const scheduledMaintenanceNumber: number =
+        scheduledMaintenance.scheduledMaintenanceNumber!; // scheduledMaintenance number is not null here.
+
+      const scheduledMaintenanceFeedText: string = `🔔 **Owners Notified because ${isPrivateNote ? "private" : "public"} note is posted** Owners have been notified about the new ${isPrivateNote ? "private" : "public"} note posted on the [Scheduled Maintenance ${scheduledMaintenanceNumber}](${(await ScheduledMaintenanceService.getScheduledMaintenanceLinkInDashboard(projectId, scheduledMaintenanceId)).toString()}).`;
+
+      await ScheduledMaintenanceFeedService.createScheduledMaintenanceFeedItem({
+        scheduledMaintenanceId: scheduledMaintenance.id!,
+        projectId: scheduledMaintenance.projectId!,
+        scheduledMaintenanceFeedEventType:
+          ScheduledMaintenanceFeedEventType.OwnerNotificationSent,
+        displayColor: Blue500,
+        feedInfoInMarkdown: scheduledMaintenanceFeedText,
+        moreInformationInMarkdown:
+          moreScheduledMaintenanceFeedInformationInMarkdown,
+        workspaceNotification: {
+          sendWorkspaceNotification: false,
+        },
+      });
     }
   },
 );

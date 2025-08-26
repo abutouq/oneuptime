@@ -8,17 +8,23 @@ import EmailTemplateType from "Common/Types/Email/EmailTemplateType";
 import NotificationSettingEventType from "Common/Types/NotificationSetting/NotificationSettingEventType";
 import ObjectID from "Common/Types/ObjectID";
 import { SMSMessage } from "Common/Types/SMS/SMS";
+import PushNotificationMessage from "Common/Types/PushNotification/PushNotificationMessage";
 import Text from "Common/Types/Text";
 import { EVERY_MINUTE } from "Common/Utils/CronTime";
 import AlertService from "Common/Server/Services/AlertService";
 import AlertStateTimelineService from "Common/Server/Services/AlertStateTimelineService";
 import ProjectService from "Common/Server/Services/ProjectService";
 import UserNotificationSettingService from "Common/Server/Services/UserNotificationSettingService";
+import PushNotificationUtil from "Common/Server/Utils/PushNotificationUtil";
 import Markdown, { MarkdownContentType } from "Common/Server/Types/Markdown";
 import Alert from "Common/Models/DatabaseModels/Alert";
 import AlertState from "Common/Models/DatabaseModels/AlertState";
 import AlertStateTimeline from "Common/Models/DatabaseModels/AlertStateTimeline";
 import User from "Common/Models/DatabaseModels/User";
+import AlertFeedService from "Common/Server/Services/AlertFeedService";
+import { AlertFeedEventType } from "Common/Models/DatabaseModels/AlertFeed";
+import { Blue500 } from "Common/Types/BrandColors";
+import UserService from "Common/Server/Services/UserService";
 
 RunCron(
   "AlertOwner:SendStateChangeEmail",
@@ -67,10 +73,12 @@ RunCron(
         select: {
           _id: true,
           title: true,
+          projectId: true,
           description: true,
           monitor: {
             name: true,
           },
+          alertNumber: true,
         },
       });
 
@@ -124,6 +132,8 @@ RunCron(
       if (owners.length === 0) {
         continue;
       }
+
+      let moreAlertFeedInformationInMarkdown: string = "";
 
       for (const user of owners) {
         const vars: Dictionary<string> = {
@@ -179,16 +189,53 @@ RunCron(
           ],
         };
 
+        const pushMessage: PushNotificationMessage =
+          PushNotificationUtil.createGenericNotification({
+            title: `Alert State Changed: ${alert.title}`,
+            body: `Alert state changed to ${alertState!.name!} in ${alertStateTimeline.project!.name!}. Click to view details.`,
+            clickAction: (
+              await AlertService.getAlertLinkInDashboard(
+                alertStateTimeline.projectId!,
+                alert.id!,
+              )
+            ).toString(),
+            tag: "alert-state-changed",
+            requireInteraction: true,
+          });
+
         await UserNotificationSettingService.sendUserNotification({
           userId: user.id!,
           projectId: alertStateTimeline.projectId!,
           emailEnvelope: emailMessage,
           smsMessage: sms,
           callRequestMessage: callMessage,
+          pushNotificationMessage: pushMessage,
           eventType:
             NotificationSettingEventType.SEND_ALERT_STATE_CHANGED_OWNER_NOTIFICATION,
         });
+
+        moreAlertFeedInformationInMarkdown += `**Notified:** ${await UserService.getUserMarkdownString(
+          {
+            userId: user.id!,
+            projectId: alertStateTimeline.projectId!,
+          },
+        )})\n`;
       }
+
+      const alertNumber: number = alert.alertNumber!;
+      const projectId: ObjectID = alert.projectId!;
+
+      await AlertFeedService.createAlertFeedItem({
+        alertId: alert.id!,
+        projectId: alert.projectId!,
+        alertFeedEventType: AlertFeedEventType.OwnerNotificationSent,
+        displayColor: Blue500,
+        feedInfoInMarkdown: `🔔 **Owners have been notified about the state change of the [Alert ${alertNumber}](${(await AlertService.getAlertLinkInDashboard(projectId, alertId)).toString()}).**: Owners have been notified about the state change of the alert because the alert state changed to **${alertState.name}**.`,
+        moreInformationInMarkdown: moreAlertFeedInformationInMarkdown,
+        workspaceNotification: {
+          sendWorkspaceNotification: true,
+        },
+      });
     }
   },
 );

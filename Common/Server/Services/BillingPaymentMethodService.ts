@@ -6,14 +6,16 @@ import DatabaseService from "./DatabaseService";
 import ProjectService from "./ProjectService";
 import LIMIT_MAX, { LIMIT_PER_PROJECT } from "../../Types/Database/LimitMax";
 import BadDataException from "../../Types/Exception/BadDataException";
-import Model from "Common/Models/DatabaseModels/BillingPaymentMethod";
-import Project from "Common/Models/DatabaseModels/Project";
+import Model from "../../Models/DatabaseModels/BillingPaymentMethod";
+import Project from "../../Models/DatabaseModels/Project";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export class Service extends DatabaseService<Model> {
   public constructor() {
     super(Model);
   }
 
+  @CaptureSpan()
   protected override async onBeforeFind(
     findBy: FindBy<Model>,
   ): Promise<OnFind<Model>> {
@@ -62,7 +64,7 @@ export class Service extends DatabaseService<Model> {
 
       billingPaymentMethod.projectId = project.id!;
 
-      billingPaymentMethod.type = paymentMethod.type;
+      billingPaymentMethod.paymentMethodType = paymentMethod.type;
       billingPaymentMethod.last4Digits = paymentMethod.last4Digits;
       billingPaymentMethod.isDefault = paymentMethod.isDefault;
       billingPaymentMethod.paymentProviderPaymentMethodId = paymentMethod.id;
@@ -80,6 +82,7 @@ export class Service extends DatabaseService<Model> {
     return { findBy, carryForward: paymentMethods };
   }
 
+  @CaptureSpan()
   protected override async onBeforeDelete(
     deleteBy: DeleteBy<Model>,
   ): Promise<OnDelete<Model>> {

@@ -26,7 +26,6 @@ import { PromiseVoidFunction } from "Common/Types/FunctionTypes";
 import ComponentLoader from "Common/UI/Components/ComponentLoader/ComponentLoader";
 import ErrorMessage from "Common/UI/Components/ErrorMessage/ErrorMessage";
 import PageLoader from "Common/UI/Components/Loader/PageLoader";
-import MetricNameAndUnit from "./Types/MetricNameAndUnit";
 import MetricQueryConfigData from "Common/Types/Metrics/MetricQueryConfigData";
 import MetricFormulaConfigData from "Common/Types/Metrics/MetricFormulaConfigData";
 import MetricUtil from "./Utils/Metrics";
@@ -34,6 +33,7 @@ import MetricViewData from "Common/Types/Metrics/MetricViewData";
 import MetricCharts from "./MetricCharts";
 import ConfirmModal from "Common/UI/Components/Modal/ConfirmModal";
 import JSONFunctions from "Common/Types/JSONFunctions";
+import MetricType from "Common/Models/DatabaseModels/MetricType";
 
 export interface ComponentProps {
   data: MetricViewData;
@@ -52,9 +52,7 @@ const MetricView: FunctionComponent<ComponentProps> = (
     Text.getLetterFromAByNumber(props.data.queryConfigs.length),
   );
 
-  const [metricNamesAndUnits, setMetricNamesAndUnits] = useState<
-    Array<MetricNameAndUnit>
-  >([]);
+  const [metricTypes, setMetricTypes] = useState<Array<MetricType>>([]);
 
   const [
     showCannotRemoveOneRemainingQueryError,
@@ -80,10 +78,8 @@ const MetricView: FunctionComponent<ComponentProps> = (
           filterData: {
             aggegationType: MetricsAggregationType.Avg,
             metricName:
-              metricNamesAndUnits.length > 0 &&
-              metricNamesAndUnits[0] &&
-              metricNamesAndUnits[0].metricName
-                ? metricNamesAndUnits[0].metricName
+              metricTypes.length > 0 && metricTypes[0] && metricTypes[0].name
+                ? metricTypes[0].name
                 : "",
           },
         },
@@ -143,14 +139,14 @@ const MetricView: FunctionComponent<ComponentProps> = (
       setIsPageLoading(true);
 
       const {
-        metricNamesAndUnits,
+        metricTypes,
         telemetryAttributes,
       }: {
-        metricNamesAndUnits: Array<MetricNameAndUnit>;
+        metricTypes: Array<MetricType>;
         telemetryAttributes: Array<string>;
       } = await MetricUtil.loadAllMetricsTypes();
 
-      setMetricNamesAndUnits(metricNamesAndUnits);
+      setMetricTypes(metricTypes);
       setTelemetryAttributes(telemetryAttributes);
 
       setIsPageLoading(false);
@@ -159,12 +155,12 @@ const MetricView: FunctionComponent<ComponentProps> = (
       /// if there's no query then set the default query and fetch results.
       if (
         props.data.queryConfigs.length === 0 &&
-        metricNamesAndUnits.length > 0 &&
-        metricNamesAndUnits[0] &&
-        metricNamesAndUnits[0].metricName
+        metricTypes.length > 0 &&
+        metricTypes[0] &&
+        metricTypes[0].name
       ) {
         // then  add a default query which would be the first
-        props.onChange &&
+        if (props.onChange) {
           props.onChange({
             ...props.data,
             queryConfigs: [
@@ -178,13 +174,14 @@ const MetricView: FunctionComponent<ComponentProps> = (
                 },
                 metricQueryData: {
                   filterData: {
-                    metricName: metricNamesAndUnits[0].metricName,
+                    metricName: metricTypes[0].name,
                     aggegationType: MetricsAggregationType.Avg,
                   },
                 },
               },
             ],
           });
+        }
       }
 
       if (props.data) {
@@ -228,7 +225,7 @@ const MetricView: FunctionComponent<ComponentProps> = (
   }
 
   if (pageError) {
-    return <ErrorMessage error={pageError} />;
+    return <ErrorMessage message={pageError} />;
   }
 
   return (
@@ -243,11 +240,12 @@ const MetricView: FunctionComponent<ComponentProps> = (
                   type={StartAndEndDateType.DateTime}
                   value={props.data.startAndEndDate || undefined}
                   onValueChanged={(startAndEndDate: InBetween<Date> | null) => {
-                    props.onChange &&
+                    if (props.onChange) {
                       props.onChange({
                         ...props.data,
                         startAndEndDate: startAndEndDate,
                       });
+                    }
                   }}
                 />
               </div>
@@ -267,16 +265,17 @@ const MetricView: FunctionComponent<ComponentProps> = (
                         ...props.data.queryConfigs,
                       ];
                       newGraphConfigs[index] = data;
-                      props.onChange &&
+                      if (props.onChange) {
                         props.onChange({
                           ...props.data,
                           queryConfigs: newGraphConfigs,
                         });
+                      }
                     }}
                     data={queryConfig}
                     hideCard={props.hideCardInQueryElements}
                     telemetryAttributes={telemetryAttributes}
-                    metricNameAndUnits={metricNamesAndUnits}
+                    metricTypes={metricTypes}
                     onRemove={() => {
                       if (props.data.queryConfigs.length === 1) {
                         setShowCannotRemoveOneRemainingQueryError(true);
@@ -288,11 +287,12 @@ const MetricView: FunctionComponent<ComponentProps> = (
                       ];
                       newGraphConfigs.splice(index, 1);
 
-                      props.onChange &&
+                      if (props.onChange) {
                         props.onChange({
                           ...props.data,
                           queryConfigs: newGraphConfigs,
                         });
+                      }
                     }}
                   />
                 );
@@ -315,11 +315,12 @@ const MetricView: FunctionComponent<ComponentProps> = (
                         ...props.data.formulaConfigs,
                       ];
                       newGraphConfigs[index] = data;
-                      props.onChange &&
+                      if (props.onChange) {
                         props.onChange({
                           ...props.data,
                           formulaConfigs: newGraphConfigs,
                         });
+                      }
                     }}
                     data={formulaConfig}
                     onRemove={() => {
@@ -327,11 +328,12 @@ const MetricView: FunctionComponent<ComponentProps> = (
                         ...props.data.formulaConfigs,
                       ];
                       newGraphConfigs.splice(index, 1);
-                      props.onChange &&
+                      if (props.onChange) {
                         props.onChange({
                           ...props.data,
                           formulaConfigs: newGraphConfigs,
                         });
+                      }
                     }}
                   />
                 );
@@ -345,7 +347,7 @@ const MetricView: FunctionComponent<ComponentProps> = (
                   title="Add Metric"
                   buttonSize={ButtonSize.Small}
                   onClick={() => {
-                    props.onChange &&
+                    if (props.onChange) {
                       props.onChange({
                         ...props.data,
                         queryConfigs: [
@@ -353,6 +355,7 @@ const MetricView: FunctionComponent<ComponentProps> = (
                           getEmptyQueryConfigData(),
                         ],
                       });
+                    }
                   }}
                 />
                 {/* <Button
@@ -377,7 +380,7 @@ const MetricView: FunctionComponent<ComponentProps> = (
 
       {isMetricResultsLoading && <ComponentLoader />}
 
-      {metricResultsError && <ErrorMessage error={metricResultsError} />}
+      {metricResultsError && <ErrorMessage message={metricResultsError} />}
 
       {!isMetricResultsLoading && !metricResultsError && (
         <div className="grid grid-cols-1 gap-4 mt-3">
@@ -385,7 +388,7 @@ const MetricView: FunctionComponent<ComponentProps> = (
           <MetricCharts
             hideCard={props.hideCardInCharts}
             metricResults={metricResults}
-            metricNamesAndUnits={metricNamesAndUnits}
+            metricTypes={metricTypes}
             metricViewData={props.data}
             chartCssClass={props.chartCssClass}
           />

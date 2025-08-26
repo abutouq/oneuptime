@@ -8,9 +8,11 @@ import Permission, {
   UserTenantAccessPermission,
 } from "../../../Types/Permission";
 import ApiKeyPermissionService from "../../Services/ApiKeyPermissionService";
+import CaptureSpan from "../Telemetry/CaptureSpan";
 import UserPermissionUtil from "../UserPermission/UserPermission";
 
 export default class APIKeyAccessPermission {
+  @CaptureSpan()
   public static async getDefaultApiGlobalPermission(
     projectId: ObjectID,
   ): Promise<UserGlobalAccessPermission> {
@@ -25,6 +27,7 @@ export default class APIKeyAccessPermission {
     };
   }
 
+  @CaptureSpan()
   public static async getMasterKeyApiGlobalPermission(
     projectId: ObjectID,
   ): Promise<UserGlobalAccessPermission> {
@@ -40,6 +43,7 @@ export default class APIKeyAccessPermission {
     };
   }
 
+  @CaptureSpan()
   public static async getMasterApiTenantAccessPermission(
     projectId: ObjectID,
   ): Promise<UserTenantAccessPermission> {
@@ -59,6 +63,7 @@ export default class APIKeyAccessPermission {
     return permission;
   }
 
+  @CaptureSpan()
   public static async getApiTenantAccessPermission(
     projectId: ObjectID,
     apiKeyId: ObjectID,

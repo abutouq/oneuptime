@@ -2,7 +2,7 @@ import Analytics from "../../Utils/Analytics";
 import Breadcrumbs from "../Breadcrumbs/Breadcrumbs";
 import ErrorMessage from "../ErrorMessage/ErrorMessage";
 import PageLoader from "../Loader/PageLoader";
-import Link from "Common/Types/Link";
+import Link from "../../../Types/Link";
 import React, { FunctionComponent, ReactElement, useEffect } from "react";
 
 export interface ComponentProps {
@@ -33,7 +33,7 @@ const Page: FunctionComponent<ComponentProps> = (
   }, [props.breadcrumbLinks]);
 
   if (props.error) {
-    return <ErrorMessage error={props.error} />;
+    return <ErrorMessage message={props.error} />;
   }
 
   return (
@@ -52,7 +52,7 @@ const Page: FunctionComponent<ComponentProps> = (
             </div>
           )}
           {props.title && (
-            <div className="mt-2 md:flex md:items-center md:justify-between">
+            <div className="mt-2 md:flex md:items-center md:justify-between hidden md:block">
               <div className="min-w-0">
                 <h2 className="text-xl leading-7  text-gray-900 sm:truncate sm:text-2xl sm:tracking-tight">
                   {props.title}
@@ -64,17 +64,17 @@ const Page: FunctionComponent<ComponentProps> = (
       )}
 
       {props.sideMenu && (
-        <main className="mx-auto max-w-full pb-10 mr-5">
+        <main className="mx-auto max-w-full pb-10">
           <div className="lg:grid lg:grid-cols-12 lg:gap-x-5">
             {props.sideMenu}
 
             {!props.isLoading && (
-              <div className="space-y-6 sm:px-6 lg:col-span-10 md:col-span-9 lg:px-0">
+              <div className="space-y-6 md:px-6 lg:col-span-10 md:col-span-9 lg:px-0">
                 {props.children}
               </div>
             )}
             {props.isLoading && (
-              <div className="col-span-10">
+              <div className="lg:col-span-10 md:col-span-9">
                 <PageLoader isVisible={true} />
               </div>
             )}

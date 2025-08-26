@@ -1,3 +1,4 @@
+import Navigation from "Common/UI/Utils/Navigation";
 import Loader from "../Components/Loader/Loader";
 import MonitorLayout from "../Pages/Monitor/Layout";
 import MonitorViewLayout from "../Pages/Monitor/View/Layout";
@@ -19,6 +20,18 @@ const MonitorPage: LazyExoticComponent<FunctionComponent<ComponentProps>> =
   lazy(() => {
     return import("../Pages/Monitor/Monitors");
   });
+
+const WorkspaceConnectionSlack: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/Monitor/WorkspaceConnectionSlack");
+});
+
+const WorkspaceConnectionTeams: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/Monitor/WorkspaceConnectionMicrosoftTeams");
+});
 
 const MonitorViewMetrics: LazyExoticComponent<
   FunctionComponent<ComponentProps>
@@ -47,6 +60,12 @@ const MonitorViewDelete: LazyExoticComponent<
 > = lazy(() => {
   return import("../Pages/Monitor/View/Delete");
 });
+
+const MonitorViewLogs: LazyExoticComponent<FunctionComponent<ComponentProps>> =
+  lazy(() => {
+    return import("../Pages/Monitor/View/Logs");
+  });
+
 const MonitorViewCriteria: LazyExoticComponent<
   FunctionComponent<ComponentProps>
 > = lazy(() => {
@@ -107,12 +126,26 @@ const MonitorViewSettings: LazyExoticComponent<
   return import("../Pages/Monitor/View/Settings");
 });
 
+const MonitorCreate: LazyExoticComponent<FunctionComponent<ComponentProps>> =
+  lazy(() => {
+    return import("../Pages/Monitor/Create");
+  });
+
 const MonitorRoutes: FunctionComponent<ComponentProps> = (
   props: ComponentProps,
 ): ReactElement => {
+  let hideSideMenu: boolean = false;
+
+  if (Navigation.isOnThisPage(RouteMap[PageMap.MONITOR_CREATE] as Route)) {
+    hideSideMenu = true;
+  }
+
   return (
     <Routes>
-      <PageRoute path="/" element={<MonitorLayout {...props} />}>
+      <PageRoute
+        path="/"
+        element={<MonitorLayout hideSideMenu={hideSideMenu} {...props} />}
+      >
         <PageRoute
           index
           element={
@@ -161,6 +194,7 @@ const MonitorRoutes: FunctionComponent<ComponentProps> = (
             </Suspense>
           }
         />
+
         <PageRoute
           path={MonitorsRoutePath[PageMap.MONITORS_INOPERATIONAL] || ""}
           element={
@@ -168,6 +202,54 @@ const MonitorRoutes: FunctionComponent<ComponentProps> = (
               <MonitorInoperational
                 {...props}
                 pageRoute={RouteMap[PageMap.MONITORS_INOPERATIONAL] as Route}
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
+          path={
+            MonitorsRoutePath[PageMap.MONITORS_WORKSPACE_CONNECTION_SLACK] || ""
+          }
+          element={
+            <Suspense fallback={Loader}>
+              <WorkspaceConnectionSlack
+                {...props}
+                pageRoute={
+                  RouteMap[PageMap.MONITORS_WORKSPACE_CONNECTION_SLACK] as Route
+                }
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
+          path={
+            MonitorsRoutePath[
+              PageMap.MONITORS_WORKSPACE_CONNECTION_MICROSOFT_TEAMS
+            ] || ""
+          }
+          element={
+            <Suspense fallback={Loader}>
+              <WorkspaceConnectionTeams
+                {...props}
+                pageRoute={
+                  RouteMap[
+                    PageMap.MONITORS_WORKSPACE_CONNECTION_MICROSOFT_TEAMS
+                  ] as Route
+                }
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
+          path={MonitorsRoutePath[PageMap.MONITOR_CREATE] || ""}
+          element={
+            <Suspense fallback={Loader}>
+              <MonitorCreate
+                {...props}
+                pageRoute={RouteMap[PageMap.MONITOR_CREATE] as Route}
               />
             </Suspense>
           }
@@ -334,6 +416,18 @@ const MonitorRoutes: FunctionComponent<ComponentProps> = (
               <MonitorViewProbes
                 {...props}
                 pageRoute={RouteMap[PageMap.MONITOR_VIEW_PROBES] as Route}
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
+          path={RouteUtil.getLastPathForKey(PageMap.MONITOR_VIEW_LOGS)}
+          element={
+            <Suspense fallback={Loader}>
+              <MonitorViewLogs
+                {...props}
+                pageRoute={RouteMap[PageMap.MONITOR_VIEW_LOGS] as Route}
               />
             </Suspense>
           }

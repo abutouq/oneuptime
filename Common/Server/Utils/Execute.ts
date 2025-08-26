@@ -1,8 +1,10 @@
-import { PromiseRejectErrorFunction } from "Common/Types/FunctionTypes";
+import { PromiseRejectErrorFunction } from "../../Types/FunctionTypes";
 import { ExecException, exec } from "node:child_process";
 import logger from "./Logger";
+import CaptureSpan from "./Telemetry/CaptureSpan";
 
 export default class Execute {
+  @CaptureSpan()
   public static executeCommand(command: string): Promise<string> {
     return new Promise(
       (

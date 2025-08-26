@@ -1,7 +1,7 @@
 import MonitorAPI from "./API/Monitor";
 import ProbeIngest from "./API/Probe";
 import RegisterAPI from "./API/Register";
-import ServerMonitorAPI from "./API/ServerMonitor";
+import MetricsAPI from "./API/Metrics";
 import { PromiseVoidFunction } from "Common/Types/FunctionTypes";
 import { ClickhouseAppInstance } from "Common/Server/Infrastructure/ClickhouseDatabase";
 import PostgresAppInstance from "Common/Server/Infrastructure/PostgresDatabase";
@@ -12,6 +12,8 @@ import logger from "Common/Server/Utils/Logger";
 import Realtime from "Common/Server/Utils/Realtime";
 import App from "Common/Server/Utils/StartServer";
 import Telemetry from "Common/Server/Utils/Telemetry";
+import "./Jobs/ProbeIngest/ProcessProbeIngest";
+import { PROBE_INGEST_CONCURRENCY } from "./Config";
 import "ejs";
 
 const app: ExpressApplication = Express.getExpressApp();
@@ -22,7 +24,7 @@ const APP_NAME: string = "probe-ingest";
 app.use([`/${APP_NAME}`, "/ingestor", "/"], RegisterAPI);
 app.use([`/${APP_NAME}`, "/ingestor", "/"], MonitorAPI);
 app.use([`/${APP_NAME}`, "/ingestor", "/"], ProbeIngest);
-app.use([`/${APP_NAME}`, "/ingestor", "/"], ServerMonitorAPI);
+app.use([`/${APP_NAME}`, "/"], MetricsAPI);
 
 const init: PromiseVoidFunction = async (): Promise<void> => {
   try {
@@ -39,6 +41,10 @@ const init: PromiseVoidFunction = async (): Promise<void> => {
     Telemetry.init({
       serviceName: APP_NAME,
     });
+
+    logger.info(
+      `ProbeIngest Service - Queue concurrency: ${PROBE_INGEST_CONCURRENCY}`,
+    );
 
     // init the app
     await App.init({

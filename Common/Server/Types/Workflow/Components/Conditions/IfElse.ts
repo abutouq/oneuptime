@@ -1,13 +1,16 @@
 import VMUtil from "../../../../Utils/VM/VMAPI";
 import ComponentCode, { RunOptions, RunReturnType } from "../../ComponentCode";
-import BadDataException from "Common/Types/Exception/BadDataException";
-import ReturnResult from "Common/Types/IsolatedVM/ReturnResult";
-import { JSONObject, JSONValue } from "Common/Types/JSON";
-import ComponentMetadata, { Port } from "Common/Types/Workflow/Component";
-import ComponentID from "Common/Types/Workflow/ComponentID";
+import BadDataException from "../../../../../Types/Exception/BadDataException";
+import ReturnResult from "../../../../../Types/IsolatedVM/ReturnResult";
+import { JSONObject, JSONValue } from "../../../../../Types/JSON";
+import ComponentMetadata, {
+  Port,
+} from "../../../../../Types/Workflow/Component";
+import ComponentID from "../../../../../Types/Workflow/ComponentID";
 import Components, {
   ConditionOperator,
-} from "Common/Types/Workflow/Components/Condition";
+} from "../../../../../Types/Workflow/Components/Condition";
+import CaptureSpan from "../../../../Utils/Telemetry/CaptureSpan";
 
 export default class IfElse extends ComponentCode {
   public constructor() {
@@ -26,6 +29,7 @@ export default class IfElse extends ComponentCode {
     this.setMetadata(Component);
   }
 
+  @CaptureSpan()
   public override async run(
     args: JSONObject,
     options: RunOptions,

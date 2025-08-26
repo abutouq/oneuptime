@@ -2,9 +2,9 @@ import PageMap from "../../../Utils/PageMap";
 import RouteMap, { RouteUtil } from "../../../Utils/RouteMap";
 import Route from "Common/Types/API/Route";
 import ObjectID from "Common/Types/ObjectID";
-import Link from "Common/UI/Components/Link/Link";
 import OnCallDutyPolicyEscalationRule from "Common/Models/DatabaseModels/OnCallDutyPolicyEscalationRule";
 import React, { FunctionComponent, ReactElement } from "react";
+import AppLink from "../../AppLink/AppLink";
 
 export interface ComponentProps {
   escalationRule: OnCallDutyPolicyEscalationRule;
@@ -16,7 +16,7 @@ const EscalationRuleView: FunctionComponent<ComponentProps> = (
 ): ReactElement => {
   if (props.escalationRule.onCallDutyPolicyId) {
     return (
-      <Link
+      <AppLink
         onNavigateComplete={props.onNavigateComplete}
         className="hover:underline"
         to={RouteUtil.populateRouteParams(
@@ -29,7 +29,7 @@ const EscalationRuleView: FunctionComponent<ComponentProps> = (
         )}
       >
         <span>{props.escalationRule.name}</span>
-      </Link>
+      </AppLink>
     );
   }
 

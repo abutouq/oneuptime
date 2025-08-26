@@ -1,6 +1,7 @@
 import Hostname from "./API/Hostname";
 import Route from "./API/Route";
 import URL from "./API/URL";
+import EqualTo from "./BaseDatabase/EqualTo";
 import EqualToOrNull from "./BaseDatabase/EqualToOrNull";
 import GreaterThan from "./BaseDatabase/GreaterThan";
 import GreaterThanOrEqual from "./BaseDatabase/GreaterThanOrEqual";
@@ -28,11 +29,14 @@ import StartAndEndTime from "./Time/StartAndEndTime";
 import Version from "./Version";
 import { BaseEntity } from "typeorm";
 import DashboardViewConfig from "./Dashboard/DashboardViewConfig";
+import LessThanOrNull from "./BaseDatabase/LessThanOrNull";
+import GreaterThanOrNull from "./BaseDatabase/GreaterThanOrNull";
 
 export enum ObjectType {
   ObjectID = "ObjectID",
   Decimal = "Decimal",
   Name = "Name",
+  EqualTo = "EqualTo",
   EqualToOrNull = "EqualToOrNull",
   MonitorSteps = "MonitorSteps",
   MonitorStep = "MonitorStep",
@@ -54,6 +58,8 @@ export enum ObjectType {
   Search = "Search",
   GreaterThan = "GreaterThan",
   GreaterThanOrEqual = "GreaterThanOrEqual",
+  GreaterThanOrNull = "GreaterThanOrNull",
+  LessThanOrNull = "LessThanOrNull",
   LessThan = "LessThan",
   LessThanOrEqual = "LessThanOrEqual",
   Port = "Port",
@@ -111,6 +117,8 @@ export type JSONValue =
   | Domain
   | Array<Domain>
   | Array<Search<string>>
+  | EqualTo<CompareType>
+  | Array<EqualTo<CompareType>>
   | EqualToOrNull<CompareType>
   | Array<EqualToOrNull<CompareType>>
   | NotEqual<CompareType>
@@ -119,6 +127,10 @@ export type JSONValue =
   | Array<GreaterThan<CompareType>>
   | GreaterThanOrEqual<CompareType>
   | Array<GreaterThanOrEqual<CompareType>>
+  | LessThanOrNull<CompareType>
+  | Array<LessThanOrNull<CompareType>>
+  | GreaterThanOrNull<CompareType>
+  | Array<GreaterThanOrNull<CompareType>>
   | PositiveNumber
   | Array<PositiveNumber>
   | LessThan<CompareType>

@@ -10,9 +10,11 @@ import {
   CheckOn,
   CriteriaFilter,
   EvaluateOverTimeType,
-} from "Common/Types/Monitor/CriteriaFilter";
+} from "../../../../Types/Monitor/CriteriaFilter";
+import CaptureSpan from "../../Telemetry/CaptureSpan";
 
 export default class MetricMonitorCriteria {
+  @CaptureSpan()
   public static async isMonitorInstanceCriteriaFilterMet(input: {
     dataToProcess: DataToProcess;
     criteriaFilter: CriteriaFilter;

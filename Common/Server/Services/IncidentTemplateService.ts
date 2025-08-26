@@ -5,15 +5,17 @@ import IncidentTemplateOwnerUserService from "./IncidentTemplateOwnerUserService
 import DatabaseCommonInteractionProps from "../../Types/BaseDatabase/DatabaseCommonInteractionProps";
 import ObjectID from "../../Types/ObjectID";
 import Typeof from "../../Types/Typeof";
-import Model from "Common/Models/DatabaseModels/IncidentTemplate";
-import IncidentTemplateOwnerTeam from "Common/Models/DatabaseModels/IncidentTemplateOwnerTeam";
-import IncidentTemplateOwnerUser from "Common/Models/DatabaseModels/IncidentTemplateOwnerUser";
+import Model from "../../Models/DatabaseModels/IncidentTemplate";
+import IncidentTemplateOwnerTeam from "../../Models/DatabaseModels/IncidentTemplateOwnerTeam";
+import IncidentTemplateOwnerUser from "../../Models/DatabaseModels/IncidentTemplateOwnerUser";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export class Service extends DatabaseService<Model> {
   public constructor() {
     super(Model);
   }
 
+  @CaptureSpan()
   protected override async onCreateSuccess(
     onCreate: OnCreate<Model>,
     createdItem: Model,
@@ -42,6 +44,7 @@ export class Service extends DatabaseService<Model> {
     return createdItem;
   }
 
+  @CaptureSpan()
   public async addOwners(
     projectId: ObjectID,
     incidentTemplateId: ObjectID,

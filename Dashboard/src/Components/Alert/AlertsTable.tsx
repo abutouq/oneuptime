@@ -1,5 +1,5 @@
 import LabelsElement from "../Label/Labels";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import AlertElement from "./Alert";
 import { Black } from "Common/Types/BrandColors";
 import { JSONObject } from "Common/Types/JSON";
@@ -43,6 +43,7 @@ const AlertsTable: FunctionComponent<ComponentProps> = (
     <>
       <ModelTable<Alert>
         name="Alerts"
+        userPreferencesKey="alerts-table"
         bulkActions={{
           buttons: [ModalTableBulkDefaultActions.Delete],
         }}
@@ -81,6 +82,13 @@ const AlertsTable: FunctionComponent<ComponentProps> = (
             },
           },
           {
+            title: "Alert Number",
+            type: FieldType.Number,
+            field: {
+              alertNumber: true,
+            },
+          },
+          {
             field: {
               title: true,
             },
@@ -98,7 +106,7 @@ const AlertsTable: FunctionComponent<ComponentProps> = (
 
             filterEntityType: AlertSeverity,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -117,7 +125,7 @@ const AlertsTable: FunctionComponent<ComponentProps> = (
 
             filterEntityType: AlertState,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -137,7 +145,7 @@ const AlertsTable: FunctionComponent<ComponentProps> = (
 
             filterEntityType: Monitor,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -162,7 +170,7 @@ const AlertsTable: FunctionComponent<ComponentProps> = (
 
             filterEntityType: Label,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -171,6 +179,20 @@ const AlertsTable: FunctionComponent<ComponentProps> = (
           },
         ]}
         columns={[
+          {
+            field: {
+              alertNumber: true,
+            },
+            title: "Alert Number",
+            type: FieldType.Text,
+            getElement: (item: Alert): ReactElement => {
+              if (!item.alertNumber) {
+                return <>-</>;
+              }
+
+              return <>#{item.alertNumber}</>;
+            },
+          },
           {
             field: {
               title: true,
@@ -215,6 +237,7 @@ const AlertsTable: FunctionComponent<ComponentProps> = (
 
             title: "Severity",
             type: FieldType.Entity,
+
             getElement: (item: Alert): ReactElement => {
               if (item["alertSeverity"]) {
                 return (
@@ -253,6 +276,7 @@ const AlertsTable: FunctionComponent<ComponentProps> = (
             },
             title: "Created",
             type: FieldType.DateTime,
+            hideOnMobile: true,
           },
           {
             field: {
@@ -263,6 +287,7 @@ const AlertsTable: FunctionComponent<ComponentProps> = (
             },
             title: "Labels",
             type: FieldType.EntityArray,
+            hideOnMobile: true,
 
             getElement: (item: Alert): ReactElement => {
               return <LabelsElement labels={item["labels"] || []} />;

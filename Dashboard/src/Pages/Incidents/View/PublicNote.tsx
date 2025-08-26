@@ -1,5 +1,5 @@
+import MarkdownUtil from "Common/UI/Utils/Markdown";
 import UserElement from "../../../Components/User/User";
-import DashboardNavigation from "../../../Utils/Navigation";
 import ProjectUser from "../../../Utils/ProjectUser";
 import PageComponentProps from "../../PageComponentProps";
 import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
@@ -8,9 +8,10 @@ import OneUptimeDate from "Common/Types/Date";
 import BadDataException from "Common/Types/Exception/BadDataException";
 import IconProp from "Common/Types/Icon/IconProp";
 import { JSONObject } from "Common/Types/JSON";
+
 import ObjectID from "Common/Types/ObjectID";
+import ProjectUtil from "Common/UI/Utils/Project";
 import { ButtonStyleType } from "Common/UI/Components/Button/Button";
-import CheckboxViewer from "Common/UI/Components/Checkbox/CheckboxViewer";
 import BasicFormModal from "Common/UI/Components/FormModal/BasicFormModal";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
 import ConfirmModal from "Common/UI/Components/Modal/ConfirmModal";
@@ -26,6 +27,8 @@ import Navigation from "Common/UI/Utils/Navigation";
 import IncidentNoteTemplate from "Common/Models/DatabaseModels/IncidentNoteTemplate";
 import IncidentPublicNote from "Common/Models/DatabaseModels/IncidentPublicNote";
 import User from "Common/Models/DatabaseModels/User";
+import StatusPageSubscriberNotificationStatus from "Common/Types/StatusPage/StatusPageSubscriberNotificationStatus";
+import SubscriberNotificationStatus from "../../../Components/StatusPageSubscribers/SubscriberNotificationStatus";
 import React, {
   Fragment,
   FunctionComponent,
@@ -47,6 +50,26 @@ const PublicNote: FunctionComponent<PageComponentProps> = (
     useState<boolean>(false);
   const [initialValuesForIncident, setInitialValuesForIncident] =
     useState<JSONObject>({});
+  const [refreshToggle, setRefreshToggle] = useState<boolean>(false);
+
+  const handleResendNotification: (
+    item: IncidentPublicNote,
+  ) => Promise<void> = async (item: IncidentPublicNote): Promise<void> => {
+    try {
+      await ModelAPI.updateById({
+        modelType: IncidentPublicNote,
+        id: item.id!,
+        data: {
+          subscriberNotificationStatusOnNoteCreated:
+            StatusPageSubscriberNotificationStatus.Pending,
+          subscriberNotificationStatusMessage: null,
+        },
+      });
+      setRefreshToggle(!refreshToggle);
+    } catch (err) {
+      setError(API.getFriendlyMessage(err));
+    }
+  };
 
   const fetchIncidentNoteTemplate: (id: ObjectID) => Promise<void> = async (
     id: ObjectID,
@@ -115,6 +138,7 @@ const PublicNote: FunctionComponent<PageComponentProps> = (
         modelType={IncidentPublicNote}
         id="table-incident-internal-note"
         name="Monitor > Public Note"
+        userPreferencesKey="incident-public-note-table"
         isDeleteable={true}
         showCreateForm={Object.keys(initialValuesForIncident).length > 0}
         createInitialValues={initialValuesForIncident}
@@ -123,9 +147,10 @@ const PublicNote: FunctionComponent<PageComponentProps> = (
         isEditable={true}
         createEditModalWidth={ModalWidth.Large}
         isViewable={false}
+        refreshToggle={refreshToggle.toString()}
         query={{
           incidentId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(
           item: IncidentPublicNote,
@@ -162,8 +187,9 @@ const PublicNote: FunctionComponent<PageComponentProps> = (
             title: "Public Incident Note",
             fieldType: FormFieldSchemaType.Markdown,
             required: true,
-            description:
-              "This note is visible on your Status Page. This is in Markdown.",
+            description: MarkdownUtil.getMarkdownCheatsheet(
+              "This note is visible on your Status Page",
+            ),
           },
           {
             field: {
@@ -188,12 +214,17 @@ const PublicNote: FunctionComponent<PageComponentProps> = (
               "This is the date and time this note was posted. This is in " +
               OneUptimeDate.getCurrentTimezoneString() +
               ".",
-            defaultValue: OneUptimeDate.getCurrentDate(),
+            getDefaultValue: () => {
+              return OneUptimeDate.getCurrentDate();
+            },
           },
         ]}
         showAs={ShowAs.List}
         showRefreshButton={true}
         viewPageRoute={Navigation.getCurrentRoute()}
+        selectMoreFields={{
+          subscriberNotificationStatusMessage: true,
+        }}
         filters={[
           {
             field: {
@@ -204,7 +235,7 @@ const PublicNote: FunctionComponent<PageComponentProps> = (
             filterEntityType: User,
             fetchFilterDropdownOptions: async () => {
               return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-                DashboardNavigation.getProjectId()!,
+                ProjectUtil.getCurrentProjectId()!,
               );
             },
             filterDropdownField: {
@@ -275,27 +306,22 @@ const PublicNote: FunctionComponent<PageComponentProps> = (
           },
           {
             field: {
-              shouldStatusPageSubscribersBeNotifiedOnNoteCreated: true,
+              subscriberNotificationStatusOnNoteCreated: true,
             },
-            title: "",
-            type: FieldType.Boolean,
-            colSpan: 2,
+            title: "Subscriber Notification Status",
+            type: FieldType.Element,
+            colSpan: 1,
             getElement: (item: IncidentPublicNote): ReactElement => {
               return (
-                <div className="-mt-5">
-                  <CheckboxViewer
-                    isChecked={
-                      item[
-                        "shouldStatusPageSubscribersBeNotifiedOnNoteCreated"
-                      ] as boolean
-                    }
-                    text={
-                      item["shouldStatusPageSubscribersBeNotifiedOnNoteCreated"]
-                        ? "Status Page Subscribers Notified"
-                        : "Status Page Subscribers Not Notified"
-                    }
-                  />{" "}
-                </div>
+                <SubscriberNotificationStatus
+                  status={item.subscriberNotificationStatusOnNoteCreated}
+                  subscriberNotificationStatusMessage={
+                    item.subscriberNotificationStatusMessage
+                  }
+                  onResendNotification={() => {
+                    return handleResendNotification(item);
+                  }}
+                />
               );
             },
           },

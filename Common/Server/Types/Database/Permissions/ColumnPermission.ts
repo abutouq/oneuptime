@@ -3,26 +3,31 @@ import {
   getAllEnvVars,
 } from "../../../../Server/EnvironmentConfig";
 import DatabaseRequestType from "../../BaseDatabase/DatabaseRequestType";
-import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import { ColumnAccessControl } from "Common/Types/BaseDatabase/AccessControl";
-import ColumnBillingAccessControl from "Common/Types/BaseDatabase/ColumnBillingAccessControl";
-import DatabaseCommonInteractionProps from "Common/Types/BaseDatabase/DatabaseCommonInteractionProps";
+import BaseModel from "../../../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import { ColumnAccessControl } from "../../../../Types/BaseDatabase/AccessControl";
+import ColumnBillingAccessControl from "../../../../Types/BaseDatabase/ColumnBillingAccessControl";
+import DatabaseCommonInteractionProps from "../../../../Types/BaseDatabase/DatabaseCommonInteractionProps";
 import DatabaseCommonInteractionPropsUtil, {
   PermissionType,
-} from "Common/Types/BaseDatabase/DatabaseCommonInteractionPropsUtil";
-import SubscriptionPlan from "Common/Types/Billing/SubscriptionPlan";
-import Columns from "Common/Types/Database/Columns";
-import { TableColumnMetadata } from "Common/Types/Database/TableColumn";
-import TableColumnType from "Common/Types/Database/TableColumnType";
-import Dictionary from "Common/Types/Dictionary";
-import BadDataException from "Common/Types/Exception/BadDataException";
-import PaymentRequiredException from "Common/Types/Exception/PaymentRequiredException";
+} from "../../../../Types/BaseDatabase/DatabaseCommonInteractionPropsUtil";
+import SubscriptionPlan from "../../../../Types/Billing/SubscriptionPlan";
+import Columns from "../../../../Types/Database/Columns";
+import { TableColumnMetadata } from "../../../../Types/Database/TableColumn";
+import TableColumnType from "../../../../Types/Database/TableColumnType";
+import Dictionary from "../../../../Types/Dictionary";
+import BadDataException from "../../../../Types/Exception/BadDataException";
+import PaymentRequiredException from "../../../../Types/Exception/PaymentRequiredException";
+
 import Permission, {
   PermissionHelper,
   UserPermission,
-} from "Common/Types/Permission";
+} from "../../../../Types/Permission";
+
+import CaptureSpan from "../../../Utils/Telemetry/CaptureSpan";
+import logger from "../../../Utils/Logger";
 
 export default class ColumnPermissions {
+  @CaptureSpan()
   public static getExcludedColumnNames(): string[] {
     const returnArr: Array<string> = [
       "_id",
@@ -35,6 +40,7 @@ export default class ColumnPermissions {
     return returnArr;
   }
 
+  @CaptureSpan()
   public static getModelColumnsByPermissions<TBaseModel extends BaseModel>(
     modelType: { new (): TBaseModel },
     userPermissions: Array<UserPermission>,
@@ -85,6 +91,7 @@ export default class ColumnPermissions {
     return new Columns(columns);
   }
 
+  @CaptureSpan()
   public static checkDataColumnPermissions<TBaseModel extends BaseModel>(
     modelType: { new (): TBaseModel },
     data: TBaseModel,
@@ -143,6 +150,13 @@ export default class ColumnPermissions {
           tableColumnMetadata.forceGetDefaultValueOnCreate
         ) {
           continue; // this is a special case where we want to force the default value on create.
+        }
+
+        if (
+          requestType === DatabaseRequestType.Create &&
+          tableColumnMetadata.computed
+        ) {
+          continue; // computed columns are not allowed to be updated.
         }
 
         throw new BadDataException(
@@ -207,6 +221,10 @@ export default class ColumnPermissions {
               getAllEnvVars(),
             )
           ) {
+            logger.debug(
+              `User does not have access to update ${key} column of ${model.singularName}`,
+            );
+
             throw new PaymentRequiredException(
               "Please upgrade your plan to " +
                 billingAccessControl.update +

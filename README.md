@@ -69,7 +69,7 @@ If you need advanced features, such as API Access, Advanced Workflows, or Advanc
 ## Installation
 
 - [Install on Kubernetes with Helm](https://artifacthub.io/packages/helm/oneuptime/oneuptime) (recommended for production)
-- [Install with Docker Compose](/Docs/Content/installation/docker-compose.md) (hobby install, not recommended for production)
+- [Install with Docker Compose](/Docs/Content/installation/docker-compose.md) (single-node install, not recommended for production)
 - [Install for Local Development](/Docs/Content/installation/local-development.md)
 
 ## Philosophy
@@ -89,3 +89,7 @@ We <3 contributions big and small. In priority order (although everything is app
 ## Donate
 
 If you like the project, please consider a small donation. Every single dollar will be used to ship new features or maintain existing ones. 100% of the work we do is open-source. [Please donate here](https://github.com/sponsors/OneUptime)
+
+**Merch:** Support the development of OneUptime by purchasing from our [Merch Store](https://shop.oneuptime.com). All revenue generated from the store will go directly towards funding the open-source development of OneUptime. Show your support and get some cool swag!
+
+

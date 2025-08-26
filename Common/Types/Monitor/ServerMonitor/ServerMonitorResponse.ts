@@ -8,6 +8,7 @@ export interface ServerProcess {
 }
 
 export default interface ServerMonitorResponse {
+  projectId: ObjectID;
   monitorId: ObjectID;
   hostname: string; // Hostname of the server
   basicInfrastructureMetrics?: BasicInfrastructureMetrics | undefined;
@@ -15,4 +16,5 @@ export default interface ServerMonitorResponse {
   onlyCheckRequestReceivedAt: boolean;
   processes?: ServerProcess[] | undefined;
   failureCause?: string | undefined;
+  timeNow?: Date | undefined; // Time when the response was generated
 }

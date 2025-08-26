@@ -292,12 +292,7 @@ export default class StatusPage extends BaseModel {
 
   @Index()
   @ColumnAccessControl({
-    create: [
-      Permission.ProjectOwner,
-      Permission.ProjectAdmin,
-      Permission.ProjectMember,
-      Permission.CreateProjectStatusPage,
-    ],
+    create: [],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -310,6 +305,7 @@ export default class StatusPage extends BaseModel {
     required: true,
     unique: true,
     type: TableColumnType.Slug,
+    computed: true,
     title: "Slug",
     description: "Friendly globally unique name for your object",
   })
@@ -442,6 +438,7 @@ export default class StatusPage extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -873,6 +870,7 @@ export default class StatusPage extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Public Status Page",
     description: "Is this status page public?",
+    defaultValue: true,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -910,6 +908,7 @@ export default class StatusPage extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Show Incident Labels",
     description: "Show Incident Labels on Status Page?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -947,6 +946,7 @@ export default class StatusPage extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Show Scheduled Event Labels",
     description: "Show Scheduled Event Labels on Status Page?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -985,6 +985,7 @@ export default class StatusPage extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Enable Subscribers",
     description: "Can subscribers subscribe to this Status Page?",
+    defaultValue: true,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -1017,6 +1018,7 @@ export default class StatusPage extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Enable Email Subscribers",
     description: "Can email subscribers subscribe to this Status Page?",
+    defaultValue: true,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -1049,6 +1051,7 @@ export default class StatusPage extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Allow Subscribers to Choose Resources",
     description: "Can subscribers choose which resources to subscribe to?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -1087,6 +1090,7 @@ export default class StatusPage extends BaseModel {
     title: "Allow Subscribers to subscribe to event types",
     description:
       "Can subscribers choose which event type like Announcements, Incidents, Scheduled Events to subscribe to?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -1124,6 +1128,7 @@ export default class StatusPage extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Enable SMS Subscribers",
     description: "Can SMS subscribers subscribe to this Status Page?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -1135,6 +1140,83 @@ export default class StatusPage extends BaseModel {
     create: PlanType.Free,
   })
   public enableSmsSubscribers?: boolean = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectStatusPage,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectStatusPage,
+    ],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditProjectStatusPage,
+    ],
+  })
+  @TableColumn({
+    isDefaultValueColumn: true,
+    type: TableColumnType.Boolean,
+    title: "Enable Slack Subscribers",
+    description: "Can Slack subscribers subscribe to this Status Page?",
+    defaultValue: false,
+  })
+  @Column({
+    type: ColumnType.Boolean,
+    default: false,
+  })
+  @ColumnBillingAccessControl({
+    read: PlanType.Free,
+    update: PlanType.Scale,
+    create: PlanType.Free,
+  })
+  public enableSlackSubscribers?: boolean = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectStatusPage,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectStatusPage,
+    ],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditProjectStatusPage,
+    ],
+  })
+  @TableColumn({
+    isDefaultValueColumn: true,
+    type: TableColumnType.Boolean,
+    title: "Enable Microsoft Teams Subscribers",
+    description:
+      "Can Microsoft Teams subscribers subscribe to this Status Page?",
+    defaultValue: false,
+  })
+  @Column({
+    type: ColumnType.Boolean,
+    default: false,
+  })
+  @ColumnBillingAccessControl({
+    read: PlanType.Free,
+    update: PlanType.Scale,
+    create: PlanType.Free,
+  })
+  public enableMicrosoftTeamsSubscribers?: boolean = undefined;
 
   @ColumnAccessControl({
     create: [
@@ -1228,6 +1310,7 @@ export default class StatusPage extends BaseModel {
     isDefaultValueColumn: true,
     description: "Should SSO be required to login to Private Status Page",
     title: "Require SSO",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -1411,10 +1494,13 @@ export default class StatusPage extends BaseModel {
   @Index()
   @TableColumn({
     type: TableColumnType.Boolean,
+    computed: true,
+    hideColumnInDocumentation: true,
     required: true,
     isDefaultValueColumn: true,
     title: "Are Owners Notified Of Resource Creation?",
     description: "Are owners notified of when this resource is created?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -1448,6 +1534,7 @@ export default class StatusPage extends BaseModel {
     type: TableColumnType.Number,
     required: true,
     isDefaultValueColumn: true,
+    defaultValue: 14,
     title: "Show incident history in days",
     description:
       "How many days of incident history should be shown on the status page (in days)?",
@@ -1484,6 +1571,7 @@ export default class StatusPage extends BaseModel {
     type: TableColumnType.Number,
     required: true,
     isDefaultValueColumn: true,
+    defaultValue: 14,
     title: "Show announcement history in days",
     description:
       "How many days of announcement history should be shown on the status page (in days)?",
@@ -1520,6 +1608,7 @@ export default class StatusPage extends BaseModel {
     type: TableColumnType.Number,
     required: true,
     isDefaultValueColumn: true,
+    defaultValue: 14,
     title: "Show scheduled event history in days",
     description:
       "How many days of scheduled event history should be shown on the status page (in days)?",
@@ -1591,6 +1680,7 @@ export default class StatusPage extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Hide Powered By OneUptime Branding",
     description: "Hide Powered By OneUptime Branding?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -1664,6 +1754,7 @@ export default class StatusPage extends BaseModel {
     required: false,
     type: TableColumnType.EntityArray,
     modelType: MonitorStatus,
+    isDefaultValueColumn: true,
     title: "Downtime Monitor Statuses",
     description:
       'List of monitors statuses that are considered as "down" for this status page.',
@@ -1746,6 +1837,7 @@ export default class StatusPage extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Is Report Enabled",
     description: "Is Report Enabled for this Status Page?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -1889,6 +1981,7 @@ export default class StatusPage extends BaseModel {
   })
   @TableColumn({
     type: TableColumnType.Number,
+    defaultValue: 30,
     title: "Report data for the last N days",
     description: "How many days of data should be included in the report?",
   })
@@ -1929,6 +2022,7 @@ export default class StatusPage extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Show Overall Uptime Percent on Status Page",
     description: "Show Overall Uptime Percent on Status Page?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -1965,6 +2059,7 @@ export default class StatusPage extends BaseModel {
     type: TableColumnType.ShortText,
     title: "Overall Uptime Percent Precision",
     required: false,
+    defaultValue: UptimePrecision.TWO_DECIMAL,
     description: "Overall Precision of uptime percent for this status page.",
   })
   @Column({
@@ -1973,4 +2068,267 @@ export default class StatusPage extends BaseModel {
     default: UptimePrecision.TWO_DECIMAL,
   })
   public overallUptimePercentPrecision?: UptimePrecision = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectStatusPage,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectStatusPage,
+    ],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditProjectStatusPage,
+    ],
+  })
+  @TableColumn({
+    required: false,
+    type: TableColumnType.VeryLongText,
+    title: "Subscriber Email Notification Footer Text",
+    description: "Text to send to subscribers in the footer of the email.",
+    canReadOnRelationQuery: true,
+  })
+  @Column({
+    nullable: true,
+    type: ColumnType.VeryLongText,
+  })
+  public subscriberEmailNotificationFooterText?: string = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectStatusPage,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectStatusPage,
+    ],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditProjectStatusPage,
+    ],
+  })
+  @TableColumn({
+    isDefaultValueColumn: true,
+    type: TableColumnType.Boolean,
+    title: "Enable Custom Subscriber Email Notification Footer Text",
+    description: "Enable custom footer text in subscriber email notifications.",
+    defaultValue: false,
+  })
+  @Column({
+    type: ColumnType.Boolean,
+    default: false,
+    nullable: false,
+  })
+  public enableCustomSubscriberEmailNotificationFooterText?: boolean =
+    undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectStatusPage,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectStatusPage,
+    ],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditProjectStatusPage,
+    ],
+  })
+  @TableColumn({
+    isDefaultValueColumn: true,
+    type: TableColumnType.Boolean,
+    title: "Show Incidents on Status Page",
+    description: "Show Incidents on Status Page?",
+    defaultValue: true,
+  })
+  @Column({
+    type: ColumnType.Boolean,
+    default: true,
+    nullable: false,
+  })
+  @ColumnBillingAccessControl({
+    read: PlanType.Free,
+    update: PlanType.Growth,
+    create: PlanType.Free,
+  })
+  public showIncidentsOnStatusPage?: boolean = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectStatusPage,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectStatusPage,
+    ],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditProjectStatusPage,
+    ],
+  })
+  @TableColumn({
+    isDefaultValueColumn: true,
+    type: TableColumnType.Boolean,
+    title: "Show Announcements on Status Page",
+    description: "Show Announcements on Status Page?",
+    defaultValue: true,
+  })
+  @Column({
+    type: ColumnType.Boolean,
+    default: true,
+    nullable: false,
+  })
+  @ColumnBillingAccessControl({
+    read: PlanType.Free,
+    update: PlanType.Growth,
+    create: PlanType.Free,
+  })
+  public showAnnouncementsOnStatusPage?: boolean = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectStatusPage,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectStatusPage,
+    ],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditProjectStatusPage,
+    ],
+  })
+  @TableColumn({
+    isDefaultValueColumn: true,
+    type: TableColumnType.Boolean,
+    title: "Show Scheduled Maintenance Events on Status Page",
+    description: "Show Scheduled Maintenance Events on Status Page?",
+    defaultValue: true,
+  })
+  @Column({
+    type: ColumnType.Boolean,
+    default: true,
+    nullable: false,
+  })
+  @ColumnBillingAccessControl({
+    read: PlanType.Free,
+    update: PlanType.Growth,
+    create: PlanType.Free,
+  })
+  public showScheduledMaintenanceEventsOnStatusPage?: boolean = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectStatusPage,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectStatusPage,
+    ],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditProjectStatusPage,
+    ],
+  })
+  @TableColumn({
+    isDefaultValueColumn: true,
+    type: TableColumnType.Boolean,
+    title: "Show Subscriber Page on Status Page",
+    description: "Show Subscriber Page on Status Page?",
+    defaultValue: true,
+  })
+  @Column({
+    type: ColumnType.Boolean,
+    default: true,
+    nullable: false,
+  })
+  @ColumnBillingAccessControl({
+    read: PlanType.Free,
+    update: PlanType.Growth,
+    create: PlanType.Free,
+  })
+  public showSubscriberPageOnStatusPage?: boolean = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateProjectStatusPage,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectStatusPage,
+    ],
+    update: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.EditProjectStatusPage,
+    ],
+  })
+  @TableColumn({
+    isDefaultValueColumn: false,
+    required: false,
+    type: TableColumnType.VeryLongText,
+    title: "IP Whitelist",
+    description:
+      "IP Whitelist for this Status Page. One IP per line. Only used if the status page is private.",
+  })
+  @Column({
+    type: ColumnType.VeryLongText,
+    nullable: true,
+  })
+  @ColumnBillingAccessControl({
+    read: PlanType.Free,
+    update: PlanType.Scale,
+    create: PlanType.Free,
+  })
+  public ipWhitelist?: string = undefined;
 }

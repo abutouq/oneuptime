@@ -6,6 +6,7 @@ import CookieUtil from "../Utils/Cookie";
 import { ExpressRequest } from "../Utils/Express";
 import JSONWebToken from "../Utils/JsonWebToken";
 import logger from "../Utils/Logger";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 import DatabaseService from "./DatabaseService";
 import MonitorStatusService from "./MonitorStatusService";
 import ProjectService, { CurrentPlan } from "./ProjectService";
@@ -24,12 +25,12 @@ import JSONWebTokenData from "../../Types/JsonWebTokenData";
 import ObjectID from "../../Types/ObjectID";
 import PositiveNumber from "../../Types/PositiveNumber";
 import Typeof from "../../Types/Typeof";
-import MonitorStatus from "Common/Models/DatabaseModels/MonitorStatus";
-import StatusPage from "Common/Models/DatabaseModels/StatusPage";
-import StatusPageDomain from "Common/Models/DatabaseModels/StatusPageDomain";
-import StatusPageOwnerTeam from "Common/Models/DatabaseModels/StatusPageOwnerTeam";
-import StatusPageOwnerUser from "Common/Models/DatabaseModels/StatusPageOwnerUser";
-import User from "Common/Models/DatabaseModels/User";
+import MonitorStatus from "../../Models/DatabaseModels/MonitorStatus";
+import StatusPage from "../../Models/DatabaseModels/StatusPage";
+import StatusPageDomain from "../../Models/DatabaseModels/StatusPageDomain";
+import StatusPageOwnerTeam from "../../Models/DatabaseModels/StatusPageOwnerTeam";
+import StatusPageOwnerUser from "../../Models/DatabaseModels/StatusPageOwnerUser";
+import User from "../../Models/DatabaseModels/User";
 import {
   AllowedStatusPageCountInFreePlan,
   IsBillingEnabled,
@@ -38,24 +39,28 @@ import { PlanType } from "../../Types/Billing/SubscriptionPlan";
 import Recurring from "../../Types/Events/Recurring";
 import Email from "../../Types/Email";
 import StatusPageSubscriberService from "./StatusPageSubscriberService";
-import StatusPageSubscriber from "Common/Models/DatabaseModels/StatusPageSubscriber";
+import StatusPageSubscriber from "../../Models/DatabaseModels/StatusPageSubscriber";
 import MailService from "./MailService";
 import EmailTemplateType from "../../Types/Email/EmailTemplateType";
-import { FileRoute } from "Common/ServiceRoute";
+import { FileRoute } from "../../ServiceRoute";
 import ProjectSMTPConfigService from "./ProjectSmtpConfigService";
-import StatusPageResource from "Common/Models/DatabaseModels/StatusPageResource";
+import StatusPageResource from "../../Models/DatabaseModels/StatusPageResource";
 import StatusPageResourceService from "./StatusPageResourceService";
 import Dictionary from "../../Types/Dictionary";
-import MonitorGroupResource from "Common/Models/DatabaseModels/MonitorGroupResource";
+import MonitorGroupResource from "../../Models/DatabaseModels/MonitorGroupResource";
 import MonitorGroupResourceService from "./MonitorGroupResourceService";
 import QueryHelper from "../Types/Database/QueryHelper";
 import OneUptimeDate from "../../Types/Date";
 import IncidentService from "./IncidentService";
-import MonitorStatusTimeline from "Common/Models/DatabaseModels/MonitorStatusTimeline";
+import MonitorStatusTimeline from "../../Models/DatabaseModels/MonitorStatusTimeline";
 import MonitorStatusTimelineService from "./MonitorStatusTimelineService";
 import SortOrder from "../../Types/BaseDatabase/SortOrder";
-import UptimeUtil from "Common/Utils/Uptime/UptimeUtil";
+import UptimeUtil from "../../Utils/Uptime/UptimeUtil";
 import UptimePrecision from "../../Types/StatusPage/UptimePrecision";
+import IP from "../../Types/IP/IP";
+import NotAuthenticatedException from "../../Types/Exception/NotAuthenticatedException";
+import ForbiddenException from "../../Types/Exception/ForbiddenException";
+import CommonAPI from "../API/CommonAPI";
 
 export interface StatusPageReportItem {
   resourceName: string;
@@ -79,6 +84,21 @@ export class Service extends DatabaseService<StatusPage> {
     super(StatusPage);
   }
 
+  public static getDefaultEmailFooterText(): string {
+    return "This is an automated email sent to you because you are subscribed to this Status Page.";
+  }
+
+  public static getSubscriberEmailFooterText(statusPage: StatusPage): string {
+    if (
+      statusPage.enableCustomSubscriberEmailNotificationFooterText &&
+      statusPage.subscriberEmailNotificationFooterText
+    ) {
+      return statusPage.subscriberEmailNotificationFooterText;
+    }
+    return this.getDefaultEmailFooterText();
+  }
+
+  @CaptureSpan()
   protected override async onBeforeCreate(
     createBy: CreateBy<StatusPage>,
   ): Promise<OnCreate<StatusPage>> {
@@ -148,18 +168,33 @@ export class Service extends DatabaseService<StatusPage> {
       createBy.data.defaultBarColor = Green;
     }
 
+    // For new status pages, set enableCustomSubscriberEmailNotificationFooterText to false by default
+    // and provide a default custom footer text only if not provided
+    if (
+      createBy.data.enableCustomSubscriberEmailNotificationFooterText ===
+      undefined
+    ) {
+      createBy.data.enableCustomSubscriberEmailNotificationFooterText = false;
+    }
+
+    if (!createBy.data.subscriberEmailNotificationFooterText) {
+      createBy.data.subscriberEmailNotificationFooterText =
+        "This is an automated email sent to you because you are subscribed to " +
+        (createBy.data?.pageTitle || createBy.data?.name || "Status Page");
+    }
+
     return {
       createBy,
       carryForward: null,
     };
   }
 
+  @CaptureSpan()
   protected override async onCreateSuccess(
     onCreate: OnCreate<StatusPage>,
     createdItem: StatusPage,
   ): Promise<StatusPage> {
-    // add owners.
-
+    // Execute owner assignment asynchronously
     if (
       createdItem.projectId &&
       createdItem.id &&
@@ -167,21 +202,25 @@ export class Service extends DatabaseService<StatusPage> {
       (onCreate.createBy.miscDataProps["ownerTeams"] ||
         onCreate.createBy.miscDataProps["ownerUsers"])
     ) {
-      await this.addOwners(
+      // Run owner assignment in background without blocking
+      this.addOwners(
         createdItem.projectId!,
         createdItem.id!,
-        (onCreate.createBy.miscDataProps["ownerUsers"] as Array<ObjectID>) ||
+        (onCreate.createBy.miscDataProps!["ownerUsers"] as Array<ObjectID>) ||
           [],
-        (onCreate.createBy.miscDataProps["ownerTeams"] as Array<ObjectID>) ||
+        (onCreate.createBy.miscDataProps!["ownerTeams"] as Array<ObjectID>) ||
           [],
         false,
         onCreate.createBy.props,
-      );
+      ).catch((error: Error) => {
+        logger.error(`Error in StatusPageService owner assignment: ${error}`);
+      });
     }
 
     return createdItem;
   }
 
+  @CaptureSpan()
   public async findOwners(statusPageId: ObjectID): Promise<Array<User>> {
     if (!statusPageId) {
       throw new BadDataException("statusPageId is required");
@@ -254,6 +293,7 @@ export class Service extends DatabaseService<StatusPage> {
     return users;
   }
 
+  @CaptureSpan()
   public async addOwners(
     projectId: ObjectID,
     statusPageId: ObjectID,
@@ -295,6 +335,7 @@ export class Service extends DatabaseService<StatusPage> {
     }
   }
 
+  @CaptureSpan()
   public async getStatusPageLinkInDashboard(
     projectId: ObjectID,
     statusPageId: ObjectID,
@@ -306,12 +347,81 @@ export class Service extends DatabaseService<StatusPage> {
     );
   }
 
-  public async hasReadAccess(
-    statusPageId: ObjectID,
-    props: DatabaseCommonInteractionProps,
-    req: ExpressRequest,
-  ): Promise<boolean> {
+  @CaptureSpan()
+  public async hasReadAccess(data: {
+    statusPageId: ObjectID;
+    req: ExpressRequest;
+  }): Promise<{
+    hasReadAccess: boolean;
+    error?: NotAuthenticatedException | ForbiddenException;
+  }> {
+    const statusPageId: ObjectID = data.statusPageId;
+    const req: ExpressRequest = data.req;
+
+    const props: DatabaseCommonInteractionProps =
+      await CommonAPI.getDatabaseCommonInteractionProps(req);
     try {
+      // get status page by id.
+      const statusPage: StatusPage | null = await this.findOneById({
+        id: statusPageId,
+        props: {
+          isRoot: true,
+        },
+        select: {
+          _id: true,
+          isPublicStatusPage: true,
+          ipWhitelist: true,
+        },
+      });
+
+      if (statusPage?.ipWhitelist && statusPage.ipWhitelist.length > 0) {
+        const ipWhitelist: Array<string> = statusPage.ipWhitelist?.split("\n");
+
+        const ipAccessedFrom: string | undefined =
+          req.headers["x-forwarded-for"]?.toString() ||
+          req.headers["x-real-ip"]?.toString() ||
+          req.socket.remoteAddress ||
+          req.ip ||
+          req.ips[0];
+
+        if (!ipAccessedFrom) {
+          logger.error("IP address not found in request.");
+          return {
+            hasReadAccess: false,
+            error: new ForbiddenException(
+              "Unable to verify IP address for status page access.",
+            ),
+          };
+        }
+
+        const isIPWhitelisted: boolean = IP.isInWhitelist({
+          ips:
+            ipAccessedFrom?.split(",").map((i: string) => {
+              return i.trim();
+            }) || [],
+          whitelist: ipWhitelist,
+        });
+
+        if (!isIPWhitelisted) {
+          logger.error(
+            `IP address ${ipAccessedFrom} is not whitelisted for status page ${statusPageId.toString()}.`,
+          );
+
+          return {
+            hasReadAccess: false,
+            error: new ForbiddenException(
+              `Your IP address ${ipAccessedFrom} is blocked from accessing this status page.`,
+            ),
+          };
+        }
+      }
+
+      if (statusPage && statusPage.isPublicStatusPage) {
+        return {
+          hasReadAccess: true,
+        };
+      }
+
       // token decode.
       const token: string | undefined = CookieUtil.getCookieFromExpressRequest(
         req,
@@ -325,27 +435,13 @@ export class Service extends DatabaseService<StatusPage> {
           );
 
           if (decoded.statusPageId?.toString() === statusPageId.toString()) {
-            return true;
+            return {
+              hasReadAccess: true,
+            };
           }
         } catch (err) {
           logger.error(err);
         }
-      }
-
-      const count: PositiveNumber = await this.countBy({
-        query: {
-          _id: statusPageId.toString(),
-          isPublicStatusPage: true,
-        },
-        skip: 0,
-        limit: 1,
-        props: {
-          isRoot: true,
-        },
-      });
-
-      if (count.positiveNumber > 0) {
-        return true;
       }
 
       // if it does not have public access, check if this user has access.
@@ -363,23 +459,30 @@ export class Service extends DatabaseService<StatusPage> {
       });
 
       if (items.length > 0) {
-        return true;
+        return {
+          hasReadAccess: true,
+        };
       }
     } catch (err) {
       logger.error(err);
     }
 
-    return false;
+    return {
+      hasReadAccess: false,
+      error: new NotAuthenticatedException(
+        "You do not have access to this status page. Please login to view the status page.",
+      ),
+    };
   }
 
+  @CaptureSpan()
   public async getMonitorStatusTimelineForStatusPage(data: {
     monitorIds: Array<ObjectID>;
-    historyDays: number;
+    startDate: Date;
+    endDate: Date;
   }): Promise<Array<MonitorStatusTimeline>> {
-    const startDate: Date = OneUptimeDate.getSomeDaysAgo(
-      data.historyDays || 14,
-    );
-    const endDate: Date = OneUptimeDate.getCurrentDate();
+    const startDate: Date = data.startDate;
+    const endDate: Date = data.endDate;
 
     let monitorStatusTimelines: Array<MonitorStatusTimeline> = [];
 
@@ -453,6 +556,7 @@ export class Service extends DatabaseService<StatusPage> {
     return monitorStatusTimelines;
   }
 
+  @CaptureSpan()
   public async getStatusPageURL(statusPageId: ObjectID): Promise<string> {
     const domain: StatusPageDomain | null =
       await StatusPageDomainService.findOneBy({
@@ -469,7 +573,9 @@ export class Service extends DatabaseService<StatusPage> {
         },
       });
 
-    let statusPageURL: string = domain?.fullDomain || "";
+    let statusPageURL: string = domain?.fullDomain
+      ? `https://${domain.fullDomain}`
+      : "";
 
     if (!statusPageURL) {
       const host: Hostname = await DatabaseConfig.getHost();
@@ -485,6 +591,7 @@ export class Service extends DatabaseService<StatusPage> {
     return statusPageURL;
   }
 
+  @CaptureSpan()
   public async getStatusPageFirstURL(statusPageId: ObjectID): Promise<string> {
     const domains: Array<StatusPageDomain> =
       await StatusPageDomainService.findBy({
@@ -521,6 +628,7 @@ export class Service extends DatabaseService<StatusPage> {
     return statusPageURL;
   }
 
+  @CaptureSpan()
   protected override async onBeforeUpdate(
     updateBy: UpdateBy<StatusPage>,
   ): Promise<OnUpdate<StatusPage>> {
@@ -597,6 +705,7 @@ export class Service extends DatabaseService<StatusPage> {
     };
   }
 
+  @CaptureSpan()
   public async sendEmailReport(data: {
     statusPageId: ObjectID;
     email?: Email | undefined;
@@ -645,6 +754,8 @@ export class Service extends DatabaseService<StatusPage> {
           templateType: EmailTemplateType.StatusPageSubscriberReport,
           vars: {
             statusPageName: statusPageName,
+            subscriberEmailNotificationFooterText:
+              Service.getSubscriberEmailFooterText(statuspage),
             statusPageUrl: statusPageURL,
             hasResources: report.totalResources > 0 ? "true" : "false",
             report: report as any,
@@ -667,6 +778,7 @@ export class Service extends DatabaseService<StatusPage> {
             statuspage.smtpConfig,
           ),
           projectId: statuspage.projectId,
+          statusPageId: statuspage.id!,
         },
       ).catch((err: Error) => {
         logger.error(err);
@@ -721,6 +833,7 @@ export class Service extends DatabaseService<StatusPage> {
     }
   }
 
+  @CaptureSpan()
   public async getReportByStatusPage(data: {
     statusPageId: ObjectID;
     historyDays: number;
@@ -746,9 +859,9 @@ export class Service extends DatabaseService<StatusPage> {
 
     const numberOfDays: number = data.historyDays || 14;
 
-    const currentDate: Date = OneUptimeDate.getCurrentDate();
+    const endDate: Date = OneUptimeDate.getCurrentDate();
     const startDate: Date = OneUptimeDate.getSomeDaysAgo(numberOfDays);
-    const startAndEndDate: string = `${numberOfDays} days (${OneUptimeDate.getDateAsLocalFormattedString(startDate, true)} - ${OneUptimeDate.getDateAsLocalFormattedString(currentDate, true)})`;
+    const startAndEndDate: string = `${numberOfDays} days (${OneUptimeDate.getDateAsLocalFormattedString(startDate, true)} - ${OneUptimeDate.getDateAsLocalFormattedString(endDate, true)})`;
 
     if (statusPageResources.length === 0) {
       return {
@@ -776,7 +889,8 @@ export class Service extends DatabaseService<StatusPage> {
     const timeline: Array<MonitorStatusTimeline> =
       await this.getMonitorStatusTimelineForStatusPage({
         monitorIds: monitors.monitorsOnStatusPage,
-        historyDays: data.historyDays,
+        startDate: startDate,
+        endDate: endDate,
       });
 
     const reportItems: Array<StatusPageReportItem> = [];
@@ -862,6 +976,7 @@ export class Service extends DatabaseService<StatusPage> {
     };
   }
 
+  @CaptureSpan()
   public async getIncidentCountByMonitorIds(data: {
     monitorIds: Array<ObjectID>;
     historyDays: number;
@@ -885,6 +1000,7 @@ export class Service extends DatabaseService<StatusPage> {
     return incidentCount.toNumber();
   }
 
+  @CaptureSpan()
   public async getIncidentCountOnStatusPage(data: {
     statusPageId: ObjectID;
     historyDays: number;
@@ -902,6 +1018,7 @@ export class Service extends DatabaseService<StatusPage> {
     });
   }
 
+  @CaptureSpan()
   public async getMonitorIdsOnStatusPage(data: {
     statusPageId: ObjectID;
   }): Promise<{
@@ -977,6 +1094,7 @@ export class Service extends DatabaseService<StatusPage> {
     };
   }
 
+  @CaptureSpan()
   public async getStatusPageResources(data: {
     statusPageId: ObjectID;
   }): Promise<Array<StatusPageResource>> {

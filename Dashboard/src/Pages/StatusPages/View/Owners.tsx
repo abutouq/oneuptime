@@ -1,6 +1,5 @@
 import TeamElement from "../../../Components/Team/Team";
 import UserElement from "../../../Components/User/User";
-import DashboardNavigation from "../../../Utils/Navigation";
 import ProjectUser from "../../../Utils/ProjectUser";
 import PageComponentProps from "../../PageComponentProps";
 import BadDataException from "Common/Types/Exception/BadDataException";
@@ -13,6 +12,7 @@ import StatusPageOwnerTeam from "Common/Models/DatabaseModels/StatusPageOwnerTea
 import StatusPageOwnerUser from "Common/Models/DatabaseModels/StatusPageOwnerUser";
 import Team from "Common/Models/DatabaseModels/Team";
 import User from "Common/Models/DatabaseModels/User";
+import ProjectUtil from "Common/UI/Utils/Project";
 import React, { Fragment, FunctionComponent, ReactElement } from "react";
 
 const StatusPageOwners: FunctionComponent<
@@ -26,6 +26,7 @@ const StatusPageOwners: FunctionComponent<
         modelType={StatusPageOwnerTeam}
         id="table-statusPage-owner-team"
         name="StatusPage > Owner Team"
+        userPreferencesKey="status-page-owner-team-table"
         singularName="Team"
         isDeleteable={true}
         createVerb={"Add"}
@@ -34,13 +35,13 @@ const StatusPageOwners: FunctionComponent<
         showViewIdButton={true}
         query={{
           statusPageId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(
           item: StatusPageOwnerTeam,
         ): Promise<StatusPageOwnerTeam> => {
           item.statusPageId = modelId;
-          item.projectId = DashboardNavigation.getProjectId()!;
+          item.projectId = ProjectUtil.getCurrentProjectId()!;
           return Promise.resolve(item);
         }}
         cardProps={{
@@ -76,7 +77,7 @@ const StatusPageOwners: FunctionComponent<
             title: "Team",
             filterEntityType: Team,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -115,6 +116,7 @@ const StatusPageOwners: FunctionComponent<
             },
             title: "Owner since",
             type: FieldType.DateTime,
+            hideOnMobile: true,
           },
         ]}
       />
@@ -123,6 +125,7 @@ const StatusPageOwners: FunctionComponent<
         modelType={StatusPageOwnerUser}
         id="table-statusPage-owner-team"
         name="StatusPage > Owner Team"
+        userPreferencesKey="status-page-owner-user-table"
         isDeleteable={true}
         singularName="User"
         isCreateable={true}
@@ -131,13 +134,13 @@ const StatusPageOwners: FunctionComponent<
         createVerb={"Add"}
         query={{
           statusPageId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(
           item: StatusPageOwnerUser,
         ): Promise<StatusPageOwnerUser> => {
           item.statusPageId = modelId;
-          item.projectId = DashboardNavigation.getProjectId()!;
+          item.projectId = ProjectUtil.getCurrentProjectId()!;
           return Promise.resolve(item);
         }}
         cardProps={{
@@ -157,7 +160,7 @@ const StatusPageOwners: FunctionComponent<
             placeholder: "Select User",
             fetchDropdownOptions: async () => {
               return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-                DashboardNavigation.getProjectId()!,
+                ProjectUtil.getCurrentProjectId()!,
               );
             },
           },
@@ -174,7 +177,7 @@ const StatusPageOwners: FunctionComponent<
             filterEntityType: User,
             fetchFilterDropdownOptions: async () => {
               return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-                DashboardNavigation.getProjectId()!,
+                ProjectUtil.getCurrentProjectId()!,
               );
             },
             filterDropdownField: {
@@ -216,6 +219,7 @@ const StatusPageOwners: FunctionComponent<
             },
             title: "Owner since",
             type: FieldType.DateTime,
+            hideOnMobile: true,
           },
         ]}
       />

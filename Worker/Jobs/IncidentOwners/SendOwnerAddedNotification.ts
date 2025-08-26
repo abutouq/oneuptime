@@ -7,12 +7,14 @@ import EmailTemplateType from "Common/Types/Email/EmailTemplateType";
 import NotificationSettingEventType from "Common/Types/NotificationSetting/NotificationSettingEventType";
 import ObjectID from "Common/Types/ObjectID";
 import { SMSMessage } from "Common/Types/SMS/SMS";
+import PushNotificationMessage from "Common/Types/PushNotification/PushNotificationMessage";
 import { EVERY_MINUTE } from "Common/Utils/CronTime";
 import IncidentOwnerTeamService from "Common/Server/Services/IncidentOwnerTeamService";
 import IncidentOwnerUserService from "Common/Server/Services/IncidentOwnerUserService";
 import IncidentService from "Common/Server/Services/IncidentService";
 import TeamMemberService from "Common/Server/Services/TeamMemberService";
 import UserNotificationSettingService from "Common/Server/Services/UserNotificationSettingService";
+import PushNotificationUtil from "Common/Server/Utils/PushNotificationUtil";
 import Markdown, { MarkdownContentType } from "Common/Server/Types/Markdown";
 import Incident from "Common/Models/DatabaseModels/Incident";
 import IncidentOwnerTeam from "Common/Models/DatabaseModels/IncidentOwnerTeam";
@@ -200,12 +202,27 @@ RunCron(
           ],
         };
 
+        const pushMessage: PushNotificationMessage =
+          PushNotificationUtil.createGenericNotification({
+            title: "Added as Incident Owner",
+            body: `You have been added as the owner of the incident: ${incident.title}. Click to view details.`,
+            clickAction: (
+              await IncidentService.getIncidentLinkInDashboard(
+                incident.projectId!,
+                incident.id!,
+              )
+            ).toString(),
+            tag: "incident-owner-added",
+            requireInteraction: false,
+          });
+
         await UserNotificationSettingService.sendUserNotification({
           userId: user.id!,
           projectId: incident.projectId!,
           emailEnvelope: emailMessage,
           smsMessage: sms,
           callRequestMessage: callMessage,
+          pushNotificationMessage: pushMessage,
           eventType:
             NotificationSettingEventType.SEND_INCIDENT_OWNER_ADDED_NOTIFICATION,
         });

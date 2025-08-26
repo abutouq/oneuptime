@@ -8,19 +8,21 @@ import SortOrder from "../../Types/BaseDatabase/SortOrder";
 import LIMIT_MAX, { LIMIT_PER_PROJECT } from "../../Types/Database/LimitMax";
 import BadDataException from "../../Types/Exception/BadDataException";
 import ObjectID from "../../Types/ObjectID";
-import MonitorGroup from "Common/Models/DatabaseModels/MonitorGroup";
-import MonitorGroupResource from "Common/Models/DatabaseModels/MonitorGroupResource";
-import MonitorStatus from "Common/Models/DatabaseModels/MonitorStatus";
-import MonitorStatusTimeline from "Common/Models/DatabaseModels/MonitorStatusTimeline";
+import MonitorGroup from "../../Models/DatabaseModels/MonitorGroup";
+import MonitorGroupResource from "../../Models/DatabaseModels/MonitorGroupResource";
+import MonitorStatus from "../../Models/DatabaseModels/MonitorStatus";
+import MonitorStatusTimeline from "../../Models/DatabaseModels/MonitorStatusTimeline";
 import DeleteBy from "../Types/Database/DeleteBy";
 import { OnDelete } from "../Types/Database/Hooks";
 import StatusPageResourceService from "./StatusPageResourceService";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export class Service extends DatabaseService<MonitorGroup> {
   public constructor() {
     super(MonitorGroup);
   }
 
+  @CaptureSpan()
   protected override async onBeforeDelete(
     deleteBy: DeleteBy<MonitorGroup>,
   ): Promise<OnDelete<MonitorGroup>> {
@@ -42,6 +44,7 @@ export class Service extends DatabaseService<MonitorGroup> {
     return { deleteBy, carryForward: null };
   }
 
+  @CaptureSpan()
   public async getStatusTimeline(
     monitorGroupId: ObjectID,
     startDate: Date,
@@ -117,6 +120,7 @@ export class Service extends DatabaseService<MonitorGroup> {
     return monitorStatusTimelines;
   }
 
+  @CaptureSpan()
   public async getCurrentStatus(
     monitorGroupId: ObjectID,
     props: DatabaseCommonInteractionProps,

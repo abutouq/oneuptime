@@ -76,6 +76,9 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
 @Entity({
   name: "ScheduledMaintenanceState",
 })
+@Index(["projectId", "order"])
+@Index(["projectId", "isOngoingState"])
+@Index(["projectId", "isEndedState"])
 export default class ScheduledMaintenanceState extends BaseModel {
   @ColumnAccessControl({
     create: [
@@ -192,6 +195,7 @@ export default class ScheduledMaintenanceState extends BaseModel {
     required: true,
     unique: true,
     type: TableColumnType.Slug,
+    computed: true,
     title: "Slug",
     description: "Friendly globally unique name for your object",
   })
@@ -314,6 +318,7 @@ export default class ScheduledMaintenanceState extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -418,6 +423,7 @@ export default class ScheduledMaintenanceState extends BaseModel {
     canReadOnRelationQuery: true,
     title: "Scheduled State",
     description: "Is this state a scheduled state?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -451,6 +457,7 @@ export default class ScheduledMaintenanceState extends BaseModel {
     canReadOnRelationQuery: true,
     title: "Ongoing State",
     description: "Is this state a ongoing state?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -484,6 +491,7 @@ export default class ScheduledMaintenanceState extends BaseModel {
     canReadOnRelationQuery: true,
     title: "Ended State",
     description: "Is this state a ended state?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -517,6 +525,7 @@ export default class ScheduledMaintenanceState extends BaseModel {
     canReadOnRelationQuery: true,
     title: "Resolved State",
     description: "Is this state a resolved state?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,

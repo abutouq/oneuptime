@@ -5,7 +5,8 @@ import logger from "../Utils/Logger";
 import DatabaseService from "./DatabaseService";
 import MailService from "./MailService";
 import StatusPageService from "./StatusPageService";
-import { FileRoute } from "Common/ServiceRoute";
+import { FileRoute } from "../../ServiceRoute";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 import Hostname from "../../Types/API/Hostname";
 import Protocol from "../../Types/API/Protocol";
 import URL from "../../Types/API/URL";
@@ -13,14 +14,15 @@ import OneUptimeDate from "../../Types/Date";
 import EmailTemplateType from "../../Types/Email/EmailTemplateType";
 import BadDataException from "../../Types/Exception/BadDataException";
 import ObjectID from "../../Types/ObjectID";
-import StatusPage from "Common/Models/DatabaseModels/StatusPage";
-import Model from "Common/Models/DatabaseModels/StatusPagePrivateUser";
+import StatusPage from "../../Models/DatabaseModels/StatusPage";
+import Model from "../../Models/DatabaseModels/StatusPagePrivateUser";
 
 export class Service extends DatabaseService<Model> {
   public constructor() {
     super(Model);
   }
 
+  @CaptureSpan()
   protected override async onBeforeCreate(
     createBy: CreateBy<Model>,
   ): Promise<OnCreate<Model>> {
@@ -52,6 +54,7 @@ export class Service extends DatabaseService<Model> {
     };
   }
 
+  @CaptureSpan()
   protected override async onCreateSuccess(
     _onCreate: OnCreate<Model>,
     createdItem: Model,
@@ -126,6 +129,7 @@ export class Service extends DatabaseService<Model> {
       },
       {
         projectId: statusPage.projectId,
+        statusPageId: statusPage.id!,
       },
     ).catch((err: Error) => {
       logger.error(err);

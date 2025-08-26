@@ -96,7 +96,7 @@ const MonitorCriteria: FunctionComponent<
     }
 
     if (error) {
-      return <ErrorMessage error={error} />;
+      return <ErrorMessage message={error} />;
     }
 
     if (monitorType === MonitorType.Manual) {
@@ -124,6 +124,7 @@ const MonitorCriteria: FunctionComponent<
           description: "Here is the criteria we use to monitor this resource.",
           rightElement: monitorSteps ? (
             <MonitorTestForm
+              monitorId={modelId}
               buttonSize={ButtonSize.Normal}
               monitorSteps={monitorSteps}
               monitorType={monitorType}
@@ -161,7 +162,6 @@ const MonitorCriteria: FunctionComponent<
                 <MonitorStepsForm
                   {...props}
                   monitorType={monitorType || MonitorType.Manual}
-                  error={""}
                 />
               );
             },

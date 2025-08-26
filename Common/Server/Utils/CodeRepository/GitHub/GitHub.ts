@@ -1,14 +1,15 @@
 import Execute from "../../Execute";
 import logger from "../../Logger";
 import HostedCodeRepository from "../HostedCodeRepository/HostedCodeRepository";
-import HTTPErrorResponse from "Common/Types/API/HTTPErrorResponse";
-import HTTPResponse from "Common/Types/API/HTTPResponse";
-import URL from "Common/Types/API/URL";
-import PullRequest from "Common/Types/CodeRepository/PullRequest";
-import PullRequestState from "Common/Types/CodeRepository/PullRequestState";
-import OneUptimeDate from "Common/Types/Date";
-import { JSONArray, JSONObject } from "Common/Types/JSON";
-import API from "Common/Utils/API";
+import HTTPErrorResponse from "../../../../Types/API/HTTPErrorResponse";
+import HTTPResponse from "../../../../Types/API/HTTPResponse";
+import URL from "../../../../Types/API/URL";
+import PullRequest from "../../../../Types/CodeRepository/PullRequest";
+import PullRequestState from "../../../../Types/CodeRepository/PullRequestState";
+import OneUptimeDate from "../../../../Types/Date";
+import { JSONArray, JSONObject } from "../../../../Types/JSON";
+import API from "../../../../Utils/API";
+import CaptureSpan from "../../Telemetry/CaptureSpan";
 
 export default class GitHubUtil extends HostedCodeRepository {
   private getPullRequestFromJSONObject(data: {
@@ -48,6 +49,7 @@ export default class GitHubUtil extends HostedCodeRepository {
     };
   }
 
+  @CaptureSpan()
   public async getPullRequestByNumber(data: {
     organizationName: string;
     repositoryName: string;
@@ -120,6 +122,7 @@ export default class GitHubUtil extends HostedCodeRepository {
     return pullRequests;
   }
 
+  @CaptureSpan()
   public override async getPullRequests(data: {
     pullRequestState: PullRequestState;
     baseBranchName: string;
@@ -155,6 +158,7 @@ export default class GitHubUtil extends HostedCodeRepository {
     return allPullRequests;
   }
 
+  @CaptureSpan()
   public override async addRemote(data: {
     remoteName: string;
     organizationName: string;
@@ -175,6 +179,7 @@ export default class GitHubUtil extends HostedCodeRepository {
     logger.debug(result);
   }
 
+  @CaptureSpan()
   public override async pushChanges(data: {
     branchName: string;
     organizationName: string;
@@ -198,6 +203,7 @@ export default class GitHubUtil extends HostedCodeRepository {
     logger.debug(result);
   }
 
+  @CaptureSpan()
   public override async createPullRequest(data: {
     baseBranchName: string;
     headBranchName: string;

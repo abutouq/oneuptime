@@ -1,5 +1,5 @@
 import LabelsElement from "../../Components/Label/Labels";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageComponentProps from "../PageComponentProps";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
 import ModelTable from "Common/UI/Components/ModelTable/ModelTable";
@@ -17,6 +17,7 @@ const OnCallDutyPage: FunctionComponent<
       <ModelTable<OnCallDutySchedule>
         modelType={OnCallDutySchedule}
         id="on-call-duty-table"
+        userPreferencesKey="on-call-duty-table"
         isDeleteable={false}
         name="On-Call > Schedules"
         showViewIdButton={true}
@@ -96,7 +97,7 @@ const OnCallDutyPage: FunctionComponent<
             title: "Labels",
             filterEntityType: Label,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -118,7 +119,8 @@ const OnCallDutyPage: FunctionComponent<
             },
             noValueMessage: "-",
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
+            hideOnMobile: true,
           },
           {
             field: {
@@ -129,6 +131,7 @@ const OnCallDutyPage: FunctionComponent<
             },
             title: "Labels",
             type: FieldType.EntityArray,
+            hideOnMobile: true,
             getElement: (item: OnCallDutySchedule): ReactElement => {
               return <LabelsElement labels={item["labels"] || []} />;
             },

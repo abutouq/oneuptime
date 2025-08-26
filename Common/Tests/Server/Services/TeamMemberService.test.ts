@@ -12,12 +12,12 @@ import TeamMemberServiceHelper from "../TestingUtils/Services/TeamMemberServiceH
 import TeamServiceHelper from "../TestingUtils/Services/TeamServiceHelper";
 import UserServiceHelper from "../TestingUtils/Services/UserServiceHelper";
 import { describe, expect, it } from "@jest/globals";
-import Email from "Common/Types/Email";
-import ObjectID from "Common/Types/ObjectID";
-import Project from "Common/Models/DatabaseModels/Project";
-import Team from "Common/Models/DatabaseModels/Team";
-import TeamMember from "Common/Models/DatabaseModels/TeamMember";
-import User from "Common/Models/DatabaseModels/User";
+import Email from "../../../Types/Email";
+import ObjectID from "../../../Types/ObjectID";
+import Project from "../../../Models/DatabaseModels/Project";
+import Team from "../../../Models/DatabaseModels/Team";
+import TeamMember from "../../../Models/DatabaseModels/TeamMember";
+import User from "../../../Models/DatabaseModels/User";
 import Faker from "../../../Utils/Faker";
 import UserService from "../../../Server/Services/UserService";
 import ProjectService from "../../../Server/Services/ProjectService";
@@ -28,14 +28,33 @@ import EmptyResponseData from "../../../Types/API/EmptyResponse";
 
 jest.setTimeout(60000); // Increase test timeout to 60 seconds becuase GitHub runners are slow
 
+jest.mock("../../../Server/Services/ProjectUserService", () => {
+  return {
+    refreshProjectUsersByProject: jest.fn().mockResolvedValue(undefined),
+  };
+});
+
+// Get the mocked module to access the mock functions
+import ProjectUserService from "../../../Server/Services/ProjectUserService";
+const mockProjectUserService: jest.Mocked<typeof ProjectUserService> =
+  ProjectUserService as jest.Mocked<typeof ProjectUserService>;
+
 describe("TeamMemberService", () => {
   beforeEach(async () => {
     jest.resetAllMocks();
+    // Re-setup the mock after resetAllMocks
+    mockProjectUserService.refreshProjectUsersByProject.mockResolvedValue(
+      undefined,
+    );
     await TestDatabaseMock.connectDbMock();
   });
 
   afterEach(async () => {
-    await TestDatabaseMock.disconnectDbMock();
+    try {
+      await TestDatabaseMock.disconnectDbMock();
+    } catch {
+      // Silently handle disconnect errors to prevent them from breaking tests
+    }
   });
 
   describe("create tests", () => {

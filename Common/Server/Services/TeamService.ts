@@ -4,13 +4,51 @@ import UpdateBy from "../Types/Database/UpdateBy";
 import DatabaseService from "./DatabaseService";
 import LIMIT_MAX from "../../Types/Database/LimitMax";
 import BadDataException from "../../Types/Exception/BadDataException";
-import Model from "Common/Models/DatabaseModels/Team";
+import Model from "../../Models/DatabaseModels/Team";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
+import ObjectID from "../../Types/ObjectID";
+import TeamMember from "../../Models/DatabaseModels/TeamMember";
+import TeamMemberService from "./TeamMemberService";
 
 export class Service extends DatabaseService<Model> {
   public constructor() {
     super(Model);
   }
 
+  public async getTeamsUserIsAPartOf(data: {
+    userId: ObjectID;
+    projectId: ObjectID;
+  }): Promise<Array<Model>> {
+    const teamMembers: Array<TeamMember> = await TeamMemberService.findBy({
+      query: {
+        userId: data.userId,
+        projectId: data.projectId,
+      },
+      select: {
+        team: {
+          name: true,
+          _id: true,
+        },
+      },
+      limit: LIMIT_MAX,
+      skip: 0,
+      props: {
+        isRoot: true,
+      },
+    });
+
+    const teams: Array<Model> = [];
+
+    for (const teamMember of teamMembers) {
+      if (teamMember.team) {
+        teams.push(teamMember.team);
+      }
+    }
+
+    return teams;
+  }
+
+  @CaptureSpan()
   protected override async onBeforeUpdate(
     updateBy: UpdateBy<Model>,
   ): Promise<OnUpdate<Model>> {
@@ -41,6 +79,7 @@ export class Service extends DatabaseService<Model> {
     return { updateBy, carryForward: null };
   }
 
+  @CaptureSpan()
   protected override async onBeforeDelete(
     deleteBy: DeleteBy<Model>,
   ): Promise<OnDelete<Model>> {

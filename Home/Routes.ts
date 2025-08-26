@@ -3,11 +3,12 @@ import "./API/BlogAPI";
 import { StaticPath, ViewsPath } from "./Utils/Config";
 import NotFoundUtil from "./Utils/NotFound";
 import ProductCompare, { Product } from "./Utils/ProductCompare";
+import generateSitemapXml from "./Utils/Sitemap";
+import DatabaseConfig from "Common/Server/DatabaseConfig";
 import HTTPErrorResponse from "Common/Types/API/HTTPErrorResponse";
 import HTTPResponse from "Common/Types/API/HTTPResponse";
 import URL from "Common/Types/API/URL";
-import OneUptimeDate from "Common/Types/Date";
-import Dictionary from "Common/Types/Dictionary";
+// Removed unused imports after dynamic sitemap refactor
 import { JSONObject } from "Common/Types/JSON";
 import API from "Common/Utils/API";
 import FeatureSet from "Common/Server/Types/FeatureSet";
@@ -18,21 +19,54 @@ import Express, {
   ExpressStatic,
 } from "Common/Server/Utils/Express";
 import "ejs";
-import builder from "xmlbuilder2";
-import { XMLBuilder } from "xmlbuilder2/lib/interfaces";
+// xmlbuilder imports removed (handled inside Sitemap util)
 import OSSFriends, { OSSFriend } from "./Utils/OSSFriends";
 import Reviews from "./Utils/Reviews";
+
+// import jobs.
+import "./Jobs/UpdateBlog";
+import { IsBillingEnabled } from "Common/Server/EnvironmentConfig";
+import LocalCache from "Common/Server/Infrastructure/LocalCache";
 
 const HomeFeatureSet: FeatureSet = {
   init: async (): Promise<void> => {
     const app: ExpressApplication = Express.getExpressApp();
 
     //Routes
+    // Middleware to inject baseUrl for templates (used for canonical links)
+    app.use(
+      async (_req: ExpressRequest, res: ExpressResponse, next: () => void) => {
+        if (!res.locals["homeUrl"]) {
+          try {
+            // Try to get cached home URL first.
+            let homeUrl: string | undefined = LocalCache.getString(
+              "home",
+              "url",
+            );
+
+            if (!homeUrl) {
+              homeUrl = (await DatabaseConfig.getHomeUrl())
+                .toString()
+                .replace(/\/$/, "");
+              LocalCache.setString("home", "url", homeUrl);
+            }
+
+            res.locals["homeUrl"] = homeUrl;
+          } catch {
+            // Fallback hard-coded production domain if env misconfigured
+            res.locals["homeUrl"] = "https://oneuptime.com";
+          }
+        }
+        next();
+      },
+    );
+
     app.get("/", (_req: ExpressRequest, res: ExpressResponse) => {
       const { reviewsList1, reviewsList2, reviewsList3 } = Reviews;
 
       res.render(`${ViewsPath}/index`, {
         support: false,
+        enableGoogleTagManager: IsBillingEnabled,
         footerCards: true,
         cta: true,
         blackLogo: false,
@@ -54,7 +88,9 @@ const HomeFeatureSet: FeatureSet = {
     );
 
     app.get("/support", async (_req: ExpressRequest, res: ExpressResponse) => {
-      res.render(`${ViewsPath}/support`);
+      res.render(`${ViewsPath}/support`, {
+        enableGoogleTagManager: IsBillingEnabled,
+      });
     });
 
     app.get(
@@ -67,6 +103,7 @@ const HomeFeatureSet: FeatureSet = {
               repositoryUrl: friend.repositoryUrl.toString(),
             };
           }),
+          enableGoogleTagManager: IsBillingEnabled,
         });
       },
     );
@@ -702,6 +739,15 @@ const HomeFeatureSet: FeatureSet = {
               },
             },
             {
+              name: "Terraform Support",
+              plans: {
+                free: false,
+                growth: true,
+                scale: true,
+                enterprise: true,
+              },
+            },
+            {
               name: "Integrate with Issue Tracker",
               plans: {
                 free: false,
@@ -831,6 +877,7 @@ const HomeFeatureSet: FeatureSet = {
 
       res.render(`${ViewsPath}/pricing`, {
         pricing,
+        enableGoogleTagManager: IsBillingEnabled,
       });
     });
 
@@ -839,6 +886,7 @@ const HomeFeatureSet: FeatureSet = {
       (_req: ExpressRequest, res: ExpressResponse) => {
         res.render(`${ViewsPath}/demo`, {
           support: false,
+          enableGoogleTagManager: IsBillingEnabled,
           footerCards: false,
           cta: false,
           blackLogo: true,
@@ -850,19 +898,25 @@ const HomeFeatureSet: FeatureSet = {
     app.get(
       "/product/status-page",
       (_req: ExpressRequest, res: ExpressResponse) => {
-        res.render(`${ViewsPath}/status-page`);
+        res.render(`${ViewsPath}/status-page`, {
+          enableGoogleTagManager: IsBillingEnabled,
+        });
       },
     );
 
     app.get(
       "/product/logs-management",
       (_req: ExpressRequest, res: ExpressResponse) => {
-        res.render(`${ViewsPath}/logs-management`);
+        res.render(`${ViewsPath}/logs-management`, {
+          enableGoogleTagManager: IsBillingEnabled,
+        });
       },
     );
 
     app.get("/product/apm", (_req: ExpressRequest, res: ExpressResponse) => {
-      res.render(`${ViewsPath}/apm`);
+      res.render(`${ViewsPath}/apm`, {
+        enableGoogleTagManager: IsBillingEnabled,
+      });
     });
 
     app.get("/status-page", (_req: ExpressRequest, res: ExpressResponse) => {
@@ -870,9 +924,9 @@ const HomeFeatureSet: FeatureSet = {
     });
 
     app.get(
-      "/logs-manageemnt",
+      "/logs-management",
       (_req: ExpressRequest, res: ExpressResponse) => {
-        res.redirect("/product/logs-manageemnt");
+        res.redirect("/product/logs-management");
       },
     );
 
@@ -945,6 +999,7 @@ const HomeFeatureSet: FeatureSet = {
         contributors: gitHubContributors,
         basicInfo: gitHubBasicInfo,
         commits: gitHubCommits,
+        enableGoogleTagManager: IsBillingEnabled,
       });
     });
 
@@ -953,6 +1008,7 @@ const HomeFeatureSet: FeatureSet = {
       (_req: ExpressRequest, res: ExpressResponse) => {
         res.render(`${ViewsPath}/status-page`, {
           support: false,
+          enableGoogleTagManager: IsBillingEnabled,
           footerCards: true,
           cta: true,
           blackLogo: false,
@@ -978,28 +1034,36 @@ const HomeFeatureSet: FeatureSet = {
     app.get(
       "/product/monitoring",
       (_req: ExpressRequest, res: ExpressResponse) => {
-        res.render(`${ViewsPath}/monitoring`);
+        res.render(`${ViewsPath}/monitoring`, {
+          enableGoogleTagManager: IsBillingEnabled,
+        });
       },
     );
 
     app.get(
       "/product/on-call",
       (_req: ExpressRequest, res: ExpressResponse) => {
-        res.render(`${ViewsPath}/on-call`);
+        res.render(`${ViewsPath}/on-call`, {
+          enableGoogleTagManager: IsBillingEnabled,
+        });
       },
     );
 
     app.get(
       "/product/workflows",
       (_req: ExpressRequest, res: ExpressResponse) => {
-        res.render(`${ViewsPath}/workflows`);
+        res.render(`${ViewsPath}/workflows`, {
+          enableGoogleTagManager: IsBillingEnabled,
+        });
       },
     );
 
     app.get(
       "/product/incident-management",
       (_req: ExpressRequest, res: ExpressResponse) => {
-        res.render(`${ViewsPath}/incident-management`);
+        res.render(`${ViewsPath}/incident-management`, {
+          enableGoogleTagManager: IsBillingEnabled,
+        });
       },
     );
 
@@ -1015,6 +1079,7 @@ const HomeFeatureSet: FeatureSet = {
       (_req: ExpressRequest, res: ExpressResponse) => {
         res.render(`${ViewsPath}/enterprise-overview.ejs`, {
           support: false,
+          enableGoogleTagManager: IsBillingEnabled,
           footerCards: true,
           cta: true,
           blackLogo: false,
@@ -1026,6 +1091,7 @@ const HomeFeatureSet: FeatureSet = {
     app.get("/legal", (_req: ExpressRequest, res: ExpressResponse) => {
       res.render(`${ViewsPath}/legal.ejs`, {
         support: false,
+        enableGoogleTagManager: IsBillingEnabled,
         footerCards: true,
         cta: true,
         blackLogo: false,
@@ -1037,6 +1103,7 @@ const HomeFeatureSet: FeatureSet = {
     app.get("/legal/terms", (_req: ExpressRequest, res: ExpressResponse) => {
       res.render(`${ViewsPath}/legal.ejs`, {
         support: false,
+        enableGoogleTagManager: IsBillingEnabled,
         footerCards: true,
         cta: true,
         blackLogo: false,
@@ -1048,6 +1115,7 @@ const HomeFeatureSet: FeatureSet = {
     app.get("/legal/privacy", (_req: ExpressRequest, res: ExpressResponse) => {
       res.render(`${ViewsPath}/legal.ejs`, {
         support: false,
+        enableGoogleTagManager: IsBillingEnabled,
         footerCards: true,
         cta: true,
         blackLogo: false,
@@ -1059,6 +1127,7 @@ const HomeFeatureSet: FeatureSet = {
     app.get("/legal/contact", (_req: ExpressRequest, res: ExpressResponse) => {
       res.render(`${ViewsPath}/legal.ejs`, {
         support: false,
+        enableGoogleTagManager: IsBillingEnabled,
         footerCards: true,
         cta: true,
         blackLogo: false,
@@ -1072,6 +1141,7 @@ const HomeFeatureSet: FeatureSet = {
       (_req: ExpressRequest, res: ExpressResponse) => {
         res.render(`${ViewsPath}/legal.ejs`, {
           support: false,
+          enableGoogleTagManager: IsBillingEnabled,
           footerCards: true,
           cta: true,
           blackLogo: false,
@@ -1084,6 +1154,7 @@ const HomeFeatureSet: FeatureSet = {
     app.get("/legal/ccpa", (_req: ExpressRequest, res: ExpressResponse) => {
       res.render(`${ViewsPath}/legal.ejs`, {
         support: false,
+        enableGoogleTagManager: IsBillingEnabled,
         footerCards: true,
         cta: true,
         blackLogo: false,
@@ -1095,6 +1166,7 @@ const HomeFeatureSet: FeatureSet = {
     app.get("/legal/hipaa", (_req: ExpressRequest, res: ExpressResponse) => {
       res.render(`${ViewsPath}/legal.ejs`, {
         support: false,
+        enableGoogleTagManager: IsBillingEnabled,
         footerCards: true,
         cta: true,
         blackLogo: false,
@@ -1106,6 +1178,7 @@ const HomeFeatureSet: FeatureSet = {
     app.get("/legal/dmca", (_req: ExpressRequest, res: ExpressResponse) => {
       res.render(`${ViewsPath}/legal.ejs`, {
         support: false,
+        enableGoogleTagManager: IsBillingEnabled,
         footerCards: true,
         cta: true,
         blackLogo: false,
@@ -1117,6 +1190,7 @@ const HomeFeatureSet: FeatureSet = {
     app.get("/legal/pci", (_req: ExpressRequest, res: ExpressResponse) => {
       res.render(`${ViewsPath}/legal.ejs`, {
         support: false,
+        enableGoogleTagManager: IsBillingEnabled,
         footerCards: true,
         cta: true,
         blackLogo: false,
@@ -1130,6 +1204,7 @@ const HomeFeatureSet: FeatureSet = {
       (_req: ExpressRequest, res: ExpressResponse) => {
         res.render(`${ViewsPath}/legal.ejs`, {
           support: false,
+          enableGoogleTagManager: IsBillingEnabled,
           footerCards: true,
           cta: true,
           blackLogo: false,
@@ -1145,6 +1220,7 @@ const HomeFeatureSet: FeatureSet = {
         res.render(`${ViewsPath}/legal.ejs`, {
           footerCards: true,
           support: false,
+          enableGoogleTagManager: IsBillingEnabled,
           cta: true,
           blackLogo: false,
           section: "iso-27017",
@@ -1159,6 +1235,7 @@ const HomeFeatureSet: FeatureSet = {
         res.render(`${ViewsPath}/legal.ejs`, {
           footerCards: true,
           support: false,
+          enableGoogleTagManager: IsBillingEnabled,
           cta: true,
           blackLogo: false,
           section: "iso-27018",
@@ -1173,6 +1250,7 @@ const HomeFeatureSet: FeatureSet = {
         res.render(`${ViewsPath}/legal.ejs`, {
           footerCards: true,
           support: false,
+          enableGoogleTagManager: IsBillingEnabled,
           cta: true,
           blackLogo: false,
           section: "iso-27017",
@@ -1187,6 +1265,7 @@ const HomeFeatureSet: FeatureSet = {
         res.render(`${ViewsPath}/legal.ejs`, {
           footerCards: true,
           support: false,
+          enableGoogleTagManager: IsBillingEnabled,
           cta: true,
           blackLogo: false,
           section: "iso-27018",
@@ -1199,6 +1278,7 @@ const HomeFeatureSet: FeatureSet = {
       res.render(`${ViewsPath}/legal.ejs`, {
         footerCards: true,
         support: false,
+        enableGoogleTagManager: IsBillingEnabled,
         cta: true,
         blackLogo: false,
         section: "soc-2",
@@ -1210,6 +1290,7 @@ const HomeFeatureSet: FeatureSet = {
       res.render(`${ViewsPath}/legal.ejs`, {
         footerCards: true,
         support: false,
+        enableGoogleTagManager: IsBillingEnabled,
         cta: true,
         blackLogo: false,
         section: "soc-3",
@@ -1223,6 +1304,7 @@ const HomeFeatureSet: FeatureSet = {
         res.render(`${ViewsPath}/legal.ejs`, {
           footerCards: true,
           support: false,
+          enableGoogleTagManager: IsBillingEnabled,
           cta: true,
           blackLogo: false,
           section: "data-residency",
@@ -1235,6 +1317,7 @@ const HomeFeatureSet: FeatureSet = {
       res.render(`${ViewsPath}/legal.ejs`, {
         footerCards: true,
         support: false,
+        enableGoogleTagManager: IsBillingEnabled,
         cta: true,
         blackLogo: false,
         section: "gdpr",
@@ -1246,6 +1329,7 @@ const HomeFeatureSet: FeatureSet = {
       res.render(`${ViewsPath}/legal.ejs`, {
         footerCards: true,
         support: false,
+        enableGoogleTagManager: IsBillingEnabled,
         cta: true,
         blackLogo: false,
         section: "sla",
@@ -1265,6 +1349,7 @@ const HomeFeatureSet: FeatureSet = {
         }
         res.render(`${ViewsPath}/product-compare.ejs`, {
           support: false,
+          enableGoogleTagManager: IsBillingEnabled,
           footerCards: true,
           cta: true,
           blackLogo: false,
@@ -1275,74 +1360,20 @@ const HomeFeatureSet: FeatureSet = {
       },
     );
 
-    // Generate sitemap
+    // Dynamic Sitemap
     app.get(
       "/sitemap.xml",
       async (_req: ExpressRequest, res: ExpressResponse) => {
-        const siteUrls: Array<URL> = [
-          URL.fromString("https://oneuptime.com/"),
-          URL.fromString("https://oneuptime.com/pricing"),
-          URL.fromString("https://oneuptime.com/support"),
-          URL.fromString("https://oneuptime.com/about"),
-          URL.fromString("https://oneuptime.com/product/status-page"),
-          URL.fromString("https://oneuptime.com/product/incident-management"),
-          URL.fromString("https://oneuptime.com/product/on-call"),
-          URL.fromString("https://oneuptime.com/enterprise/overview"),
-          URL.fromString("https://oneuptime.com/enterprise/demo"),
-          URL.fromString("https://oneuptime.com/legal/terms"),
-          URL.fromString("https://oneuptime.com/legal/privacy"),
-          URL.fromString("https://oneuptime.com/legal/gdpr"),
-          URL.fromString("https://oneuptime.com/legal/ccpa"),
-          URL.fromString("https://oneuptime.com/legal"),
-          URL.fromString("https://oneuptime.com/compare/pagerduty"),
-          URL.fromString("https://oneuptime.com/compare/pingdom"),
-          URL.fromString("https://oneuptime.com/compare/status-page.io"),
-          URL.fromString("https://oneuptime.com/compare/incident.io"),
-          URL.fromString("https://oneuptime.com/legal/soc-2"),
-          URL.fromString("https://oneuptime.com/legal/soc-3"),
-          URL.fromString("https://oneuptime.com/legal/iso-27017"),
-          URL.fromString("https://oneuptime.com/legal/iso-27018"),
-          URL.fromString("https://oneuptime.com/legal/hipaa"),
-          URL.fromString("https://oneuptime.com/legal/pci"),
-          URL.fromString("https://oneuptime.com/legal/sla"),
-          URL.fromString("https://oneuptime.com/legal/iso-27001"),
-          URL.fromString("https://oneuptime.com/legal/data-residency"),
-          URL.fromString("https://oneuptime.com/legal/dmca"),
-          URL.fromString("https://oneuptime.com/legal/subprocessors"),
-          URL.fromString("https://oneuptime.com/legal/contact"),
-        ];
-
-        // Build xml
-        const urlsetAttr: Dictionary<string> = {
-          xmlns: "http://www.sitemaps.org/schemas/sitemap/0.9",
-          "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-          "xsi:schemaLocation":
-            "http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd",
-        };
-
-        // Get previous day's date/timestamp
-        const today: Date = OneUptimeDate.getOneDayAgo();
-        const timestamp: string = today.toISOString();
-
-        const urlset: XMLBuilder = builder.create().ele("urlset");
-
-        // Apply attributes to root element
-        for (const key in urlsetAttr) {
-          urlset.att({ key: urlsetAttr[key] });
+        try {
+          const xml: string = await generateSitemapXml();
+          res.setHeader("Content-Type", "text/xml");
+          res.send(xml);
+        } catch {
+          // Fallback minimal static sitemap if dynamic generation fails
+          const fallback: string = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>https://oneuptime.com/</loc></url>\n</urlset>`;
+          res.setHeader("Content-Type", "text/xml");
+          res.status(200).send(fallback);
         }
-
-        //Append urls to root element
-        siteUrls.forEach((url: URL) => {
-          const urlElement: XMLBuilder = urlset.ele("url");
-          urlElement.ele("loc").txt(url.toString());
-          urlElement.ele("lastmod").txt(timestamp);
-        });
-
-        // Generate xml file
-        const xml: string = urlset.end({ prettyPrint: true });
-
-        res.setHeader("Content-Type", "text/xml");
-        res.send(xml);
       },
     );
 

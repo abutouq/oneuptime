@@ -16,6 +16,7 @@ enum EmailTemplateType {
   SubscriberIncidentNoteCreated = "SubscriberIncidentNoteCreated.hbs",
   SubscriberIncidentStateChanged = "SubscriberIncidentStateChanged.hbs",
   SubscriberScheduledMaintenanceEventCreated = "SubscriberScheduledMaintenanceEventCreated.hbs",
+  ManageExistingStatusPageSubscriberSubscription = "ManageExistingStatusPageSubscriberSubscription.hbs",
   SubscriberScheduledMaintenanceEventStateChanged = "SubscriberScheduledMaintenanceEventStateChanged.hbs",
   StatusPageForgotPassword = "StatusPageForgotPassword.hbs",
   StatusPagePasswordChanged = "StatusPagePasswordChanged.hbs",
@@ -47,6 +48,15 @@ enum EmailTemplateType {
   SimpleMessage = "SimpleMessage.hbs",
   VerificationCode = "VerificationCode.hbs",
   AcknowledgeIncident = "AcknowledgeIncident.hbs",
+  AcknowledgeAlert = "AcknowledgeAlert.hbs",
+
+  UserAddedToOnCallPolicy = "UserAddedToOnCallPolicy.hbs",
+  UserRemovedFromOnCallPolicy = "UserRemovedFromOnCallPolicy.hbs",
+  UserCurrentlyOnOnCallRoster = "UserCurrentlyOnOnCallRoster.hbs",
+  UserNextOnOnCallRoster = "UserNextOnOnCallRoster.hbs",
+  UserNoLongerActiveOnOnCallRoster = "UserNoLongerActiveOnOnCallRoster.hbs",
+
+  ProjectSubscriptionOverdue = "ProjectSubscriptionOverdue.hbs",
 }
 
 export default EmailTemplateType;

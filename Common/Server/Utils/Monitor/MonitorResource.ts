@@ -10,44 +10,40 @@ import SSLMonitorCriteria from "./Criteria/SSLMonitorCriteria";
 import ServerMonitorCriteria from "./Criteria/ServerMonitorCriteria";
 import SyntheticMonitoringCriteria from "./Criteria/SyntheticMonitor";
 import DataToProcess from "./DataToProcess";
-import SortOrder from "Common/Types/BaseDatabase/SortOrder";
-import Dictionary from "Common/Types/Dictionary";
-import BadDataException from "Common/Types/Exception/BadDataException";
-import BasicInfrastructureMetrics from "Common/Types/Infrastructure/BasicMetrics";
-import ReturnResult from "Common/Types/IsolatedVM/ReturnResult";
-import { JSONObject } from "Common/Types/JSON";
-import {
-  CheckOn,
-  CriteriaFilter,
-  FilterCondition,
-} from "Common/Types/Monitor/CriteriaFilter";
-import IncomingMonitorRequest from "Common/Types/Monitor/IncomingMonitor/IncomingMonitorRequest";
-import MonitorCriteria from "Common/Types/Monitor/MonitorCriteria";
-import MonitorCriteriaInstance from "Common/Types/Monitor/MonitorCriteriaInstance";
-import MonitorStep from "Common/Types/Monitor/MonitorStep";
-import MonitorSteps from "Common/Types/Monitor/MonitorSteps";
+import SortOrder from "../../../Types/BaseDatabase/SortOrder";
+import Dictionary from "../../../Types/Dictionary";
+import BadDataException from "../../../Types/Exception/BadDataException";
+import BasicInfrastructureMetrics from "../../../Types/Infrastructure/BasicMetrics";
+import ReturnResult from "../../../Types/IsolatedVM/ReturnResult";
+import Semaphore, { SemaphoreMutex } from "../../Infrastructure/Semaphore";
+import { JSONObject } from "../../../Types/JSON";
+import { CheckOn, CriteriaFilter } from "../../../Types/Monitor/CriteriaFilter";
+import IncomingMonitorRequest from "../../../Types/Monitor/IncomingMonitor/IncomingMonitorRequest";
+import MonitorCriteria from "../../../Types/Monitor/MonitorCriteria";
+import MonitorCriteriaInstance from "../../../Types/Monitor/MonitorCriteriaInstance";
+import MonitorStep from "../../../Types/Monitor/MonitorStep";
+import MonitorSteps from "../../../Types/Monitor/MonitorSteps";
 import MonitorType, {
   MonitorTypeHelper,
-} from "Common/Types/Monitor/MonitorType";
-import ServerMonitorResponse from "Common/Types/Monitor/ServerMonitor/ServerMonitorResponse";
-import ObjectID from "Common/Types/ObjectID";
-import ProbeApiIngestResponse from "Common/Types/Probe/ProbeApiIngestResponse";
-import ProbeMonitorResponse from "Common/Types/Probe/ProbeMonitorResponse";
-import Typeof from "Common/Types/Typeof";
-import Monitor from "Common/Models/DatabaseModels/Monitor";
-import MonitorProbe from "Common/Models/DatabaseModels/MonitorProbe";
-import MonitorStatusTimeline from "Common/Models/DatabaseModels/MonitorStatusTimeline";
-import OneUptimeDate from "Common/Types/Date";
+} from "../../../Types/Monitor/MonitorType";
+import ServerMonitorResponse from "../../../Types/Monitor/ServerMonitor/ServerMonitorResponse";
+import ObjectID from "../../../Types/ObjectID";
+import ProbeApiIngestResponse from "../../../Types/Probe/ProbeApiIngestResponse";
+import ProbeMonitorResponse from "../../../Types/Probe/ProbeMonitorResponse";
+import Typeof from "../../../Types/Typeof";
+import Monitor from "../../../Models/DatabaseModels/Monitor";
+import MonitorProbe from "../../../Models/DatabaseModels/MonitorProbe";
+import MonitorStatusTimeline from "../../../Models/DatabaseModels/MonitorStatusTimeline";
+import OneUptimeDate from "../../../Types/Date";
 import LogMonitorCriteria from "./Criteria/LogMonitorCriteria";
-import LogMonitorResponse from "Common/Types/Monitor/LogMonitor/LogMonitorResponse";
-import TelemetryType from "Common/Types/Telemetry/TelemetryType";
+import LogMonitorResponse from "../../../Types/Monitor/LogMonitor/LogMonitorResponse";
+import TelemetryType from "../../../Types/Telemetry/TelemetryType";
 import TraceMonitorResponse from "../../../Types/Monitor/TraceMonitor/TraceMonitorResponse";
 import TraceMonitorCriteria from "./Criteria/TraceMonitorCriteria";
 import { TelemetryQuery } from "../../../Types/Telemetry/TelemetryQuery";
 import MonitorIncident from "./MonitorIncident";
 import MonitorAlert from "./MonitorAlert";
 import MonitorStatusTimelineUtil from "./MonitorStatusTimeline";
-import Semaphore, { SemaphoreMutex } from "../../Infrastructure/Semaphore";
 import Metric, {
   MetricPointType,
   ServiceType,
@@ -57,8 +53,14 @@ import MonitorMetricType from "../../../Types/Monitor/MonitorMetricType";
 import TelemetryUtil from "../Telemetry/Telemetry";
 import MetricMonitorCriteria from "./Criteria/MetricMonitorCriteria";
 import MetricMonitorResponse from "../../../Types/Monitor/MetricMonitor/MetricMonitorResponse";
+import FilterCondition from "../../../Types/Filter/FilterCondition";
+import CaptureSpan from "../Telemetry/CaptureSpan";
+import MetricType from "../../../Models/DatabaseModels/MetricType";
+import MonitorLog from "../../../Models/AnalyticsModels/MonitorLog";
+import MonitorLogService from "../../Services/MonitorLogService";
 
 export default class MonitorResourceUtil {
+  @CaptureSpan()
   public static async monitorResource(
     dataToProcess: DataToProcess,
   ): Promise<ProbeApiIngestResponse> {
@@ -109,6 +111,15 @@ export default class MonitorResourceUtil {
       logger.debug(`${dataToProcess.monitorId.toString()} Monitor not found`);
       throw new BadDataException("Monitor not found");
     }
+
+    if (!monitor.projectId) {
+      logger.debug(
+        `${dataToProcess.monitorId.toString()} Monitor does not have a projectId`,
+      );
+      throw new BadDataException("Monitor does not have a projectId");
+    }
+
+    dataToProcess.projectId = monitor.projectId;
 
     if (monitor.disableActiveMonitoring) {
       logger.debug(
@@ -206,7 +217,9 @@ export default class MonitorResourceUtil {
 
     if (
       monitor.monitorType === MonitorType.IncomingRequest &&
-      (dataToProcess as IncomingMonitorRequest).incomingRequestReceivedAt
+      (dataToProcess as IncomingMonitorRequest).incomingRequestReceivedAt &&
+      !(dataToProcess as IncomingMonitorRequest)
+        .onlyCheckForIncomingRequestReceivedAt
     ) {
       logger.debug(
         `${dataToProcess.monitorId.toString()} - Incoming request received at ${(dataToProcess as IncomingMonitorRequest).incomingRequestReceivedAt}`,
@@ -215,9 +228,11 @@ export default class MonitorResourceUtil {
       await MonitorService.updateOneById({
         id: monitor.id!,
         data: {
-          incomingMonitorRequest: dataToProcess as any,
-          incomingRequestReceivedAt: (dataToProcess as IncomingMonitorRequest)
-            .incomingRequestReceivedAt!, // this could be redundant as we are already saving this in the incomingMonitorRequest. we should remove this in the future.
+          incomingRequestMonitorHeartbeatCheckedAt:
+            OneUptimeDate.getCurrentDate(),
+          incomingMonitorRequest: {
+            ...dataToProcess,
+          } as any,
         },
         props: {
           isRoot: true,
@@ -598,6 +613,7 @@ export default class MonitorResourceUtil {
     return response;
   }
 
+  @CaptureSpan()
   public static async saveMonitorMetrics(data: {
     monitorId: ObjectID;
     projectId: ObjectID;
@@ -618,6 +634,11 @@ export default class MonitorResourceUtil {
     }
 
     const itemsToSave: Array<Metric> = [];
+
+    // Metric name to serviceId map
+    // example: "cpu.usage" -> [serviceId1, serviceId2]
+    // since these are monitor metrics. They dont belong to any service so we can keep the array empty.
+    const metricNameServiceNameMap: Dictionary<MetricType> = {};
 
     if (
       (data.dataToProcess as ServerMonitorResponse).basicInfrastructureMetrics
@@ -643,9 +664,9 @@ export default class MonitorResourceUtil {
         monitorMetric.serviceId = data.monitorId;
         monitorMetric.serviceType = ServiceType.Monitor;
         monitorMetric.name = MonitorMetricType.IsOnline;
-        monitorMetric.description = CheckOn.IsOnline + " status for monitor";
+
         monitorMetric.value = isOnline ? 1 : 0;
-        monitorMetric.unit = "";
+
         monitorMetric.attributes = {
           monitorId: data.monitorId.toString(),
           projectId: data.projectId.toString(),
@@ -664,6 +685,15 @@ export default class MonitorResourceUtil {
         monitorMetric.metricPointType = MetricPointType.Sum;
 
         itemsToSave.push(monitorMetric);
+
+        // add MetricType
+        const metricType: MetricType = new MetricType();
+        metricType.name = MonitorMetricType.IsOnline;
+        metricType.description = CheckOn.IsOnline + " status for monitor";
+        metricType.unit = "";
+
+        // add to map
+        metricNameServiceNameMap[MonitorMetricType.IsOnline] = metricType;
       }
 
       const basicMetrics: BasicInfrastructureMetrics | undefined = (
@@ -681,9 +711,9 @@ export default class MonitorResourceUtil {
         monitorMetric.serviceId = data.monitorId;
         monitorMetric.serviceType = ServiceType.Monitor;
         monitorMetric.name = MonitorMetricType.CPUUsagePercent;
-        monitorMetric.description = CheckOn.CPUUsagePercent + " of Server/VM";
+
         monitorMetric.value = basicMetrics.cpuMetrics.percentUsed;
-        monitorMetric.unit = "%";
+
         monitorMetric.attributes = {
           monitorId: data.monitorId.toString(),
           projectId: data.projectId.toString(),
@@ -702,6 +732,14 @@ export default class MonitorResourceUtil {
         monitorMetric.metricPointType = MetricPointType.Sum;
 
         itemsToSave.push(monitorMetric);
+
+        const metricType: MetricType = new MetricType();
+        metricType.name = MonitorMetricType.CPUUsagePercent;
+        metricType.description = CheckOn.CPUUsagePercent + " of Server/VM";
+        metricType.unit = "%";
+
+        metricNameServiceNameMap[MonitorMetricType.CPUUsagePercent] =
+          metricType;
       }
 
       if (basicMetrics.memoryMetrics) {
@@ -711,10 +749,9 @@ export default class MonitorResourceUtil {
         monitorMetric.serviceId = data.monitorId;
         monitorMetric.serviceType = ServiceType.Monitor;
         monitorMetric.name = MonitorMetricType.MemoryUsagePercent;
-        monitorMetric.description =
-          CheckOn.MemoryUsagePercent + " of Server/VM";
+
         monitorMetric.value = basicMetrics.memoryMetrics.percentUsed;
-        monitorMetric.unit = "%";
+
         monitorMetric.attributes = {
           monitorId: data.monitorId.toString(),
           projectId: data.projectId.toString(),
@@ -733,6 +770,14 @@ export default class MonitorResourceUtil {
         monitorMetric.metricPointType = MetricPointType.Sum;
 
         itemsToSave.push(monitorMetric);
+
+        const metricType: MetricType = new MetricType();
+        metricType.name = MonitorMetricType.MemoryUsagePercent;
+        metricType.description = CheckOn.MemoryUsagePercent + " of Server/VM";
+        metricType.unit = "%";
+
+        metricNameServiceNameMap[MonitorMetricType.MemoryUsagePercent] =
+          metricType;
       }
 
       if (basicMetrics.diskMetrics && basicMetrics.diskMetrics.length > 0) {
@@ -743,10 +788,9 @@ export default class MonitorResourceUtil {
           monitorMetric.serviceId = data.monitorId;
           monitorMetric.serviceType = ServiceType.Monitor;
           monitorMetric.name = MonitorMetricType.DiskUsagePercent;
-          monitorMetric.description =
-            CheckOn.DiskUsagePercent + " of Server/VM";
+
           monitorMetric.value = diskMetric.percentUsed;
-          monitorMetric.unit = "%";
+
           monitorMetric.attributes = {
             monitorId: data.monitorId.toString(),
             projectId: data.projectId.toString(),
@@ -767,6 +811,14 @@ export default class MonitorResourceUtil {
           monitorMetric.metricPointType = MetricPointType.Sum;
 
           itemsToSave.push(monitorMetric);
+
+          const metricType: MetricType = new MetricType();
+          metricType.name = MonitorMetricType.DiskUsagePercent;
+          metricType.description = CheckOn.DiskUsagePercent + " of Server/VM";
+          metricType.unit = "%";
+
+          metricNameServiceNameMap[MonitorMetricType.DiskUsagePercent] =
+            metricType;
         }
       }
     }
@@ -781,11 +833,11 @@ export default class MonitorResourceUtil {
       monitorMetric.serviceId = data.monitorId;
       monitorMetric.serviceType = ServiceType.Monitor;
       monitorMetric.name = MonitorMetricType.ExecutionTime;
-      monitorMetric.description = CheckOn.ExecutionTime + " of this monitor";
+
       monitorMetric.value = (
         data.dataToProcess as ProbeMonitorResponse
       ).customCodeMonitorResponse?.executionTimeInMS;
-      monitorMetric.unit = "ms";
+
       monitorMetric.attributes = {
         monitorId: data.monitorId.toString(),
         projectId: data.projectId.toString(),
@@ -807,6 +859,13 @@ export default class MonitorResourceUtil {
       monitorMetric.metricPointType = MetricPointType.Sum;
 
       itemsToSave.push(monitorMetric);
+
+      const metricType: MetricType = new MetricType();
+      metricType.name = MonitorMetricType.ExecutionTime;
+      metricType.description = CheckOn.ExecutionTime + " of this monitor";
+      metricType.unit = "ms";
+
+      metricNameServiceNameMap[MonitorMetricType.ExecutionTime] = metricType;
     }
 
     if (
@@ -826,9 +885,9 @@ export default class MonitorResourceUtil {
         monitorMetric.serviceId = data.monitorId;
         monitorMetric.serviceType = ServiceType.Monitor;
         monitorMetric.name = MonitorMetricType.ExecutionTime;
-        monitorMetric.description = CheckOn.ExecutionTime + " of this monitor";
+
         monitorMetric.value = syntheticMonitorResponse.executionTimeInMS;
-        monitorMetric.unit = "ms";
+
         monitorMetric.attributes = {
           monitorId: data.monitorId.toString(),
           projectId: data.projectId.toString(),
@@ -852,6 +911,13 @@ export default class MonitorResourceUtil {
         monitorMetric.metricPointType = MetricPointType.Sum;
 
         itemsToSave.push(monitorMetric);
+
+        const metricType: MetricType = new MetricType();
+        metricType.name = MonitorMetricType.ExecutionTime;
+        metricType.description = CheckOn.ExecutionTime + " of this monitor";
+        metricType.unit = "ms";
+
+        metricNameServiceNameMap[MonitorMetricType.ExecutionTime] = metricType;
       }
     }
 
@@ -862,11 +928,11 @@ export default class MonitorResourceUtil {
       monitorMetric.serviceId = data.monitorId;
       monitorMetric.serviceType = ServiceType.Monitor;
       monitorMetric.name = MonitorMetricType.ResponseTime;
-      monitorMetric.description = CheckOn.ResponseTime + " of this monitor";
+
       monitorMetric.value = (
         data.dataToProcess as ProbeMonitorResponse
       ).responseTimeInMs;
-      monitorMetric.unit = "ms";
+
       monitorMetric.attributes = {
         monitorId: data.monitorId.toString(),
         projectId: data.projectId.toString(),
@@ -888,6 +954,13 @@ export default class MonitorResourceUtil {
       monitorMetric.metricPointType = MetricPointType.Sum;
 
       itemsToSave.push(monitorMetric);
+
+      const metricType: MetricType = new MetricType();
+      metricType.name = MonitorMetricType.ResponseTime;
+      metricType.description = CheckOn.ResponseTime + " of this monitor";
+      metricType.unit = "ms";
+
+      metricNameServiceNameMap[MonitorMetricType.ResponseTime] = metricType;
     }
 
     if ((data.dataToProcess as ProbeMonitorResponse).isOnline !== undefined) {
@@ -897,12 +970,12 @@ export default class MonitorResourceUtil {
       monitorMetric.serviceId = data.monitorId;
       monitorMetric.serviceType = ServiceType.Monitor;
       monitorMetric.name = MonitorMetricType.IsOnline;
-      monitorMetric.description = CheckOn.IsOnline + " status for monitor";
+
       monitorMetric.value = (data.dataToProcess as ProbeMonitorResponse)
         .isOnline
         ? 1
         : 0;
-      monitorMetric.unit = "";
+
       monitorMetric.attributes = {
         monitorId: data.monitorId.toString(),
         projectId: data.projectId.toString(),
@@ -924,6 +997,13 @@ export default class MonitorResourceUtil {
       monitorMetric.metricPointType = MetricPointType.Sum;
 
       itemsToSave.push(monitorMetric);
+
+      const metricType: MetricType = new MetricType();
+      metricType.name = MonitorMetricType.IsOnline;
+      metricType.description = CheckOn.IsOnline + " status for monitor";
+      metricType.unit = "";
+
+      metricNameServiceNameMap[MonitorMetricType.IsOnline] = metricType;
     }
 
     if ((data.dataToProcess as ProbeMonitorResponse).responseCode) {
@@ -933,12 +1013,11 @@ export default class MonitorResourceUtil {
       monitorMetric.serviceId = data.monitorId;
       monitorMetric.serviceType = ServiceType.Monitor;
       monitorMetric.name = MonitorMetricType.ResponseStatusCode;
-      monitorMetric.description =
-        CheckOn.ResponseStatusCode + " for this monitor";
+
       monitorMetric.value = (
         data.dataToProcess as ProbeMonitorResponse
       ).responseCode;
-      monitorMetric.unit = "Status Code";
+
       monitorMetric.attributes = {
         monitorId: data.monitorId.toString(),
         projectId: data.projectId.toString(),
@@ -952,6 +1031,14 @@ export default class MonitorResourceUtil {
       monitorMetric.metricPointType = MetricPointType.Sum;
 
       itemsToSave.push(monitorMetric);
+
+      const metricType: MetricType = new MetricType();
+      metricType.name = MonitorMetricType.ResponseStatusCode;
+      metricType.description = CheckOn.ResponseStatusCode + " for this monitor";
+      metricType.unit = "Status Code";
+
+      metricNameServiceNameMap[MonitorMetricType.ResponseStatusCode] =
+        metricType;
     }
 
     await MetricService.createMany({
@@ -959,6 +1046,14 @@ export default class MonitorResourceUtil {
       props: {
         isRoot: true,
       },
+    });
+
+    // index metrics
+    TelemetryUtil.indexMetricNameServiceNameMap({
+      projectId: data.projectId,
+      metricNameServiceNameMap: metricNameServiceNameMap,
+    }).catch((err: Error) => {
+      logger.error(err);
     });
 
     // index attributes.
@@ -973,6 +1068,22 @@ export default class MonitorResourceUtil {
       ],
       projectId: data.projectId,
       telemetryType: TelemetryType.Metric,
+    }).catch((err: Error) => {
+      logger.error(err);
+    });
+
+    // save monitor log.
+    const monitorLog: MonitorLog = new MonitorLog();
+    monitorLog.monitorId = data.monitorId;
+    monitorLog.projectId = data.projectId;
+    monitorLog.logBody = JSON.parse(JSON.stringify(data.dataToProcess));
+    monitorLog.time = OneUptimeDate.getCurrentDate();
+
+    MonitorLogService.create({
+      data: monitorLog,
+      props: {
+        isRoot: true,
+      },
     }).catch((err: Error) => {
       logger.error(err);
     });
@@ -1135,6 +1246,7 @@ export default class MonitorResourceUtil {
               .responseBody as string) || "{}",
           );
         } catch (err) {
+          logger.error(err);
           responseBody = (input.dataToProcess as ProbeMonitorResponse)
             .responseBody as JSONObject;
         }
@@ -1187,7 +1299,7 @@ export default class MonitorResourceUtil {
         return null;
       }
 
-      if (result.returnValue) {
+      if (result && result.returnValue) {
         return `JavaScript Expression - ${expression} - evaluated to true.`;
       }
 
@@ -1262,7 +1374,7 @@ export default class MonitorResourceUtil {
     }
 
     if (input.monitor.monitorType === MonitorType.SSLCertificate) {
-      // check server monitor
+      // check SSL monitor
       const sslMonitorResult: string | null =
         await SSLMonitorCriteria.isMonitorInstanceCriteriaFilterMet({
           dataToProcess: input.dataToProcess,

@@ -1,10 +1,10 @@
 import AlignItem from "../../Types/AlignItem";
 import SelectEntityField from "../../Types/SelectEntityField";
 import FieldType from "../Types/FieldType";
-import AnalyticsBaseModel from "Common/Models/AnalyticsModels/AnalyticsBaseModel/AnalyticsBaseModel";
-import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import IconProp from "Common/Types/Icon/IconProp";
-import ObjectID from "Common/Types/ObjectID";
+import AnalyticsBaseModel from "../../../Models/AnalyticsModels/AnalyticsBaseModel/AnalyticsBaseModel";
+import BaseModel from "../../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import IconProp from "../../../Types/Icon/IconProp";
+import ObjectID from "../../../Types/ObjectID";
 import { ReactElement } from "react";
 
 export interface ActionButton {
@@ -28,6 +28,7 @@ export default interface Columns<
   actionButtons?: Array<ActionButton>;
   alignItem?: AlignItem | undefined;
   noValueMessage?: string | undefined;
+  hideOnMobile?: boolean | undefined; // Hide column on mobile devices
   getElement?:
     | ((item: TEntity, onBeforeFetchData?: TEntity | undefined) => ReactElement)
     | undefined;

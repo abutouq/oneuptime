@@ -2,9 +2,9 @@ import API from "../../Utils/API/API";
 import Query from "../../../Types/BaseDatabase/Query";
 import ModelAPI, { RequestOptions } from "../../Utils/ModelAPI/ModelAPI";
 import HeaderAlert, { HeaderAlertType } from "./HeaderAlert";
-import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import { PromiseVoidFunction } from "Common/Types/FunctionTypes";
-import IconProp from "Common/Types/Icon/IconProp";
+import BaseModel from "../../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import { PromiseVoidFunction } from "../../../Types/FunctionTypes";
+import IconProp from "../../../Types/Icon/IconProp";
 import React, { ReactElement, useEffect, useState } from "react";
 
 export interface ComponentProps<TBaseModel extends BaseModel> {
@@ -82,7 +82,8 @@ const HeaderModelAlert: <TBaseModel extends BaseModel>(
 
   return (
     <HeaderAlert
-      title={`${count} ${count > 1 ? props.pluralName : props.singularName}`}
+      title={`${count}`}
+      suffix={`${count > 1 ? props.pluralName : props.singularName}`}
       icon={props.icon}
       onClick={props.onClick}
       className={props.className}

@@ -1,4 +1,3 @@
-import DashboardNavigation from "../../../Utils/Navigation";
 import PageComponentProps from "../../PageComponentProps";
 import NotNull from "Common/Types/BaseDatabase/NotNull";
 import { Green, Red } from "Common/Types/BrandColors";
@@ -13,6 +12,7 @@ import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchem
 import FormValues from "Common/UI/Components/Forms/Types/FormValues";
 import PageLoader from "Common/UI/Components/Loader/PageLoader";
 import ModelTable from "Common/UI/Components/ModelTable/ModelTable";
+import ProjectUtil from "Common/UI/Utils/Project";
 import Pill from "Common/UI/Components/Pill/Pill";
 import FieldType from "Common/UI/Components/Types/FieldType";
 import API from "Common/UI/Utils/API/API";
@@ -125,6 +125,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
         title: "Phone Number",
         description: "Status page updates will be sent to this phone number.",
         fieldType: FormFieldSchemaType.Phone,
+        stepId: "subscriber-info",
         required: true,
         placeholder: "+11234567890",
       },
@@ -136,6 +137,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
         description:
           'Send "You have subscribed to this status page" SMS to this subscriber?',
         fieldType: FormFieldSchemaType.Toggle,
+        stepId: "subscriber-info",
         required: false,
         doNotShowWhenEditing: true,
       },
@@ -146,6 +148,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
         title: "Unsubscribe",
         description: "Unsubscribe this phone number from the status page.",
         fieldType: FormFieldSchemaType.Toggle,
+        stepId: "subscriber-info",
         required: false,
         doNotShowWhenCreating: true,
       },
@@ -158,6 +161,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
         },
         title: "Subscribe to All Resources",
         description: "Send notifications for all resources.",
+        stepId: "subscriber-info",
         fieldType: FormFieldSchemaType.Checkbox,
         required: false,
         defaultValue: true,
@@ -169,6 +173,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
         },
         title: "Select Resources to Subscribe",
         description: "Please select the resources you want to subscribe to.",
+        stepId: "subscriber-info",
         fieldType: FormFieldSchemaType.CategoryCheckbox,
         required: false,
         categoryCheckboxProps: categoryCheckboxOptionsAndCategories,
@@ -184,6 +189,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
           isSubscribedToAllEventTypes: true,
         },
         title: "Subscribe to All Event Types",
+        stepId: "subscriber-info",
         description:
           "Select this option if you want to subscribe to all event types.",
         fieldType: FormFieldSchemaType.Checkbox,
@@ -196,6 +202,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
           statusPageEventTypes: true,
         },
         title: "Select Event Types to Subscribe",
+        stepId: "subscriber-info",
         description: "Please select the event types you want to subscribe to.",
         fieldType: FormFieldSchemaType.MultiSelectDropdown,
         required: false,
@@ -206,6 +213,19 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
       });
     }
 
+    // add internal note field
+    formFields.push({
+      field: {
+        internalNote: true,
+      },
+      title: "Internal Note",
+      stepId: "internal-info",
+      description:
+        "Internal note for the subscriber. This is for internal use only and is visible only to the team members.",
+      fieldType: FormFieldSchemaType.Markdown,
+      required: false,
+    });
+
     setFormFields(formFields);
   }, [isLoading]);
 
@@ -213,7 +233,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
     <Fragment>
       {isLoading ? <PageLoader isVisible={true} /> : <></>}
 
-      {error ? <ErrorMessage error={error} /> : <></>}
+      {error ? <ErrorMessage message={error} /> : <></>}
 
       {!error && !isLoading ? (
         <>
@@ -225,6 +245,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
           )}
           <ModelTable<StatusPageSubscriber>
             modelType={StatusPageSubscriber}
+            userPreferencesKey="status-page-sms-subscribers-table"
             id="table-subscriber"
             name="Status Page > SMS Subscribers"
             isDeleteable={true}
@@ -237,7 +258,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
             }}
             query={{
               statusPageId: modelId,
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
               subscriberPhone: new NotNull(),
             }}
             onBeforeCreate={(
@@ -260,6 +281,16 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
             formFields={formFields}
             showRefreshButton={true}
             viewPageRoute={Navigation.getCurrentRoute()}
+            formSteps={[
+              {
+                title: "Subscriber Info",
+                id: "subscriber-info",
+              },
+              {
+                title: "Internal Info",
+                id: "internal-info",
+              },
+            ]}
             filters={[
               {
                 field: {
@@ -310,6 +341,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
                 },
                 title: "Subscribed At",
                 type: FieldType.Date,
+                hideOnMobile: true,
               },
             ]}
           />

@@ -1,5 +1,5 @@
+import MarkdownUtil from "Common/UI/Utils/Markdown";
 import UserElement from "../../../Components/User/User";
-import DashboardNavigation from "../../../Utils/Navigation";
 import ProjectUser from "../../../Utils/ProjectUser";
 import PageComponentProps from "../../PageComponentProps";
 import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
@@ -9,6 +9,7 @@ import IconProp from "Common/Types/Icon/IconProp";
 import { JSONObject } from "Common/Types/JSON";
 import ObjectID from "Common/Types/ObjectID";
 import { ButtonStyleType } from "Common/UI/Components/Button/Button";
+import ProjectUtil from "Common/UI/Utils/Project";
 import BasicFormModal from "Common/UI/Components/FormModal/BasicFormModal";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
 import ConfirmModal from "Common/UI/Components/Modal/ConfirmModal";
@@ -115,6 +116,7 @@ const IncidentDelete: FunctionComponent<PageComponentProps> = (
         showCreateForm={Object.keys(initialValuesForIncident).length > 0}
         createInitialValues={initialValuesForIncident}
         name="Monitor > Internal Note"
+        userPreferencesKey="incident-internal-note-table"
         isDeleteable={true}
         showViewIdButton={true}
         isCreateable={true}
@@ -123,7 +125,7 @@ const IncidentDelete: FunctionComponent<PageComponentProps> = (
         createEditModalWidth={ModalWidth.Large}
         query={{
           incidentId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(
           item: IncidentInternalNote,
@@ -159,8 +161,9 @@ const IncidentDelete: FunctionComponent<PageComponentProps> = (
             title: "Private Incident Note",
             fieldType: FormFieldSchemaType.Markdown,
             required: true,
-            description:
-              "Add a private note to this incident here. This is private to your team and is not visible on Status Page. This is in Markdown.",
+            description: MarkdownUtil.getMarkdownCheatsheet(
+              "Add a private note to this incident here. This is private to your team and is not visible on Status Page",
+            ),
           },
         ]}
         showAs={ShowAs.List}
@@ -176,7 +179,7 @@ const IncidentDelete: FunctionComponent<PageComponentProps> = (
             filterEntityType: User,
             fetchFilterDropdownOptions: async () => {
               return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-                DashboardNavigation.getProjectId()!,
+                ProjectUtil.getCurrentProjectId()!,
               );
             },
             filterDropdownField: {

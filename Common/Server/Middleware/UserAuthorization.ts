@@ -9,28 +9,29 @@ import {
   NextFunction,
   OneUptimeRequest,
 } from "../Utils/Express";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 import JSONWebToken from "../Utils/JsonWebToken";
 import logger from "../Utils/Logger";
 import Response from "../Utils/Response";
 import ProjectMiddleware from "./ProjectAuthorization";
-import { LIMIT_PER_PROJECT } from "Common/Types/Database/LimitMax";
-import OneUptimeDate from "Common/Types/Date";
-import Dictionary from "Common/Types/Dictionary";
-import Exception from "Common/Types/Exception/Exception";
-import NotAuthenticatedException from "Common/Types/Exception/NotAuthenticatedException";
-import SsoAuthorizationException from "Common/Types/Exception/SsoAuthorizationException";
-import TenantNotFoundException from "Common/Types/Exception/TenantNotFoundException";
-import HashedString from "Common/Types/HashedString";
-import { JSONObject } from "Common/Types/JSON";
-import JSONFunctions from "Common/Types/JSONFunctions";
-import JSONWebTokenData from "Common/Types/JsonWebTokenData";
-import ObjectID from "Common/Types/ObjectID";
+import { LIMIT_PER_PROJECT } from "../../Types/Database/LimitMax";
+import OneUptimeDate from "../../Types/Date";
+import Dictionary from "../../Types/Dictionary";
+import Exception from "../../Types/Exception/Exception";
+import NotAuthenticatedException from "../../Types/Exception/NotAuthenticatedException";
+import SsoAuthorizationException from "../../Types/Exception/SsoAuthorizationException";
+import TenantNotFoundException from "../../Types/Exception/TenantNotFoundException";
+import HashedString from "../../Types/HashedString";
+import { JSONObject } from "../../Types/JSON";
+import JSONFunctions from "../../Types/JSONFunctions";
+import JSONWebTokenData from "../../Types/JsonWebTokenData";
+import ObjectID from "../../Types/ObjectID";
 import {
   UserGlobalAccessPermission,
   UserTenantAccessPermission,
-} from "Common/Types/Permission";
-import UserType from "Common/Types/UserType";
-import Project from "Common/Models/DatabaseModels/Project";
+} from "../../Types/Permission";
+import UserType from "../../Types/UserType";
+import Project from "../../Models/DatabaseModels/Project";
 import UserPermissionUtil from "../Utils/UserPermission/UserPermission";
 
 export default class UserMiddleware {
@@ -41,6 +42,7 @@ export default class UserMiddleware {
    * Returns: 401: User is unauthorized since unauthorized token was present.
    */
 
+  @CaptureSpan()
   public static getAccessTokenFromCookie(
     req: ExpressRequest,
   ): string | undefined {
@@ -58,6 +60,7 @@ export default class UserMiddleware {
     return accessToken;
   }
 
+  @CaptureSpan()
   public static getAccessTokenFromExpressRequest(
     req: ExpressRequest,
   ): string | undefined {
@@ -75,6 +78,7 @@ export default class UserMiddleware {
     return accessToken;
   }
 
+  @CaptureSpan()
   public static getSsoTokens(req: ExpressRequest): Dictionary<string> {
     const ssoTokens: Dictionary<string> = {};
 
@@ -110,6 +114,7 @@ export default class UserMiddleware {
     return ssoTokens;
   }
 
+  @CaptureSpan()
   public static doesSsoTokenForProjectExist(
     req: ExpressRequest,
     projectId: ObjectID,
@@ -132,6 +137,7 @@ export default class UserMiddleware {
     return false;
   }
 
+  @CaptureSpan()
   public static async getUserMiddleware(
     req: ExpressRequest,
     res: ExpressResponse,
@@ -167,6 +173,7 @@ export default class UserMiddleware {
       oneuptimeRequest.userAuthorization = JSONWebToken.decode(accessToken);
     } catch (err) {
       // if the token is invalid or expired, it'll throw this error.
+      logger.error(err);
       oneuptimeRequest.userType = UserType.Public;
       return next();
     }
@@ -283,6 +290,7 @@ export default class UserMiddleware {
     return next();
   }
 
+  @CaptureSpan()
   public static async getUserTenantAccessPermissionWithTenantId(data: {
     req: ExpressRequest;
     tenantId: ObjectID;
@@ -327,6 +335,7 @@ export default class UserMiddleware {
     );
   }
 
+  @CaptureSpan()
   public static async getUserTenantAccessPermissionForMultiTenant(
     req: ExpressRequest,
     userId: ObjectID,

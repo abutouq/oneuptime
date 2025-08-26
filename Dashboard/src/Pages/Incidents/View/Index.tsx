@@ -1,12 +1,9 @@
-import ChangeIncidentState, {
-  IncidentType,
-} from "../../../Components/Incident/ChangeState";
+import ChangeIncidentState from "../../../Components/Incident/ChangeState";
 import LabelsElement from "../../../Components/Label/Labels";
 import MonitorsElement from "../../../Components/Monitor/Monitors";
 import OnCallDutyPoliciesView from "../../../Components/OnCallPolicy/OnCallPolicies";
-import EventName from "../../../Utils/EventName";
+import SubscriberNotificationStatus from "../../../Components/StatusPageSubscribers/SubscriberNotificationStatus";
 import PageComponentProps from "../../PageComponentProps";
-import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
 import SortOrder from "Common/Types/BaseDatabase/SortOrder";
 import { Black } from "Common/Types/BrandColors";
 import { LIMIT_PER_PROJECT } from "Common/Types/Database/LimitMax";
@@ -15,7 +12,6 @@ import BadDataException from "Common/Types/Exception/BadDataException";
 import { PromiseVoidFunction } from "Common/Types/FunctionTypes";
 import { JSONObject } from "Common/Types/JSON";
 import ObjectID from "Common/Types/ObjectID";
-import CheckboxViewer from "Common/UI/Components/Checkbox/CheckboxViewer";
 import ErrorMessage from "Common/UI/Components/ErrorMessage/ErrorMessage";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
 import InfoCard from "Common/UI/Components/InfoCard/InfoCard";
@@ -25,7 +21,6 @@ import Pill from "Common/UI/Components/Pill/Pill";
 import ProbeElement from "Common/UI/Components/Probe/Probe";
 import FieldType from "Common/UI/Components/Types/FieldType";
 import BaseAPI from "Common/UI/Utils/API/API";
-import GlobalEvent from "Common/UI/Utils/GlobalEvents";
 import ModelAPI, { ListResult } from "Common/UI/Utils/ModelAPI/ModelAPI";
 import Navigation from "Common/UI/Utils/Navigation";
 import Incident from "Common/Models/DatabaseModels/Incident";
@@ -54,6 +49,10 @@ import HeaderAlert, {
   HeaderAlertType,
 } from "Common/UI/Components/HeaderAlert/HeaderAlert";
 import ColorSwatch from "Common/Types/ColorSwatch";
+import IncidentFeedElement from "../../../Components/Incident/IncidentFeed";
+import Monitor from "Common/Models/DatabaseModels/Monitor";
+import MonitorStatus from "Common/Models/DatabaseModels/MonitorStatus";
+import StatusPageSubscriberNotificationStatus from "Common/Types/StatusPage/StatusPageSubscriberNotificationStatus";
 
 const IncidentView: FunctionComponent<
   PageComponentProps
@@ -142,6 +141,32 @@ const IncidentView: FunctionComponent<
     setIsLoading(false);
   };
 
+  const handleResendNotification: () => Promise<void> =
+    async (): Promise<void> => {
+      try {
+        setIsLoading(true);
+
+        // Reset the notification status to Pending so the worker can pick it up again
+        await ModelAPI.updateById({
+          id: modelId,
+          modelType: Incident,
+          data: {
+            subscriberNotificationStatusOnIncidentCreated:
+              StatusPageSubscriberNotificationStatus.Pending,
+            subscriberNotificationStatusMessage:
+              "Notification queued for resending",
+          },
+        });
+
+        // Refresh the data to show updated status
+        await fetchData();
+      } catch (err) {
+        setError(BaseAPI.getFriendlyMessage(err));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
   useEffect(() => {
     fetchData().catch((err: Error) => {
       setError(BaseAPI.getFriendlyMessage(err));
@@ -153,7 +178,7 @@ const IncidentView: FunctionComponent<
   }
 
   if (error) {
-    return <ErrorMessage error={error} />;
+    return <ErrorMessage message={error} />;
   }
 
   type GetIncidentStateFunction = () => IncidentState | undefined;
@@ -180,23 +205,23 @@ const IncidentView: FunctionComponent<
     const incidentStartTime: Date =
       incidentStateTimeline[0]?.startsAt || new Date();
 
-    const acknowledgeTime: Date | undefined = incidentStateTimeline.find(
-      (timeline: IncidentStateTimeline) => {
+    const acknowledgeTime: Date | undefined = incidentStateTimeline
+      .reverse()
+      .find((timeline: IncidentStateTimeline) => {
         return (
           timeline.incidentStateId?.toString() ===
           getAcknowledgeState()?._id?.toString()
         );
-      },
-    )?.startsAt;
+      })?.startsAt;
 
-    const resolveTime: Date | undefined = incidentStateTimeline.find(
-      (timeline: IncidentStateTimeline) => {
+    const resolveTime: Date | undefined = incidentStateTimeline
+      .reverse()
+      .find((timeline: IncidentStateTimeline) => {
         return (
           timeline.incidentStateId?.toString() ===
           getResolvedState()?._id?.toString()
         );
-      },
-    )?.startsAt;
+      })?.startsAt;
 
     if (!acknowledgeTime && !resolveTime) {
       return (
@@ -264,6 +289,10 @@ const IncidentView: FunctionComponent<
             id: "incident-details",
           },
           {
+            title: "Resources Affected",
+            id: "resources-affected",
+          },
+          {
             title: "Labels",
             id: "labels",
           },
@@ -301,6 +330,39 @@ const IncidentView: FunctionComponent<
           },
           {
             field: {
+              monitors: true,
+            },
+            title: "Monitors affected",
+            stepId: "resources-affected",
+            description: "Select monitors affected by this incident.",
+            fieldType: FormFieldSchemaType.MultiSelectDropdown,
+            dropdownModal: {
+              type: Monitor,
+              labelField: "name",
+              valueField: "_id",
+            },
+            required: false,
+            placeholder: "Monitors affected",
+          },
+          {
+            field: {
+              changeMonitorStatusTo: true,
+            },
+            title: "Change Monitor Status to ",
+            stepId: "resources-affected",
+            description:
+              "This will change the status of all the monitors attached to this incident.",
+            fieldType: FormFieldSchemaType.Dropdown,
+            dropdownModal: {
+              type: MonitorStatus,
+              labelField: "name",
+              valueField: "_id",
+            },
+            required: false,
+            placeholder: "Monitor Status",
+          },
+          {
+            field: {
               labels: true,
             },
             title: "Labels ",
@@ -325,6 +387,7 @@ const IncidentView: FunctionComponent<
               email: true,
               profilePictureId: true,
             },
+            subscriberNotificationStatusMessage: true,
           },
           onBeforeFetch: async (): Promise<JSONObject> => {
             // get ack incident.
@@ -363,11 +426,26 @@ const IncidentView: FunctionComponent<
           fields: [
             {
               field: {
+                incidentNumber: true,
+              },
+              title: "Incident Number",
+              fieldType: FieldType.Element,
+              getElement: (item: Incident): ReactElement => {
+                if (!item.incidentNumber) {
+                  return <>-</>;
+                }
+
+                return <>#{item.incidentNumber}</>;
+              },
+            },
+            {
+              field: {
                 _id: true,
               },
               title: "Incident ID",
               fieldType: FieldType.ObjectID,
             },
+
             {
               field: {
                 title: true,
@@ -480,28 +558,19 @@ const IncidentView: FunctionComponent<
             },
             {
               field: {
-                shouldStatusPageSubscribersBeNotifiedOnIncidentCreated: true,
+                subscriberNotificationStatusOnIncidentCreated: true,
               },
-              title: "Notify Status Page Subscribers",
-              fieldType: FieldType.Boolean,
+              title: "Subscriber Notification Status",
+              fieldType: FieldType.Element,
               getElement: (item: Incident): ReactElement => {
                 return (
-                  <div className="">
-                    <CheckboxViewer
-                      isChecked={
-                        item[
-                          "shouldStatusPageSubscribersBeNotifiedOnIncidentCreated"
-                        ] as boolean
-                      }
-                      text={
-                        item[
-                          "shouldStatusPageSubscribersBeNotifiedOnIncidentCreated"
-                        ]
-                          ? "Subscribers Notified"
-                          : "Subscribers Not Notified"
-                      }
-                    />{" "}
-                  </div>
+                  <SubscriberNotificationStatus
+                    status={item.subscriberNotificationStatusOnIncidentCreated}
+                    subscriberNotificationStatusMessage={
+                      item.subscriberNotificationStatusMessage
+                    }
+                    onResendNotification={handleResendNotification}
+                  />
                 );
               },
             },
@@ -519,63 +588,15 @@ const IncidentView: FunctionComponent<
                 return <LabelsElement labels={item["labels"] || []} />;
               },
             },
-            {
-              field: {
-                _id: true,
-              },
-              title: "Acknowledge Incident",
-              fieldType: FieldType.Element,
-              getElement: (
-                _item: Incident,
-                onBeforeFetchData: JSONObject | undefined,
-              ): ReactElement => {
-                return (
-                  <ChangeIncidentState
-                    incidentId={modelId}
-                    incidentTimeline={
-                      onBeforeFetchData
-                        ? (onBeforeFetchData["data"] as Array<BaseModel>)
-                        : []
-                    }
-                    incidentType={IncidentType.Ack}
-                    onActionComplete={async () => {
-                      await fetchData();
-                    }}
-                  />
-                );
-              },
-            },
-            {
-              field: {
-                _id: true,
-              },
-              title: "Resolve Incident",
-              fieldType: FieldType.Element,
-              getElement: (
-                _item: Incident,
-                onBeforeFetchData: JSONObject | undefined,
-              ): ReactElement => {
-                return (
-                  <ChangeIncidentState
-                    incidentId={modelId}
-                    incidentTimeline={
-                      onBeforeFetchData
-                        ? (onBeforeFetchData["data"] as Array<BaseModel>)
-                        : []
-                    }
-                    incidentType={IncidentType.Resolve}
-                    onActionComplete={async () => {
-                      GlobalEvent.dispatchEvent(
-                        EventName.ACTIVE_INCIDENTS_COUNT_REFRESH,
-                      );
-                      await fetchData();
-                    }}
-                  />
-                );
-              },
-            },
           ],
           modelId: modelId,
+        }}
+      />
+
+      <ChangeIncidentState
+        incidentId={modelId}
+        onActionComplete={async () => {
+          await fetchData();
         }}
       />
 
@@ -591,109 +612,6 @@ const IncidentView: FunctionComponent<
           className="w-1/2"
         />
       </div>
-
-      <CardModelDetail
-        name="Incident Description"
-        cardProps={{
-          title: "Incident Description",
-          description:
-            "Description of this incident. This is visible on Status Page and is in markdown format.",
-        }}
-        editButtonText="Edit Incident Description"
-        isEditable={true}
-        formFields={[
-          {
-            field: {
-              description: true,
-            },
-            title: "Description",
-
-            fieldType: FormFieldSchemaType.Markdown,
-            required: false,
-            placeholder: "Description",
-          },
-        ]}
-        modelDetailProps={{
-          showDetailsInNumberOfColumns: 1,
-          modelType: Incident,
-          id: "model-detail-incident-description",
-          fields: [
-            {
-              field: {
-                description: true,
-              },
-              title: "Description",
-              fieldType: FieldType.Markdown,
-            },
-          ],
-          modelId: modelId,
-        }}
-      />
-
-      <CardModelDetail
-        name="Root Cause"
-        cardProps={{
-          title: "Root Cause",
-          description:
-            "Why did this incident happen? Here is the root cause of this incident.",
-        }}
-        isEditable={false}
-        modelDetailProps={{
-          showDetailsInNumberOfColumns: 1,
-          modelType: Incident,
-          id: "model-detail-incident-root-cause",
-          fields: [
-            {
-              field: {
-                rootCause: true,
-              },
-              title: "",
-              placeholder: "No root cause identified for this incident.",
-              fieldType: FieldType.Markdown,
-            },
-          ],
-          modelId: modelId,
-        }}
-      />
-
-      <CardModelDetail
-        name="Remediation Notes"
-        cardProps={{
-          title: "Remediation Notes",
-          description:
-            "What steps should be taken to resolve this incident? Here are the remediation notes.",
-        }}
-        editButtonText="Edit Remediation Notes"
-        isEditable={true}
-        formFields={[
-          {
-            field: {
-              remediationNotes: true,
-            },
-            title: "Remediation Notes",
-
-            fieldType: FormFieldSchemaType.Markdown,
-            required: true,
-            placeholder: "Remediation Notes",
-          },
-        ]}
-        modelDetailProps={{
-          showDetailsInNumberOfColumns: 1,
-          modelType: Incident,
-          id: "model-detail-incident-remediation-notes",
-          fields: [
-            {
-              field: {
-                remediationNotes: true,
-              },
-              title: "Remediation Notes",
-              placeholder: "No remediation notes added for this incident.",
-              fieldType: FieldType.Markdown,
-            },
-          ],
-          modelId: modelId,
-        }}
-      />
 
       {telemetryQuery &&
         telemetryQuery.telemetryType === TelemetryType.Log &&
@@ -753,6 +671,8 @@ const IncidentView: FunctionComponent<
             />
           </Card>
         )}
+
+      <IncidentFeedElement incidentId={modelId} />
     </Fragment>
   );
 };

@@ -2,10 +2,11 @@
 //
 import { ExpressRouter } from "../../Utils/Express";
 import ComponentCode, { RunOptions, RunReturnType } from "./ComponentCode";
-import BadDataException from "Common/Types/Exception/BadDataException";
-import { JSONObject } from "Common/Types/JSON";
-import ObjectID from "Common/Types/ObjectID";
-import { Port } from "Common/Types/Workflow/Component";
+import BadDataException from "../../../Types/Exception/BadDataException";
+import { JSONObject } from "../../../Types/JSON";
+import ObjectID from "../../../Types/ObjectID";
+import { Port } from "../../../Types/Workflow/Component";
+import CaptureSpan from "../../Utils/Telemetry/CaptureSpan";
 
 export interface ExecuteWorkflowType {
   workflowId: ObjectID;
@@ -45,6 +46,7 @@ export default class TriggerCode extends ComponentCode {
     super();
   }
 
+  @CaptureSpan()
   public override async run(
     args: JSONObject,
     options: RunOptions,
@@ -67,6 +69,7 @@ export default class TriggerCode extends ComponentCode {
     };
   }
 
+  @CaptureSpan()
   public async setupComponent(props: InitProps): Promise<void> {
     this.executeWorkflow = props.executeWorkflow;
     this.scheduleWorkflow = props.scheduleWorkflow;
@@ -75,10 +78,12 @@ export default class TriggerCode extends ComponentCode {
     return await this.init(props);
   }
 
+  @CaptureSpan()
   public async init(_props: InitProps): Promise<void> {
     return await Promise.resolve();
   }
 
+  @CaptureSpan()
   public async update(_props: UpdateProps): Promise<void> {
     return await Promise.resolve();
   }

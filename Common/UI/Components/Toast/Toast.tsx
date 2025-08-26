@@ -1,6 +1,6 @@
 import React, { FunctionComponent, ReactElement, useState } from "react";
 import Icon from "../Icon/Icon";
-import IconProp from "Common/Types/Icon/IconProp";
+import IconProp from "../../../Types/Icon/IconProp";
 
 export enum ToastType {
   DANGER,
@@ -77,13 +77,13 @@ const Component: FunctionComponent<ComponentProps> = (
                 </div>
                 <div className="ml-3 w-0 flex-1 pt-0.5">
                   <p
-                    data-testId="title"
+                    data-testid="title"
                     className="text-sm font-medium text-gray-900"
                   >
                     {props.title}
                   </p>
                   <p
-                    data-testId="description"
+                    data-testid="description"
                     className="mt-1 text-sm text-gray-500"
                   >
                     {props.description}

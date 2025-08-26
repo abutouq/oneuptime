@@ -57,6 +57,7 @@ export default class MonitorUtil {
         monitorType: monitorTest.monitorType!,
         monitorId: monitorTest.id!,
         monitorStep: monitorStep,
+        projectId: monitorTest.projectId!,
       });
 
       if (result) {
@@ -105,6 +106,7 @@ export default class MonitorUtil {
         monitorType: monitor.monitorType!,
         monitorId: monitor.id!,
         monitorStep: monitorStep,
+        projectId: monitor.projectId!,
       });
 
       if (result) {
@@ -172,6 +174,7 @@ export default class MonitorUtil {
     monitorStep: MonitorStep;
     monitorType: MonitorType;
     monitorId: ObjectID;
+    projectId: ObjectID;
   }): Promise<ProbeMonitorResponse | null> {
     const monitorStep: MonitorStep = data.monitorStep;
     const monitorType: MonitorType = data.monitorType;
@@ -179,6 +182,7 @@ export default class MonitorUtil {
 
     const result: ProbeMonitorResponse = {
       monitorStepId: monitorStep.id,
+      projectId: data.projectId,
       monitorId: monitorId!,
       probeId: ProbeUtil.getProbeId(),
       failureCause: "",
@@ -214,6 +218,7 @@ export default class MonitorUtil {
         }
 
         result.isOnline = response.isOnline;
+        result.isTimeout = response.isTimeout;
         result.responseTimeInMs = response.responseTimeInMS?.toNumber();
         result.failureCause = response.failureCause;
       } else {
@@ -231,6 +236,7 @@ export default class MonitorUtil {
         }
 
         result.isOnline = response.isOnline;
+        result.isTimeout = response.isTimeout;
         result.responseTimeInMs = response.responseTimeInMS?.toNumber();
         result.failureCause = response.failureCause;
       }
@@ -270,6 +276,7 @@ export default class MonitorUtil {
       result.isOnline = response.isOnline;
       result.responseTimeInMs = response.responseTimeInMS?.toNumber();
       result.failureCause = response.failureCause;
+      result.isTimeout = response.isTimeout;
     }
 
     if (monitorType === MonitorType.SyntheticMonitor) {
@@ -345,6 +352,7 @@ export default class MonitorUtil {
 
       result.isOnline = response.isOnline;
       result.failureCause = response.failureCause;
+      result.isTimeout = response.isTimeout;
       result.sslResponse = {
         ...response,
       };
@@ -378,6 +386,7 @@ export default class MonitorUtil {
       result.responseHeaders = response.responseHeaders;
       result.responseCode = response.statusCode;
       result.failureCause = response.failureCause;
+      result.isTimeout = response.isTimeout;
     }
 
     if (monitorType === MonitorType.API) {
@@ -415,12 +424,16 @@ export default class MonitorUtil {
       }
 
       result.isOnline = response.isOnline;
+      result.isTimeout = response.isTimeout;
       result.responseTimeInMs = response.responseTimeInMS?.toNumber();
       result.responseBody = response.responseBody;
       result.responseHeaders = response.responseHeaders;
       result.responseCode = response.statusCode;
       result.failureCause = response.failureCause;
     }
+
+    // update the monitoredAt time to the current time.
+    result.monitoredAt = OneUptimeDate.getCurrentDate();
 
     return result;
   }

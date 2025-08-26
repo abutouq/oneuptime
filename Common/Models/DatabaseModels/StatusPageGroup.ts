@@ -263,6 +263,7 @@ export default class StatusPageGroup extends BaseModel {
     type: TableColumnType.Slug,
     title: "Slug",
     description: "Friendly globally unique name for your object",
+    computed: true,
   })
   @Column({
     nullable: false,
@@ -426,6 +427,7 @@ export default class StatusPageGroup extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Expanded by Default",
     description: "Is this group expanded by default on Status Page?",
+    defaultValue: true,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -442,6 +444,7 @@ export default class StatusPageGroup extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -503,6 +506,7 @@ export default class StatusPageGroup extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Show current status",
     description: "Show current status like offline, operational or degraded.",
+    defaultValue: true,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -535,6 +539,7 @@ export default class StatusPageGroup extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Show Uptime Percent",
     description: "Show uptime percent of this group for the last 90 days",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,

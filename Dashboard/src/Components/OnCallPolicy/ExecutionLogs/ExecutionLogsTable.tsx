@@ -1,6 +1,5 @@
 import IncidentView from "../../../Components/Incident/Incident";
 import UserElement from "../../../Components/User/User";
-import DashboardNavigation from "../../../Utils/Navigation";
 import OnCallPolicyView from "../OnCallPolicy";
 import { Green, Red, Yellow } from "Common/Types/BrandColors";
 import { ErrorFunction, VoidFunction } from "Common/Types/FunctionTypes";
@@ -14,15 +13,21 @@ import ModelTable from "Common/UI/Components/ModelTable/ModelTable";
 import Pill from "Common/UI/Components/Pill/Pill";
 import FieldType from "Common/UI/Components/Types/FieldType";
 import Query from "Common/Types/BaseDatabase/Query";
+import ProjectUtil from "Common/UI/Utils/Project";
 import DropdownUtil from "Common/UI/Utils/Dropdown";
-import Navigation from "Common/UI/Utils/Navigation";
 import Incident from "Common/Models/DatabaseModels/Incident";
 import OnCallDutyPolicy from "Common/Models/DatabaseModels/OnCallDutyPolicy";
 import OnCallDutyPolicyExecutionLog from "Common/Models/DatabaseModels/OnCallDutyPolicyExecutionLog";
 import React, { FunctionComponent, ReactElement, useState } from "react";
+import Alert from "Common/Models/DatabaseModels/Alert";
+import AlertView from "../../../Components/Alert/Alert";
+import RouteMap, { RouteUtil } from "../../../Utils/RouteMap";
+import PageMap from "../../../Utils/PageMap";
 
 export interface ComponentProps {
   onCallDutyPolicyId?: ObjectID | undefined; // if this is undefined. then it'll show logs for all policies.
+  incidentId?: ObjectID | undefined;
+  alertId?: ObjectID | undefined;
 }
 
 const ExecutionLogsTable: FunctionComponent<ComponentProps> = (
@@ -33,11 +38,19 @@ const ExecutionLogsTable: FunctionComponent<ComponentProps> = (
   const [statusMessage, setStatusMessage] = useState<string>("");
 
   const query: Query<OnCallDutyPolicyExecutionLog> = {
-    projectId: DashboardNavigation.getProjectId()!,
+    projectId: ProjectUtil.getCurrentProjectId()!,
   };
 
   if (props.onCallDutyPolicyId) {
     query.onCallDutyPolicyId = props.onCallDutyPolicyId.toString();
+  }
+
+  if (props.incidentId) {
+    query.triggeredByIncidentId = props.incidentId;
+  }
+
+  if (props.alertId) {
+    query.triggeredByAlertId = props.alertId;
   }
 
   let columns: Columns<OnCallDutyPolicyExecutionLog> = [];
@@ -76,7 +89,7 @@ const ExecutionLogsTable: FunctionComponent<ComponentProps> = (
         },
         filterEntityType: OnCallDutyPolicy,
         filterQuery: {
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         },
         filterDropdownField: {
           label: "name",
@@ -113,15 +126,30 @@ const ExecutionLogsTable: FunctionComponent<ComponentProps> = (
           title: true,
         },
       },
-      title: "Triggered By Incident",
+      title: "Triggered By",
       type: FieldType.Element,
       getElement: (item: OnCallDutyPolicyExecutionLog): ReactElement => {
-        if (item["triggeredByIncident"]) {
+        if (item.triggeredByIncident) {
           return (
-            <IncidentView incident={item["triggeredByIncident"] as Incident} />
+            <div>
+              <p>Incident:</p>
+              <IncidentView
+                incident={item["triggeredByIncident"] as Incident}
+              />
+            </div>
           );
         }
-        return <p>No incident.</p>;
+
+        if (item.triggeredByAlert) {
+          return (
+            <div>
+              <p>Alert:</p>
+              <AlertView alert={item["triggeredByAlert"] as Alert} />
+            </div>
+          );
+        }
+
+        return <p>-</p>;
       },
     },
     {
@@ -179,6 +207,7 @@ const ExecutionLogsTable: FunctionComponent<ComponentProps> = (
     <>
       <ModelTable<OnCallDutyPolicyExecutionLog>
         modelType={OnCallDutyPolicyExecutionLog}
+        userPreferencesKey="on-call-policy-execution-logs-table"
         query={query}
         id="execution-logs-table"
         name="On-Call Policy > Logs"
@@ -194,9 +223,19 @@ const ExecutionLogsTable: FunctionComponent<ComponentProps> = (
         selectMoreFields={{
           statusMessage: true,
           onCallDutyPolicyId: true,
+          triggeredByAlert: {
+            title: true,
+          },
         }}
         noItemsMessage={"This policy has not executed so far."}
-        viewPageRoute={Navigation.getCurrentRoute()}
+        onViewPage={async (item: OnCallDutyPolicyExecutionLog) => {
+          return RouteUtil.populateRouteParams(
+            RouteMap[PageMap.ON_CALL_DUTY_EXECUTION_LOGS_TIMELINE]!,
+            {
+              modelId: item._id!.toString(),
+            },
+          );
+        }}
         showRefreshButton={true}
         showViewIdButton={true}
         filters={filters}

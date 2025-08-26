@@ -326,6 +326,7 @@ export default class TeamMember extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -384,6 +385,7 @@ export default class TeamMember extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Has Accepted Invitation",
     description: "Has this team member accepted invitation",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,

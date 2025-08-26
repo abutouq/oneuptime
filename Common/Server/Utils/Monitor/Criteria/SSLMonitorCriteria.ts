@@ -1,16 +1,19 @@
 import DataToProcess from "../DataToProcess";
 import CompareCriteria from "./CompareCriteria";
-import OneUptimeDate from "Common/Types/Date";
+import OneUptimeDate from "../../../../Types/Date";
 import {
   CheckOn,
   CriteriaFilter,
   FilterType,
-} from "Common/Types/Monitor/CriteriaFilter";
-import SslMonitorResponse from "Common/Types/Monitor/SSLMonitor/SslMonitorResponse";
-import ProbeMonitorResponse from "Common/Types/Probe/ProbeMonitorResponse";
+} from "../../../../Types/Monitor/CriteriaFilter";
+import SslMonitorResponse from "../../../../Types/Monitor/SSLMonitor/SslMonitorResponse";
+import ProbeMonitorResponse from "../../../../Types/Probe/ProbeMonitorResponse";
 import EvaluateOverTime from "./EvaluateOverTime";
+import CaptureSpan from "../../Telemetry/CaptureSpan";
+import logger from "../../Logger";
 
 export default class ServerMonitorCriteria {
+  @CaptureSpan()
   public static async isMonitorInstanceCriteriaFilterMet(input: {
     dataToProcess: DataToProcess;
     criteriaFilter: CriteriaFilter;
@@ -31,18 +34,23 @@ export default class ServerMonitorCriteria {
       input.criteriaFilter.eveluateOverTime &&
       input.criteriaFilter.evaluateOverTimeOptions
     ) {
-      overTimeValue = await EvaluateOverTime.getValueOverTime({
-        monitorId: input.dataToProcess.monitorId!,
-        evaluateOverTimeOptions: input.criteriaFilter.evaluateOverTimeOptions,
-        metricType: input.criteriaFilter.checkOn,
-      });
+      try {
+        overTimeValue = await EvaluateOverTime.getValueOverTime({
+          projectId: (input.dataToProcess as ProbeMonitorResponse).projectId,
+          monitorId: input.dataToProcess.monitorId!,
+          evaluateOverTimeOptions: input.criteriaFilter.evaluateOverTimeOptions,
+          metricType: input.criteriaFilter.checkOn,
+        });
 
-      if (Array.isArray(overTimeValue) && overTimeValue.length === 0) {
-        return null;
-      }
-
-      if (overTimeValue === undefined) {
-        return null;
+        if (Array.isArray(overTimeValue) && overTimeValue.length === 0) {
+          overTimeValue = undefined;
+        }
+      } catch (err) {
+        logger.error(
+          `Error in getting over time value for ${input.criteriaFilter.checkOn}`,
+        );
+        logger.error(err);
+        overTimeValue = undefined;
       }
     }
 
@@ -53,6 +61,18 @@ export default class ServerMonitorCriteria {
 
       return CompareCriteria.compareCriteriaBoolean({
         value: currentIsOnline,
+        criteriaFilter: input.criteriaFilter,
+      });
+    }
+
+    // timeout.
+    if (input.criteriaFilter.checkOn === CheckOn.IsRequestTimeout) {
+      const currentIsTimeout: boolean | Array<boolean> =
+        (overTimeValue as Array<boolean>) ||
+        (input.dataToProcess as ProbeMonitorResponse).isTimeout;
+
+      return CompareCriteria.compareCriteriaBoolean({
+        value: currentIsTimeout,
         criteriaFilter: input.criteriaFilter,
       });
     }

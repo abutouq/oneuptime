@@ -11,12 +11,9 @@ import LogSeverity from "../../Types/Log/LogSeverity";
 export default class Log extends AnalyticsBaseModel {
   public constructor() {
     super({
-      tableName: "LogTelemetry",
+      tableName: "LogItem",
       tableEngine: AnalyticsTableEngine.MergeTree,
       singularName: "Log",
-      enableRealtimeEventsOn: {
-        create: true,
-      },
       accessControl: {
         read: [
           Permission.ProjectOwner,
@@ -278,8 +275,9 @@ export default class Log extends AnalyticsBaseModel {
           },
         }),
       ],
-      sortKeys: ["projectId", "serviceId", "time"],
-      primaryKeys: ["projectId", "serviceId"],
+      sortKeys: ["projectId", "time", "serviceId"],
+      primaryKeys: ["projectId", "time", "serviceId"],
+      partitionKey: "sipHash64(projectId) % 16",
     });
   }
 

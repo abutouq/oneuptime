@@ -1,4 +1,4 @@
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageComponentProps from "../PageComponentProps";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
 import ModelTable from "Common/UI/Components/ModelTable/ModelTable";
@@ -13,10 +13,11 @@ const APIKeys: FunctionComponent<PageComponentProps> = (): ReactElement => {
       <ModelTable<ApiKey>
         modelType={ApiKey}
         query={{
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         id="api-keys-table"
         name="Settings > API Keys"
+        userPreferencesKey="api-keys-table"
         isDeleteable={false}
         isEditable={false}
         showViewIdButton={false}
@@ -102,7 +103,7 @@ const APIKeys: FunctionComponent<PageComponentProps> = (): ReactElement => {
             },
             noValueMessage: "-",
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
           {
             field: {

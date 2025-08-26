@@ -4,7 +4,6 @@ import Hostname from "Common/Types/API/Hostname";
 import Protocol from "Common/Types/API/Protocol";
 import URL from "Common/Types/API/URL";
 import LIMIT_MAX, { LIMIT_PER_PROJECT } from "Common/Types/Database/LimitMax";
-import OneUptimeDate from "Common/Types/Date";
 import Dictionary from "Common/Types/Dictionary";
 import EmailTemplateType from "Common/Types/Email/EmailTemplateType";
 import ObjectID from "Common/Types/ObjectID";
@@ -18,7 +17,9 @@ import ProjectCallSMSConfigService from "Common/Server/Services/ProjectCallSMSCo
 import ProjectSmtpConfigService from "Common/Server/Services/ProjectSmtpConfigService";
 import SmsService from "Common/Server/Services/SmsService";
 import StatusPageResourceService from "Common/Server/Services/StatusPageResourceService";
-import StatusPageService from "Common/Server/Services/StatusPageService";
+import StatusPageService, {
+  Service as StatusPageServiceType,
+} from "Common/Server/Services/StatusPageService";
 import StatusPageSubscriberService from "Common/Server/Services/StatusPageSubscriberService";
 import QueryHelper from "Common/Server/Types/Database/QueryHelper";
 import Markdown, { MarkdownContentType } from "Common/Server/Types/Markdown";
@@ -30,6 +31,12 @@ import StatusPage from "Common/Models/DatabaseModels/StatusPage";
 import StatusPageResource from "Common/Models/DatabaseModels/StatusPageResource";
 import StatusPageSubscriber from "Common/Models/DatabaseModels/StatusPageSubscriber";
 import StatusPageEventType from "Common/Types/StatusPage/StatusPageEventType";
+import StatusPageSubscriberNotificationStatus from "Common/Types/StatusPage/StatusPageSubscriberNotificationStatus";
+import IncidentFeedService from "Common/Server/Services/IncidentFeedService";
+import { IncidentFeedEventType } from "Common/Models/DatabaseModels/IncidentFeed";
+import { Blue500 } from "Common/Types/BrandColors";
+import SlackUtil from "Common/Server/Utils/Workspace/Slack/Slack";
+import MicrosoftTeamsUtil from "Common/Server/Utils/Workspace/MicrosoftTeams/MicrosoftTeams";
 
 RunCron(
   "IncidentPublicNote:SendNotificationToSubscribers",
@@ -43,9 +50,9 @@ RunCron(
     const incidentPublicNoteNotes: Array<IncidentPublicNote> =
       await IncidentPublicNoteService.findBy({
         query: {
-          isStatusPageSubscribersNotifiedOnNoteCreated: false,
+          subscriberNotificationStatusOnNoteCreated:
+            StatusPageSubscriberNotificationStatus.Pending,
           shouldStatusPageSubscribersBeNotifiedOnNoteCreated: true,
-          createdAt: QueryHelper.lessThan(OneUptimeDate.getCurrentDate()),
         },
         props: {
           isRoot: true,
@@ -56,151 +63,259 @@ RunCron(
           _id: true,
           note: true,
           incidentId: true,
+          projectId: true,
         },
       });
+
+    logger.debug(
+      `Found ${incidentPublicNoteNotes.length} incident public note(s) to notify subscribers for.`,
+    );
 
     for (const incidentPublicNote of incidentPublicNoteNotes) {
-      if (!incidentPublicNote.incidentId) {
-        continue; // skip if incidentId is not set
-      }
+      try {
+        logger.debug(
+          `Processing incident public note ${incidentPublicNote.id}.`,
+        );
+        if (!incidentPublicNote.incidentId) {
+          logger.debug(
+            `Incident public note ${incidentPublicNote.id} has no incidentId; skipping.`,
+          );
+          continue; // skip if incidentId is not set
+        }
 
-      // get all scheduled events of all the projects.
-      const incident: Incident | null = await IncidentService.findOneById({
-        id: incidentPublicNote.incidentId!,
-        props: {
-          isRoot: true,
-        },
-        select: {
-          _id: true,
-          title: true,
-          description: true,
-          monitors: {
+        // get all scheduled events of all the projects.
+        const incident: Incident | null = await IncidentService.findOneById({
+          id: incidentPublicNote.incidentId!,
+          props: {
+            isRoot: true,
+          },
+          select: {
             _id: true,
+            title: true,
+            description: true,
+            projectId: true,
+            monitors: {
+              _id: true,
+            },
+            incidentSeverity: {
+              name: true,
+            },
+            isVisibleOnStatusPage: true,
+            incidentNumber: true,
           },
-          incidentSeverity: {
-            name: true,
-          },
-        },
-      });
+        });
 
-      if (!incident) {
-        continue;
-      }
+        if (!incident) {
+          logger.debug(
+            `Incident ${incidentPublicNote.incidentId} not found; marking public note ${incidentPublicNote.id} as Skipped.`,
+          );
+          await IncidentPublicNoteService.updateOneById({
+            id: incidentPublicNote.id!,
+            data: {
+              subscriberNotificationStatusOnNoteCreated:
+                StatusPageSubscriberNotificationStatus.Skipped,
+              subscriberNotificationStatusMessage:
+                "Related incident not found. Skipping notifications to subscribers.",
+            },
+            props: {
+              isRoot: true,
+              ignoreHooks: true,
+            },
+          });
+          continue;
+        }
 
-      if (!incident.monitors || incident.monitors.length === 0) {
-        continue;
-      }
+        if (!incident.monitors || incident.monitors.length === 0) {
+          logger.debug(
+            `Incident ${incident.id} has no monitors; marking public note ${incidentPublicNote.id} as Skipped.`,
+          );
+          await IncidentPublicNoteService.updateOneById({
+            id: incidentPublicNote.id!,
+            data: {
+              subscriberNotificationStatusOnNoteCreated:
+                StatusPageSubscriberNotificationStatus.Skipped,
+              subscriberNotificationStatusMessage:
+                "No monitors are attached to the related incident. Skipping notifications.",
+            },
+            props: {
+              isRoot: true,
+              ignoreHooks: true,
+            },
+          });
+          continue;
+        }
 
-      await IncidentPublicNoteService.updateOneById({
-        id: incidentPublicNote.id!,
-        data: {
-          isStatusPageSubscribersNotifiedOnNoteCreated: true,
-        },
-        props: {
-          isRoot: true,
-          ignoreHooks: true,
-        },
-      });
-
-      // get status page resources from monitors.
-
-      const statusPageResources: Array<StatusPageResource> =
-        await StatusPageResourceService.findBy({
-          query: {
-            monitorId: QueryHelper.any(
-              incident.monitors
-                .filter((m: Monitor) => {
-                  return m._id;
-                })
-                .map((m: Monitor) => {
-                  return new ObjectID(m._id!);
-                }),
-            ),
+        // Set status to InProgress
+        await IncidentPublicNoteService.updateOneById({
+          id: incidentPublicNote.id!,
+          data: {
+            subscriberNotificationStatusOnNoteCreated:
+              StatusPageSubscriberNotificationStatus.InProgress,
           },
           props: {
             isRoot: true,
             ignoreHooks: true,
           },
-          skip: 0,
-          limit: LIMIT_PER_PROJECT,
-          select: {
-            _id: true,
-            displayName: true,
-            statusPageId: true,
-          },
         });
-
-      const statusPageToResources: Dictionary<Array<StatusPageResource>> = {};
-
-      for (const resource of statusPageResources) {
-        if (!resource.statusPageId) {
-          continue;
-        }
-
-        if (!statusPageToResources[resource.statusPageId?.toString()]) {
-          statusPageToResources[resource.statusPageId?.toString()] = [];
-        }
-
-        statusPageToResources[resource.statusPageId?.toString()]?.push(
-          resource,
-        );
-      }
-
-      const statusPages: Array<StatusPage> =
-        await StatusPageSubscriberService.getStatusPagesToSendNotification(
-          Object.keys(statusPageToResources).map((i: string) => {
-            return new ObjectID(i);
-          }),
+        logger.debug(
+          `Incident public note ${incidentPublicNote.id} status set to InProgress for subscriber notifications.`,
         );
 
-      for (const statuspage of statusPages) {
-        if (!statuspage.id) {
-          continue;
-        }
-
-        const subscribers: Array<StatusPageSubscriber> =
-          await StatusPageSubscriberService.getSubscribersByStatusPage(
-            statuspage.id!,
-            {
+        if (!incident.isVisibleOnStatusPage) {
+          // Set status to Skipped for non-visible incidents
+          logger.debug(
+            `Incident ${incident.id} is not visible on status page; marking public note ${incidentPublicNote.id} as Skipped.`,
+          );
+          await IncidentPublicNoteService.updateOneById({
+            id: incidentPublicNote.id!,
+            data: {
+              subscriberNotificationStatusOnNoteCreated:
+                StatusPageSubscriberNotificationStatus.Skipped,
+              subscriberNotificationStatusMessage:
+                "Notifications skipped as incident is not visible on status page.",
+            },
+            props: {
               isRoot: true,
               ignoreHooks: true,
             },
+          });
+          continue;
+        }
+
+        // get status page resources from monitors.
+
+        const statusPageResources: Array<StatusPageResource> =
+          await StatusPageResourceService.findBy({
+            query: {
+              monitorId: QueryHelper.any(
+                incident.monitors
+                  .filter((m: Monitor) => {
+                    return m._id;
+                  })
+                  .map((m: Monitor) => {
+                    return new ObjectID(m._id!);
+                  }),
+              ),
+            },
+            props: {
+              isRoot: true,
+              ignoreHooks: true,
+            },
+            skip: 0,
+            limit: LIMIT_PER_PROJECT,
+            select: {
+              _id: true,
+              displayName: true,
+              statusPageId: true,
+            },
+          });
+
+        logger.debug(
+          `Found ${statusPageResources.length} status page resource(s) for incident ${incident.id}.`,
+        );
+
+        const statusPageToResources: Dictionary<Array<StatusPageResource>> = {};
+
+        for (const resource of statusPageResources) {
+          if (!resource.statusPageId) {
+            continue;
+          }
+
+          if (!statusPageToResources[resource.statusPageId?.toString()]) {
+            statusPageToResources[resource.statusPageId?.toString()] = [];
+          }
+
+          statusPageToResources[resource.statusPageId?.toString()]?.push(
+            resource,
+          );
+        }
+
+        logger.debug(
+          `Incident ${incident.id} maps to ${Object.keys(statusPageToResources).length} status page(s) for public note notifications.`,
+        );
+
+        const statusPages: Array<StatusPage> =
+          await StatusPageSubscriberService.getStatusPagesToSendNotification(
+            Object.keys(statusPageToResources).map((i: string) => {
+              return new ObjectID(i);
+            }),
           );
 
-        const statusPageURL: string = await StatusPageService.getStatusPageURL(
-          statuspage.id,
-        );
-        const statusPageName: string =
-          statuspage.pageTitle || statuspage.name || "Status Page";
-
-        // Send email to Email subscribers.
-
-        for (const subscriber of subscribers) {
-          if (!subscriber._id) {
+        for (const statuspage of statusPages) {
+          logger.debug("Encountered a status page without an id; skipping.");
+          if (!statuspage.id) {
             continue;
           }
 
-          const shouldNotifySubscriber: boolean =
-            StatusPageSubscriberService.shouldSendNotification({
-              subscriber: subscriber,
-              statusPageResources: statusPageToResources[statuspage._id!] || [],
-              statusPage: statuspage,
-              eventType: StatusPageEventType.Incident,
-            });
-
-          if (!shouldNotifySubscriber) {
-            continue;
+          logger.debug(
+            `Status page ${statuspage.id} hides incidents; skipping.`,
+          );
+          if (!statuspage.showIncidentsOnStatusPage) {
+            continue; // Do not send notification to subscribers if incidents are not visible on status page.
           }
 
-          const unsubscribeUrl: string =
-            StatusPageSubscriberService.getUnsubscribeLink(
-              URL.fromString(statusPageURL),
-              subscriber.id!,
-            ).toString();
+          const subscribers: Array<StatusPageSubscriber> =
+            await StatusPageSubscriberService.getSubscribersByStatusPage(
+              statuspage.id!,
+              {
+                isRoot: true,
+                ignoreHooks: true,
+              },
+            );
 
-          if (subscriber.subscriberPhone) {
-            const sms: SMS = {
-              message: `
+          const statusPageURL: string =
+            await StatusPageService.getStatusPageURL(statuspage.id);
+          const statusPageName: string =
+            statuspage.pageTitle || statuspage.name || "Status Page";
+
+          logger.debug(
+            `Status page ${statuspage.id} (${statusPageName}) has ${subscribers.length} subscriber(s) for public note ${incidentPublicNote.id}.`,
+          );
+
+          // Send email to Email subscribers.
+
+          for (const subscriber of subscribers) {
+            if (!subscriber._id) {
+              logger.debug(
+                "Encountered a subscriber without an _id; skipping.",
+              );
+              continue;
+            }
+
+            const shouldNotifySubscriber: boolean =
+              StatusPageSubscriberService.shouldSendNotification({
+                subscriber: subscriber,
+                statusPageResources:
+                  statusPageToResources[statuspage._id!] || [],
+                statusPage: statuspage,
+                eventType: StatusPageEventType.Incident,
+              });
+
+            if (!shouldNotifySubscriber) {
+              logger.debug(
+                `Skipping subscriber ${subscriber._id} based on preferences for public note ${incidentPublicNote.id}.`,
+              );
+              continue;
+            }
+
+            const unsubscribeUrl: string =
+              StatusPageSubscriberService.getUnsubscribeLink(
+                URL.fromString(statusPageURL),
+                subscriber.id!,
+              ).toString();
+
+            logger.debug(
+              `Prepared unsubscribe link for subscriber ${subscriber._id} for public note ${incidentPublicNote.id}.`,
+            );
+
+            if (subscriber.subscriberPhone) {
+              const phoneStr: string = subscriber.subscriberPhone.toString();
+              const phoneMasked: string = `${phoneStr.slice(0, 2)}******${phoneStr.slice(-2)}`;
+              logger.debug(
+                `Queueing SMS notification to subscriber ${subscriber._id} at ${phoneMasked} for public note ${incidentPublicNote.id}.`,
+              );
+              const sms: SMS = {
+                message: `
                             Incident Update - ${statusPageName} 
                             
                             New note has been added to an incident.
@@ -211,67 +326,205 @@ RunCron(
 
                             To update notification preferences or unsubscribe, visit ${unsubscribeUrl}
                             `,
-              to: subscriber.subscriberPhone,
-            };
+                to: subscriber.subscriberPhone,
+              };
 
-            // send sms here.
-            SmsService.sendSms(sms, {
-              projectId: statuspage.projectId,
-              customTwilioConfig: ProjectCallSMSConfigService.toTwilioConfig(
-                statuspage.callSmsConfig,
-              ),
-            }).catch((err: Error) => {
-              logger.error(err);
-            });
-          }
-
-          if (subscriber.subscriberEmail) {
-            // send email here.
-
-            MailService.sendMail(
-              {
-                toEmail: subscriber.subscriberEmail,
-                templateType: EmailTemplateType.SubscriberIncidentNoteCreated,
-                vars: {
-                  note: await Markdown.convertToHTML(
-                    incidentPublicNote.note!,
-                    MarkdownContentType.Email,
-                  ),
-                  statusPageName: statusPageName,
-                  statusPageUrl: statusPageURL,
-                  logoUrl: statuspage.logoFileId
-                    ? new URL(httpProtocol, host)
-                        .addRoute(FileRoute)
-                        .addRoute("/image/" + statuspage.logoFileId)
-                        .toString()
-                    : "",
-                  isPublicStatusPage: statuspage.isPublicStatusPage
-                    ? "true"
-                    : "false",
-                  resourcesAffected:
-                    statusPageToResources[statuspage._id!]
-                      ?.map((r: StatusPageResource) => {
-                        return r.displayName;
-                      })
-                      .join(", ") || "None",
-                  incidentSeverity: incident.incidentSeverity?.name || " - ",
-                  incidentTitle: incident.title || "",
-                  incidentDescription: incident.description || "",
-                  unsubscribeUrl: unsubscribeUrl,
-                },
-                subject: "[Incident Update] " + statusPageName,
-              },
-              {
-                mailServer: ProjectSmtpConfigService.toEmailServer(
-                  statuspage.smtpConfig,
-                ),
+              // send sms here.
+              SmsService.sendSms(sms, {
                 projectId: statuspage.projectId,
-              },
-            ).catch((err: Error) => {
-              logger.error(err);
-            });
+                customTwilioConfig: ProjectCallSMSConfigService.toTwilioConfig(
+                  statuspage.callSmsConfig,
+                ),
+                statusPageId: statuspage.id!,
+                incidentId: incident.id!,
+              }).catch((err: Error) => {
+                logger.error(err);
+              });
+            }
+
+            if (subscriber.subscriberEmail) {
+              // send email here.
+              logger.debug(
+                `Queueing email notification to subscriber ${subscriber._id} at ${subscriber.subscriberEmail} for public note ${incidentPublicNote.id}.`,
+              );
+
+              MailService.sendMail(
+                {
+                  toEmail: subscriber.subscriberEmail,
+                  templateType: EmailTemplateType.SubscriberIncidentNoteCreated,
+                  vars: {
+                    note: await Markdown.convertToHTML(
+                      incidentPublicNote.note!,
+                      MarkdownContentType.Email,
+                    ),
+                    statusPageName: statusPageName,
+                    statusPageUrl: statusPageURL,
+                    logoUrl: statuspage.logoFileId
+                      ? new URL(httpProtocol, host)
+                          .addRoute(FileRoute)
+                          .addRoute("/image/" + statuspage.logoFileId)
+                          .toString()
+                      : "",
+                    isPublicStatusPage: statuspage.isPublicStatusPage
+                      ? "true"
+                      : "false",
+                    resourcesAffected:
+                      statusPageToResources[statuspage._id!]
+                        ?.map((r: StatusPageResource) => {
+                          return r.displayName;
+                        })
+                        .join(", ") || "None",
+                    incidentSeverity: incident.incidentSeverity?.name || " - ",
+                    incidentTitle: incident.title || "",
+                    incidentDescription: incident.description || "",
+                    unsubscribeUrl: unsubscribeUrl,
+                    subscriberEmailNotificationFooterText:
+                      StatusPageServiceType.getSubscriberEmailFooterText(
+                        statuspage,
+                      ),
+                  },
+                  subject: "[Incident Update] " + incident.title,
+                },
+                {
+                  mailServer: ProjectSmtpConfigService.toEmailServer(
+                    statuspage.smtpConfig,
+                  ),
+                  projectId: statuspage.projectId,
+                  statusPageId: statuspage.id!,
+                  incidentId: incident.id!,
+                },
+              ).catch((err: Error) => {
+                logger.error(err);
+              });
+              logger.debug(
+                `Email notification queued for subscriber ${subscriber._id} for public note ${incidentPublicNote.id}.`,
+              );
+            }
+
+            if (subscriber.slackIncomingWebhookUrl) {
+              // send slack message here.
+              const resourcesAffectedText: string =
+                statusPageToResources[statuspage._id!]
+                  ?.map((r: StatusPageResource) => {
+                    return r.displayName;
+                  })
+                  .join(", ") || "None";
+
+              // Create markdown message for Slack
+              const markdownMessage: string = `## Incident - ${incident.title || ""}
+
+**New note has been added to an incident**
+
+**Resources Affected:** ${resourcesAffectedText}
+**Severity:** ${incident.incidentSeverity?.name || " - "}
+
+**Note:**
+${incidentPublicNote.note || ""}
+
+[View Status Page](${statusPageURL}) | [Unsubscribe](${unsubscribeUrl})`;
+
+              SlackUtil.sendMessageToChannelViaIncomingWebhook({
+                url: subscriber.slackIncomingWebhookUrl,
+                text: SlackUtil.convertMarkdownToSlackRichText(markdownMessage),
+              }).catch((err: Error) => {
+                logger.error(err);
+              });
+              logger.debug(
+                `Slack notification queued for subscriber ${subscriber._id} for public note ${incidentPublicNote.id}.`,
+              );
+            }
+
+            if (subscriber.microsoftTeamsIncomingWebhookUrl) {
+              // send Teams message here.
+              const resourcesAffectedText: string =
+                statusPageToResources[statuspage._id!]
+                  ?.map((r: StatusPageResource) => {
+                    return r.displayName;
+                  })
+                  .join(", ") || "None";
+
+              // Create markdown message for Teams
+              const markdownMessage: string = `## Incident - ${incident.title || ""}
+
+**New note has been added to an incident**
+
+**Resources Affected:** ${resourcesAffectedText}
+**Severity:** ${incident.incidentSeverity?.name || " - "}
+
+**Note:**
+${incidentPublicNote.note || ""}
+
+[View Status Page](${statusPageURL}) | [Unsubscribe](${unsubscribeUrl})`;
+
+              MicrosoftTeamsUtil.sendMessageToChannelViaIncomingWebhook({
+                url: subscriber.microsoftTeamsIncomingWebhookUrl,
+                text: markdownMessage,
+              }).catch((err: Error) => {
+                logger.error(err);
+              });
+              logger.debug(
+                `Microsoft Teams notification queued for subscriber ${subscriber._id} for public note ${incidentPublicNote.id}.`,
+              );
+            }
           }
         }
+
+        logger.debug(
+          `Notification sent to subscribers for public note added to incident: ${incident.id}`,
+        );
+
+        await IncidentFeedService.createIncidentFeedItem({
+          incidentId: incident.id!,
+          projectId: incident.projectId!,
+          incidentFeedEventType:
+            IncidentFeedEventType.SubscriberNotificationSent,
+          displayColor: Blue500,
+          feedInfoInMarkdown: `📧 **Notification sent to subscribers** because a public note is added to this [Incident ${incident.incidentNumber}](${(await IncidentService.getIncidentLinkInDashboard(incident.projectId!, incident.id!)).toString()}).`,
+          moreInformationInMarkdown: `**Public Note:**
+        
+${incidentPublicNote.note}`,
+          workspaceNotification: {
+            sendWorkspaceNotification: true,
+          },
+        });
+
+        logger.debug("Incident Feed created");
+
+        // Set status to Success after successful notification
+        await IncidentPublicNoteService.updateOneById({
+          id: incidentPublicNote.id!,
+          data: {
+            subscriberNotificationStatusOnNoteCreated:
+              StatusPageSubscriberNotificationStatus.Success,
+            subscriberNotificationStatusMessage:
+              "Notifications sent successfully to all subscribers",
+          },
+          props: {
+            isRoot: true,
+            ignoreHooks: true,
+          },
+        });
+        logger.debug(
+          `Incident public note ${incidentPublicNote.id} marked as Success for subscriber notifications.`,
+        );
+      } catch (err) {
+        logger.error(
+          `Error sending notification for incident public note ${incidentPublicNote.id}: ${err}`,
+        );
+
+        // Set status to Failed with error reason
+        await IncidentPublicNoteService.updateOneById({
+          id: incidentPublicNote.id!,
+          data: {
+            subscriberNotificationStatusOnNoteCreated:
+              StatusPageSubscriberNotificationStatus.Failed,
+            subscriberNotificationStatusMessage: (err as Error).message,
+          },
+          props: {
+            isRoot: true,
+            ignoreHooks: true,
+          },
+        });
       }
     }
   },

@@ -28,7 +28,7 @@ import Link from "Common/UI/Components/Link/Link";
 import React, { FunctionComponent, ReactElement, useEffect } from "react";
 
 export interface ComponentProps {
-  initialValue: CriteriaFilter | undefined;
+  value: CriteriaFilter | undefined;
   onChange?: undefined | ((value: CriteriaFilter) => void);
   onDelete?: undefined | (() => void);
   monitorType: MonitorType;
@@ -38,9 +38,7 @@ export interface ComponentProps {
 const CriteriaFilterElement: FunctionComponent<ComponentProps> = (
   props: ComponentProps,
 ): ReactElement => {
-  const [criteriaFilter, setCriteriaFilter] = React.useState<
-    CriteriaFilter | undefined
-  >(props.initialValue);
+  const criteriaFilter: CriteriaFilter | undefined = props.value;
 
   const [valuePlaceholder, setValuePlaceholder] = React.useState<string>("");
 
@@ -77,12 +75,6 @@ const CriteriaFilterElement: FunctionComponent<ComponentProps> = (
           })
         : "",
     );
-  }, [criteriaFilter]);
-
-  useEffect(() => {
-    if (props.onChange && criteriaFilter) {
-      props.onChange(criteriaFilter);
-    }
   }, [criteriaFilter]);
 
   if (isLoading) {
@@ -184,7 +176,7 @@ const CriteriaFilterElement: FunctionComponent<ComponentProps> = (
             })}
             options={checkOnOptions}
             onChange={(value: DropdownValue | Array<DropdownValue> | null) => {
-              setCriteriaFilter({
+              props.onChange?.({
                 checkOn: value?.toString() as CheckOn,
                 filterType: undefined,
                 value: undefined,
@@ -204,7 +196,7 @@ const CriteriaFilterElement: FunctionComponent<ComponentProps> = (
                 placeholder={"C:\\ or /mnt/data or /dev/sda1"}
                 value={criteriaFilter?.serverMonitorOptions?.diskPath?.toString()}
                 onChange={(value: string) => {
-                  setCriteriaFilter({
+                  props.onChange?.({
                     ...criteriaFilter,
                     serverMonitorOptions: {
                       diskPath: value,
@@ -225,7 +217,7 @@ const CriteriaFilterElement: FunctionComponent<ComponentProps> = (
                 onChange={(
                   value: DropdownValue | Array<DropdownValue> | null,
                 ) => {
-                  setCriteriaFilter({
+                  props.onChange?.({
                     ...criteriaFilter,
                     metricMonitorOptions: {
                       ...criteriaFilter?.metricMonitorOptions,
@@ -247,7 +239,7 @@ const CriteriaFilterElement: FunctionComponent<ComponentProps> = (
                 onChange={(
                   value: DropdownValue | Array<DropdownValue> | null,
                 ) => {
-                  setCriteriaFilter({
+                  props.onChange?.({
                     ...criteriaFilter,
                     metricMonitorOptions: {
                       ...criteriaFilter?.metricMonitorOptions,
@@ -271,7 +263,7 @@ const CriteriaFilterElement: FunctionComponent<ComponentProps> = (
                 value={criteriaFilter?.eveluateOverTime}
                 title={"Evaluate this criteria over a period of time"}
                 onChange={(value: boolean) => {
-                  setCriteriaFilter({
+                  props.onChange?.({
                     ...criteriaFilter,
                     eveluateOverTime: value,
                   });
@@ -302,7 +294,7 @@ const CriteriaFilterElement: FunctionComponent<ComponentProps> = (
                         evaluateOverTimeType: EvaluateOverTimeType.AllValues,
                       };
 
-                setCriteriaFilter({
+                props.onChange?.({
                   ...criteriaFilter,
                   eveluateOverTime: true,
                   evaluateOverTimeOptions: {
@@ -340,7 +332,7 @@ const CriteriaFilterElement: FunctionComponent<ComponentProps> = (
                         evaluateOverTimeType: EvaluateOverTimeType.AllValues,
                       };
 
-                setCriteriaFilter({
+                props.onChange?.({
                   ...criteriaFilter,
                   eveluateOverTime: true,
                   evaluateOverTimeOptions: {
@@ -365,7 +357,7 @@ const CriteriaFilterElement: FunctionComponent<ComponentProps> = (
                 onChange={(
                   value: DropdownValue | Array<DropdownValue> | null,
                 ) => {
-                  setCriteriaFilter({
+                  props.onChange?.({
                     ...criteriaFilter,
                     filterType: value?.toString() as FilterType,
                     value: undefined,
@@ -377,7 +369,7 @@ const CriteriaFilterElement: FunctionComponent<ComponentProps> = (
 
         {!criteriaFilter?.checkOn ||
           (criteriaFilter?.checkOn &&
-            CriteriaFilterUiUtil.hasValueField({
+            CriteriaFilterUtil.hasValueField({
               checkOn: criteriaFilter?.checkOn,
               filterType: criteriaFilter?.filterType,
             }) &&
@@ -390,7 +382,7 @@ const CriteriaFilterElement: FunctionComponent<ComponentProps> = (
                   placeholder={valuePlaceholder}
                   value={criteriaFilter?.value?.toString()}
                   onChange={(value: string) => {
-                    setCriteriaFilter({
+                    props.onChange?.({
                       ...criteriaFilter,
                       value: value || "",
                     });
@@ -401,7 +393,7 @@ const CriteriaFilterElement: FunctionComponent<ComponentProps> = (
 
         {!criteriaFilter?.checkOn ||
           (criteriaFilter?.checkOn &&
-            CriteriaFilterUiUtil.hasValueField({
+            CriteriaFilterUtil.hasValueField({
               checkOn: criteriaFilter?.checkOn,
               filterType: criteriaFilter?.filterType,
             }) &&
@@ -422,7 +414,7 @@ const CriteriaFilterElement: FunctionComponent<ComponentProps> = (
                   onChange={(
                     value: DropdownValue | Array<DropdownValue> | null,
                   ) => {
-                    setCriteriaFilter({
+                    props.onChange?.({
                       ...criteriaFilter,
                       value: value?.toString(),
                     });

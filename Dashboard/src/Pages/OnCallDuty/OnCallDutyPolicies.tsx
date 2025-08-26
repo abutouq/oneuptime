@@ -1,5 +1,5 @@
 import LabelsElement from "../../Components/Label/Labels";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageComponentProps from "../PageComponentProps";
 import URL from "Common/Types/API/URL";
 import Banner from "Common/UI/Components/Banner/Banner";
@@ -21,11 +21,13 @@ const OnCallDutyPage: FunctionComponent<
         title="Learn how on-call policy works"
         description="Watch this video to learn how to build effective on-call policies for your team."
         link={URL.fromString("https://youtu.be/HzhKmCryYdc")}
+        hideOnMobile={true}
       />
 
       <ModelTable<OnCallDutyPolicy>
         modelType={OnCallDutyPolicy}
         id="on-call-duty-table"
+        userPreferencesKey="on-call-duty-table"
         isDeleteable={false}
         name="On-Call > Policies"
         showViewIdButton={true}
@@ -93,7 +95,7 @@ const OnCallDutyPage: FunctionComponent<
               description: true,
             },
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
           {
             field: {
@@ -107,7 +109,7 @@ const OnCallDutyPage: FunctionComponent<
 
             filterEntityType: Label,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -129,7 +131,7 @@ const OnCallDutyPage: FunctionComponent<
             },
             noValueMessage: "-",
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
           {
             field: {

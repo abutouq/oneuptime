@@ -1,5 +1,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Preconnect to external image/avatar domains to reduce layout shift & latency -->
+<link rel="preconnect" href="https://avatars.githubusercontent.com" crossorigin>
+<link rel="dns-prefetch" href="//avatars.githubusercontent.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap"
     rel="stylesheet">
 <style>
@@ -19,6 +22,8 @@
         right: 0;
         top: 0;
         width: auto;
+    appearance: none; /* standard */
+    -webkit-appearance: none; /* vendor */
     }
 
     input[type="date"]::-webkit-calendar-picker-indicator {
@@ -32,6 +37,8 @@
         right: 0;
         top: 0;
         width: auto;
+    appearance: none;
+    -webkit-appearance: none;
     }
 
     /*Chrome*/
@@ -59,6 +66,7 @@
 </style>
 <script src="https://cdn.tailwindcss.com"></script>
 
+<% if(typeof enableGoogleTagManager !== 'undefined' ? enableGoogleTagManager : false){ %> 
 <!-- Google Tag Manager -->
 <script>(function (w, d, s, l, i) {
         w[l] = w[l] || []; w[l].push({
@@ -69,6 +77,7 @@
                 'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
     })(window, document, 'script', 'dataLayer', 'GTM-PKQD5WH');</script>
 <!-- End Google Tag Manager -->
+<% } %>
 
 
 <style>
@@ -129,15 +138,35 @@
 </script>
 
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#000000" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1E293B" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+<!-- PWA Meta Tags -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="OneUptime">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="OneUptime">
+
+<!-- Icons -->
 <link rel="shortcut icon" href="/img/favicons/favicon.ico">
 <link rel="apple-touch-icon" sizes="180x180" href="/img/favicons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicons/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicons/favicon-16x16.png">
-<link rel="mask-icon" href="/img/favicons/safari-pinned-tab.svg" color="#32335b">
-<meta name="msapplication-TileColor" content="#32335b">
+<link rel="mask-icon" href="/img/favicons/safari-pinned-tab.svg" color="#000000">
+
+<!-- Microsoft Tiles -->
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/img/favicons/mstile-144x144.png">
+
+<!-- Legacy and compatibility -->
 <link rel="apple-touch-icon-precomposed" href="/img/ou-wb.svg">
 <link rel="icon" href="/img/ou-wb.svg">
 <link rel="image_src" type="image/png" href="/img/hou-wb.svg">
-<link rel="canonical" href="/">
+
+<!-- Canonical and Manifest -->
+<% /* Expect a homeUrl variable like https://oneuptime.com passed from server; fallback to production domain */ %>
 <link rel="manifest" href="/manifest.json">

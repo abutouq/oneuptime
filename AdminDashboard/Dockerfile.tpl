@@ -3,7 +3,7 @@
 #
 
 # Pull base image nodejs image.
-FROM public.ecr.aws/docker/library/node:21.7.3-alpine3.18
+FROM public.ecr.aws/docker/library/node:23.8-alpine3.21
 RUN mkdir /tmp/npm &&  chmod 2777 /tmp/npm && chown 1000:1000 /tmp/npm && npm config set cache /tmp/npm --global
 
 RUN npm config set fetch-retries 5
@@ -67,19 +67,20 @@ RUN npm install
 #   - 3158:  AdminDashboard
 EXPOSE 3158
 
-RUN npm i -D webpack-cli
+
 
 {{ if eq .Env.ENVIRONMENT "development" }}
 #Run the app
-RUN mkdir /usr/src/app/dev-env
-RUN touch /usr/src/app/dev-env/.env
-RUN npm i -D webpack-dev-server
+
+
 CMD [ "npm", "run", "dev" ]
 {{ else }}
 # Copy app source
 COPY ./AdminDashboard /usr/src/app
 # Bundle app source
 RUN npm run build
+# Set permission to write logs and cache in case container run as non root
+RUN chown -R 1000:1000 "/tmp/npm" && chmod -R 2777 "/tmp/npm"
 #Run the app
 CMD [ "npm", "start" ]
 {{ end }}

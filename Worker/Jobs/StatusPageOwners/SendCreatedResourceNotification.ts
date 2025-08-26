@@ -6,10 +6,12 @@ import { EmailEnvelope } from "Common/Types/Email/EmailMessage";
 import EmailTemplateType from "Common/Types/Email/EmailTemplateType";
 import NotificationSettingEventType from "Common/Types/NotificationSetting/NotificationSettingEventType";
 import { SMSMessage } from "Common/Types/SMS/SMS";
+import PushNotificationMessage from "Common/Types/PushNotification/PushNotificationMessage";
 import { EVERY_MINUTE } from "Common/Utils/CronTime";
 import ProjectService from "Common/Server/Services/ProjectService";
 import StatusPageService from "Common/Server/Services/StatusPageService";
 import UserNotificationSettingService from "Common/Server/Services/UserNotificationSettingService";
+import PushNotificationUtil from "Common/Server/Utils/PushNotificationUtil";
 import Markdown, { MarkdownContentType } from "Common/Server/Types/Markdown";
 import StatusPage from "Common/Models/DatabaseModels/StatusPage";
 import User from "Common/Models/DatabaseModels/User";
@@ -107,12 +109,27 @@ RunCron(
           ],
         };
 
+        const pushMessage: PushNotificationMessage =
+          PushNotificationUtil.createGenericNotification({
+            title: "Status Page Created",
+            body: `New status page created: ${statusPage.name}. Click to view details.`,
+            clickAction: (
+              await StatusPageService.getStatusPageLinkInDashboard(
+                statusPage.projectId!,
+                statusPage.id!,
+              )
+            ).toString(),
+            tag: "status-page-created",
+            requireInteraction: false,
+          });
+
         await UserNotificationSettingService.sendUserNotification({
           userId: user.id!,
           projectId: statusPage.projectId!,
           emailEnvelope: emailMessage,
           smsMessage: sms,
           callRequestMessage: callMessage,
+          pushNotificationMessage: pushMessage,
           eventType:
             NotificationSettingEventType.SEND_STATUS_PAGE_CREATED_OWNER_NOTIFICATION,
         });

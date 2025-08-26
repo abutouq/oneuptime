@@ -24,6 +24,31 @@ const AlertView: LazyExoticComponent<FunctionComponent<ComponentProps>> = lazy(
     return import("../Pages/Alerts/View/Index");
   },
 );
+
+const AlertViewNotificationLogs: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/Alerts/View/NotificationLogs");
+});
+
+const AlertsWorkspaceConnectionSlack: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/Alerts/WorkspaceConnectionSlack");
+});
+
+const AlertsWorkspaceConnectionMicrosoftTeams: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/Alerts/WorkspaceConnectionMicrosoftTeams");
+});
+
+const AlertOnCallPolicyExecutionLogs: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/Alerts/View/OnCallPolicyExecutionLogs");
+});
+
 const AlertViewDelete: LazyExoticComponent<FunctionComponent<ComponentProps>> =
   lazy(() => {
     return import("../Pages/Alerts/View/Delete");
@@ -52,6 +77,23 @@ const AlertViewCustomFields: LazyExoticComponent<
 const AlertViewOwner: LazyExoticComponent<FunctionComponent<ComponentProps>> =
   lazy(() => {
     return import("../Pages/Alerts/View/Owners");
+  });
+
+const AlertViewRootCause: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/Alerts/View/RootCause");
+});
+
+const AlertViewRemediation: LazyExoticComponent<
+  FunctionComponent<ComponentProps>
+> = lazy(() => {
+  return import("../Pages/Alerts/View/Remediation");
+});
+
+const AlertDescription: LazyExoticComponent<FunctionComponent<ComponentProps>> =
+  lazy(() => {
+    return import("../Pages/Alerts/View/Description");
   });
 
 const AlertsRoutes: FunctionComponent<ComponentProps> = (
@@ -83,6 +125,42 @@ const AlertsRoutes: FunctionComponent<ComponentProps> = (
             </Suspense>
           }
         />
+
+        <PageRoute
+          path={
+            AlertsRoutePath[PageMap.ALERTS_WORKSPACE_CONNECTION_SLACK] || ""
+          }
+          element={
+            <Suspense fallback={Loader}>
+              <AlertsWorkspaceConnectionSlack
+                {...props}
+                pageRoute={
+                  RouteMap[PageMap.ALERTS_WORKSPACE_CONNECTION_SLACK] as Route
+                }
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
+          path={
+            AlertsRoutePath[
+              PageMap.ALERTS_WORKSPACE_CONNECTION_MICROSOFT_TEAMS
+            ] || ""
+          }
+          element={
+            <Suspense fallback={Loader}>
+              <AlertsWorkspaceConnectionMicrosoftTeams
+                {...props}
+                pageRoute={
+                  RouteMap[
+                    PageMap.ALERTS_WORKSPACE_CONNECTION_MICROSOFT_TEAMS
+                  ] as Route
+                }
+              />
+            </Suspense>
+          }
+        />
       </PageRoute>
 
       <PageRoute
@@ -101,17 +179,55 @@ const AlertsRoutes: FunctionComponent<ComponentProps> = (
           }
         />
         <PageRoute
-          path={RouteUtil.getLastPathForKey(PageMap.ALERT_VIEW_DELETE)}
+          path={RouteUtil.getLastPathForKey(
+            PageMap.ALERT_VIEW_NOTIFICATION_LOGS,
+          )}
           element={
             <Suspense fallback={Loader}>
-              <AlertViewDelete
+              <AlertViewNotificationLogs
                 {...props}
-                pageRoute={RouteMap[PageMap.ALERT_VIEW_DELETE] as Route}
+                pageRoute={
+                  RouteMap[PageMap.ALERT_VIEW_NOTIFICATION_LOGS] as Route
+                }
               />
             </Suspense>
           }
         />
 
+        <PageRoute
+          path={RouteUtil.getLastPathForKey(PageMap.ALERT_VIEW_DESCRIPTION)}
+          element={
+            <Suspense fallback={Loader}>
+              <AlertDescription
+                {...props}
+                pageRoute={RouteMap[PageMap.ALERT_VIEW_DESCRIPTION] as Route}
+              />
+            </Suspense>
+          }
+        />
+
+        <PageRoute
+          path={RouteUtil.getLastPathForKey(PageMap.ALERT_VIEW_ROOT_CAUSE)}
+          element={
+            <Suspense fallback={Loader}>
+              <AlertViewRootCause
+                {...props}
+                pageRoute={RouteMap[PageMap.ALERT_VIEW_ROOT_CAUSE] as Route}
+              />
+            </Suspense>
+          }
+        />
+        <PageRoute
+          path={RouteUtil.getLastPathForKey(PageMap.ALERT_VIEW_REMEDIATION)}
+          element={
+            <Suspense fallback={Loader}>
+              <AlertViewRemediation
+                {...props}
+                pageRoute={RouteMap[PageMap.ALERT_VIEW_REMEDIATION] as Route}
+              />
+            </Suspense>
+          }
+        />
         <PageRoute
           path={RouteUtil.getLastPathForKey(PageMap.ALERT_VIEW_STATE_TIMELINE)}
           element={
@@ -123,19 +239,17 @@ const AlertsRoutes: FunctionComponent<ComponentProps> = (
             </Suspense>
           }
         />
-
         <PageRoute
-          path={RouteUtil.getLastPathForKey(PageMap.ALERT_INTERNAL_NOTE)}
+          path={RouteUtil.getLastPathForKey(PageMap.ALERT_VIEW_INTERNAL_NOTE)}
           element={
             <Suspense fallback={Loader}>
               <AlertInternalNote
                 {...props}
-                pageRoute={RouteMap[PageMap.ALERT_INTERNAL_NOTE] as Route}
+                pageRoute={RouteMap[PageMap.ALERT_VIEW_INTERNAL_NOTE] as Route}
               />
             </Suspense>
           }
         />
-
         <PageRoute
           path={RouteUtil.getLastPathForKey(PageMap.ALERT_VIEW_CUSTOM_FIELDS)}
           element={
@@ -147,7 +261,6 @@ const AlertsRoutes: FunctionComponent<ComponentProps> = (
             </Suspense>
           }
         />
-
         <PageRoute
           path={RouteUtil.getLastPathForKey(PageMap.ALERT_VIEW_OWNERS)}
           element={
@@ -155,6 +268,34 @@ const AlertsRoutes: FunctionComponent<ComponentProps> = (
               <AlertViewOwner
                 {...props}
                 pageRoute={RouteMap[PageMap.ALERT_VIEW_OWNERS] as Route}
+              />
+            </Suspense>
+          }
+        />
+        <PageRoute
+          path={RouteUtil.getLastPathForKey(
+            PageMap.ALERT_VIEW_ON_CALL_POLICY_EXECUTION_LOGS,
+          )}
+          element={
+            <Suspense fallback={Loader}>
+              <AlertOnCallPolicyExecutionLogs
+                {...props}
+                pageRoute={
+                  RouteMap[
+                    PageMap.ALERT_VIEW_ON_CALL_POLICY_EXECUTION_LOGS
+                  ] as Route
+                }
+              />
+            </Suspense>
+          }
+        />
+        <PageRoute
+          path={RouteUtil.getLastPathForKey(PageMap.ALERT_VIEW_DELETE)}
+          element={
+            <Suspense fallback={Loader}>
+              <AlertViewDelete
+                {...props}
+                pageRoute={RouteMap[PageMap.ALERT_VIEW_DELETE] as Route}
               />
             </Suspense>
           }

@@ -6,13 +6,19 @@ import { EmailEnvelope } from "Common/Types/Email/EmailMessage";
 import EmailTemplateType from "Common/Types/Email/EmailTemplateType";
 import NotificationSettingEventType from "Common/Types/NotificationSetting/NotificationSettingEventType";
 import { SMSMessage } from "Common/Types/SMS/SMS";
+import PushNotificationMessage from "Common/Types/PushNotification/PushNotificationMessage";
 import { EVERY_MINUTE } from "Common/Utils/CronTime";
 import ProjectService from "Common/Server/Services/ProjectService";
 import ScheduledMaintenanceService from "Common/Server/Services/ScheduledMaintenanceService";
 import UserNotificationSettingService from "Common/Server/Services/UserNotificationSettingService";
+import PushNotificationUtil from "Common/Server/Utils/PushNotificationUtil";
 import Markdown, { MarkdownContentType } from "Common/Server/Types/Markdown";
 import ScheduledMaintenance from "Common/Models/DatabaseModels/ScheduledMaintenance";
 import User from "Common/Models/DatabaseModels/User";
+import ScheduledMaintenanceFeedService from "Common/Server/Services/ScheduledMaintenanceFeedService";
+import { ScheduledMaintenanceFeedEventType } from "Common/Models/DatabaseModels/ScheduledMaintenanceFeed";
+import { Yellow500 } from "Common/Types/BrandColors";
+import ObjectID from "Common/Types/ObjectID";
 
 RunCron(
   "ScheduledMaintenanceOwner:SendCreatedResourceEmail",
@@ -40,10 +46,13 @@ RunCron(
           currentScheduledMaintenanceState: {
             name: true,
           },
+          scheduledMaintenanceNumber: true,
         },
       });
 
     for (const scheduledMaintenance of scheduledMaintenances) {
+      let moreScheduledMaintenanceFeedInformationInMarkdown: string = "";
+
       await ScheduledMaintenanceService.updateOneById({
         id: scheduledMaintenance.id!,
         data: {
@@ -117,16 +126,56 @@ RunCron(
           ],
         };
 
+        const pushMessage: PushNotificationMessage =
+          PushNotificationUtil.createGenericNotification({
+            title: "Scheduled Maintenance Created",
+            body: `New scheduled maintenance created: ${scheduledMaintenance.title}. Click to view details.`,
+            clickAction: (
+              await ScheduledMaintenanceService.getScheduledMaintenanceLinkInDashboard(
+                scheduledMaintenance.projectId!,
+                scheduledMaintenance.id!,
+              )
+            ).toString(),
+            tag: "scheduled-maintenance-created",
+            requireInteraction: false,
+          });
+
         await UserNotificationSettingService.sendUserNotification({
           userId: user.id!,
           projectId: scheduledMaintenance.projectId!,
           emailEnvelope: emailMessage,
           smsMessage: sms,
           callRequestMessage: callMessage,
+          pushNotificationMessage: pushMessage,
+          scheduledMaintenanceId: scheduledMaintenance.id!,
           eventType:
             NotificationSettingEventType.SEND_SCHEDULED_MAINTENANCE_CREATED_OWNER_NOTIFICATION,
         });
+
+        moreScheduledMaintenanceFeedInformationInMarkdown += `**Notified**: ${user.name} (${user.email})\n`;
       }
+
+      const projectId: ObjectID = scheduledMaintenance.projectId!;
+      const scheduledMaintenanceId: ObjectID = scheduledMaintenance.id!;
+      const scheduledMaintenanceNumber: number =
+        scheduledMaintenance.scheduledMaintenanceNumber!;
+
+      const scheduledMaintenanceFeedText: string = `🔔 **Owner Scheduled Maintenance Created Notification Sent**:
+      Notification sent to owners because [Scheduled Maintenance ${scheduledMaintenanceNumber}](${(await ScheduledMaintenanceService.getScheduledMaintenanceLinkInDashboard(projectId, scheduledMaintenanceId)).toString()}) was created.`;
+
+      await ScheduledMaintenanceFeedService.createScheduledMaintenanceFeedItem({
+        scheduledMaintenanceId: scheduledMaintenance.id!,
+        projectId: scheduledMaintenance.projectId!,
+        scheduledMaintenanceFeedEventType:
+          ScheduledMaintenanceFeedEventType.OwnerNotificationSent,
+        displayColor: Yellow500,
+        feedInfoInMarkdown: scheduledMaintenanceFeedText,
+        moreInformationInMarkdown:
+          moreScheduledMaintenanceFeedInformationInMarkdown,
+        workspaceNotification: {
+          sendWorkspaceNotification: false,
+        },
+      });
     }
   },
 );

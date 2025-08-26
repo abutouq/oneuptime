@@ -2,11 +2,13 @@ import RelationSelect from "./RelationSelect";
 import Select from "./Select";
 import BaseModel, {
   DatabaseBaseModelType,
-} from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import { JSONObject } from "Common/Types/JSON";
-import Typeof from "Common/Types/Typeof";
+} from "../../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import { JSONObject } from "../../../Types/JSON";
+import Typeof from "../../../Types/Typeof";
+import CaptureSpan from "../../Utils/Telemetry/CaptureSpan";
 
 export default class SelectUtil {
+  @CaptureSpan()
   public static sanitizeSelect<TBaseModel extends BaseModel>(
     modelType: DatabaseBaseModelType,
     select: Select<TBaseModel>,

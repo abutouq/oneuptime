@@ -1,6 +1,6 @@
 import Banner from "Common/UI/Components/Banner/Banner";
 import LabelsElement from "../../Components/Label/Labels";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageMap from "../../Utils/PageMap";
 import RouteMap, { RouteUtil } from "../../Utils/RouteMap";
 import PageComponentProps from "../PageComponentProps";
@@ -41,6 +41,7 @@ const CodeRepositoryPage: FunctionComponent<
         description="Reliability Copilot is a beta software. Please let us know your feedback and report any bugs on GitHub."
         openInNewTab={true}
         link={URL.fromString("https://github.com/OneUptime/oneuptime/issues")}
+        hideOnMobile={true}
       />
       <ModelTable<CodeRepository>
         modelType={CodeRepository}
@@ -48,6 +49,7 @@ const CodeRepositoryPage: FunctionComponent<
         isDeleteable={false}
         isEditable={false}
         isCreateable={true}
+        userPreferencesKey="reliability-copilot-code-repositories-table"
         createVerb="Add"
         name="Git Repositories"
         isViewable={true}
@@ -158,7 +160,7 @@ const CodeRepositoryPage: FunctionComponent<
               description: true,
             },
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
           {
             field: {
@@ -171,7 +173,7 @@ const CodeRepositoryPage: FunctionComponent<
             type: FieldType.EntityArray,
             filterEntityType: Label,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -193,7 +195,7 @@ const CodeRepositoryPage: FunctionComponent<
             },
             noValueMessage: "-",
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
           {
             field: {

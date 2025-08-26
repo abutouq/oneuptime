@@ -7,10 +7,12 @@ import { EmailEnvelope } from "Common/Types/Email/EmailMessage";
 import EmailTemplateType from "Common/Types/Email/EmailTemplateType";
 import NotificationSettingEventType from "Common/Types/NotificationSetting/NotificationSettingEventType";
 import { SMSMessage } from "Common/Types/SMS/SMS";
+import PushNotificationMessage from "Common/Types/PushNotification/PushNotificationMessage";
 import { EVERY_MINUTE } from "Common/Utils/CronTime";
 import IncidentService from "Common/Server/Services/IncidentService";
 import ProjectService from "Common/Server/Services/ProjectService";
 import UserNotificationSettingService from "Common/Server/Services/UserNotificationSettingService";
+import PushNotificationUtil from "Common/Server/Utils/PushNotificationUtil";
 import Select from "Common/Server/Types/Database/Select";
 import Markdown, { MarkdownContentType } from "Common/Server/Types/Markdown";
 import logger from "Common/Server/Utils/Logger";
@@ -19,6 +21,10 @@ import IncidentState from "Common/Models/DatabaseModels/IncidentState";
 import Monitor from "Common/Models/DatabaseModels/Monitor";
 import Project from "Common/Models/DatabaseModels/Project";
 import User from "Common/Models/DatabaseModels/User";
+import IncidentFeedService from "Common/Server/Services/IncidentFeedService";
+import { IncidentFeedEventType } from "Common/Models/DatabaseModels/IncidentFeed";
+import { Yellow500 } from "Common/Types/BrandColors";
+import ObjectID from "Common/Types/ObjectID";
 
 RunCron(
   "IncidentOwner:SendCreatedResourceEmail",
@@ -60,10 +66,19 @@ RunCron(
           name: true,
           email: true,
         },
+        incidentNumber: true,
       },
     });
 
     for (const incident of incidents) {
+      const projectId: ObjectID = incident.projectId!;
+      const incidentId: ObjectID = incident.id!;
+      const incidentNumber: number = incident.incidentNumber!;
+
+      const incidentFeedText: string = `🔔 **Owner Incident Created Notification Sent**:
+Notification sent to owners because [Incident ${incidentNumber}](${(await IncidentService.getIncidentLinkInDashboard(projectId, incidentId)).toString()}) was created.`;
+      let moreIncidentFeedInformationInMarkdown: string = "";
+
       const incidentIdentifiedDate: Date =
         await IncidentService.getIncidentIdentifiedDate(incident.id!);
 
@@ -173,15 +188,30 @@ RunCron(
             ],
           };
 
+          const pushMessage: PushNotificationMessage =
+            PushNotificationUtil.createIncidentCreatedNotification({
+              incidentTitle: incident.title!,
+              projectName: incident.project!.name!,
+              incidentViewLink: (
+                await IncidentService.getIncidentLinkInDashboard(
+                  incident.projectId!,
+                  incident.id!,
+                )
+              ).toString(),
+            });
+
           await UserNotificationSettingService.sendUserNotification({
             userId: user.id!,
             projectId: incident.projectId!,
             emailEnvelope: emailMessage,
             smsMessage: sms,
             callRequestMessage: callMessage,
+            pushNotificationMessage: pushMessage,
             eventType:
               NotificationSettingEventType.SEND_INCIDENT_CREATED_OWNER_NOTIFICATION,
           });
+
+          moreIncidentFeedInformationInMarkdown += `**Notified**: ${user.name} (${user.email})\n`;
         } catch (e) {
           logger.error(
             "Error in sending incident created resource notification",
@@ -189,6 +219,18 @@ RunCron(
           logger.error(e);
         }
       }
+
+      await IncidentFeedService.createIncidentFeedItem({
+        incidentId: incident.id!,
+        projectId: incident.projectId!,
+        incidentFeedEventType: IncidentFeedEventType.OwnerNotificationSent,
+        displayColor: Yellow500,
+        feedInfoInMarkdown: incidentFeedText,
+        moreInformationInMarkdown: moreIncidentFeedInformationInMarkdown,
+        workspaceNotification: {
+          sendWorkspaceNotification: false,
+        },
+      });
     }
   },
 );

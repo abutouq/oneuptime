@@ -1,5 +1,5 @@
 import TelemetryServiceElement from "../../Components/TelemetryService/TelemetryServiceElement";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageComponentProps from "../PageComponentProps";
 import Currency from "Common/Types/Currency";
 import Decimal from "Common/Types/Decimal";
@@ -13,7 +13,7 @@ import TelemetryService from "Common/Models/DatabaseModels/TelemetryService";
 import TelemetryUsageBilling from "Common/Models/DatabaseModels/TelemetryUsageBilling";
 import React, { Fragment, FunctionComponent, ReactElement } from "react";
 
-export interface ComponentProps extends PageComponentProps {}
+export type ComponentProps = PageComponentProps;
 
 const Settings: FunctionComponent<ComponentProps> = (
   _props: ComponentProps,
@@ -23,6 +23,7 @@ const Settings: FunctionComponent<ComponentProps> = (
       <ModelTable<TelemetryUsageBilling>
         modelType={TelemetryUsageBilling}
         id="usage-history-table"
+        userPreferencesKey="usage-history-table"
         isDeleteable={false}
         name="Settings > Billing > Usage History"
         isEditable={false}
@@ -37,7 +38,7 @@ const Settings: FunctionComponent<ComponentProps> = (
           "No usage history found. Maybe you have not used Telemetry features yet?"
         }
         query={{
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         showRefreshButton={true}
         filters={[
@@ -68,7 +69,7 @@ const Settings: FunctionComponent<ComponentProps> = (
             type: FieldType.Entity,
             filterEntityType: TelemetryService,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",

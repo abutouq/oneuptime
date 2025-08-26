@@ -1,6 +1,7 @@
 import Hostname from "./API/Hostname";
 import Route from "./API/Route";
 import URL from "./API/URL";
+import EqualTo from "./BaseDatabase/EqualTo";
 import EqualToOrNull from "./BaseDatabase/EqualToOrNull";
 import GreaterThan from "./BaseDatabase/GreaterThan";
 import GreaterThanOrEqual from "./BaseDatabase/GreaterThanOrEqual";
@@ -9,6 +10,8 @@ import Includes from "./BaseDatabase/Includes";
 import IsNull from "./BaseDatabase/IsNull";
 import LessThan from "./BaseDatabase/LessThan";
 import LessThanOrEqual from "./BaseDatabase/LessThanOrEqual";
+import LessThanOrNull from "./BaseDatabase/LessThanOrNull";
+import GreaterThanOrNull from "./BaseDatabase/GreaterThanOrNull";
 import NotEqual from "./BaseDatabase/NotEqual";
 import NotNull from "./BaseDatabase/NotNull";
 import Search from "./BaseDatabase/Search";
@@ -36,6 +39,7 @@ const SerializableObjectDictionary: Dictionary<any> = {
   [ObjectType.DateTime]: OneUptimeDate,
   [ObjectType.ObjectID]: ObjectID,
   [ObjectType.Name]: Name,
+  [ObjectType.EqualTo]: EqualTo,
   [ObjectType.EqualToOrNull]: EqualToOrNull,
   [ObjectType.MonitorSteps]: MonitorSteps,
   [ObjectType.MonitorStep]: MonitorStep,
@@ -54,6 +58,8 @@ const SerializableObjectDictionary: Dictionary<any> = {
   [ObjectType.GreaterThanOrEqual]: GreaterThanOrEqual,
   [ObjectType.LessThan]: LessThan,
   [ObjectType.LessThanOrEqual]: LessThanOrEqual,
+  [ObjectType.LessThanOrNull]: LessThanOrNull,
+  [ObjectType.GreaterThanOrNull]: GreaterThanOrNull,
   [ObjectType.Port]: Port,
   [ObjectType.Hostname]: Hostname,
   [ObjectType.HashedString]: HashedString,

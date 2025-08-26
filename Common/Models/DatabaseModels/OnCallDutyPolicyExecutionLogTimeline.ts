@@ -26,6 +26,7 @@ import OnCallDutyExecutionLogTimelineStatus from "../../Types/OnCallDutyPolicy/O
 import Permission from "../../Types/Permission";
 import UserNotificationEventType from "../../Types/UserNotification/UserNotificationEventType";
 import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
+import Alert from "./Alert";
 
 @TableBillingAccessControl({
   create: PlanType.Growth,
@@ -50,6 +51,9 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
 @Entity({
   name: "OnCallDutyPolicyExecutionLogTimeline",
 })
+@Index(["onCallDutyPolicyExecutionLogId", "createdAt"])
+@Index(["projectId", "createdAt"])
+@Index(["alertSentToUserId", "projectId"])
 @TableMetadata({
   tableName: "OnCallDutyPolicyExecutionLogTimeline",
   singularName: "On-Call Duty Execution Log Timeline",
@@ -216,17 +220,73 @@ export default class OnCallDutyPolicyExecutionLogTimeline extends BaseModel {
   @Index()
   @TableColumn({
     type: TableColumnType.ObjectID,
-    required: true,
+    required: false,
     canReadOnRelationQuery: true,
     title: "Incident ID",
     description: "ID of your OneUptime Incident in which this object belongs",
   })
   @Column({
     type: ColumnType.ObjectID,
-    nullable: false,
+    nullable: true,
     transformer: ObjectID.getDatabaseTransformer(),
   })
   public triggeredByIncidentId?: ObjectID = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectOnCallDutyPolicyExecutionLogTimeline,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "triggeredByAlertId",
+    type: TableColumnType.Entity,
+    modelType: Alert,
+    title: "Alert",
+    description: "Relation to Alert Resource in which this object belongs",
+  })
+  @ManyToOne(
+    () => {
+      return Alert;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "CASCADE",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "triggeredByAlertId" })
+  public triggeredByAlert?: Alert = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectOnCallDutyPolicyExecutionLogTimeline,
+    ],
+    update: [],
+  })
+  @Index()
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    required: false,
+    canReadOnRelationQuery: true,
+    title: "Alert ID",
+    description: "ID of your OneUptime Alert in which this object belongs",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public triggeredByAlertId?: ObjectID = undefined;
 
   @ColumnAccessControl({
     create: [],
@@ -644,6 +704,7 @@ export default class OnCallDutyPolicyExecutionLogTimeline extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -723,4 +784,52 @@ export default class OnCallDutyPolicyExecutionLogTimeline extends BaseModel {
     transformer: ObjectID.getDatabaseTransformer(),
   })
   public deletedByUserId?: ObjectID = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadProjectOnCallDutyPolicyExecutionLogTimeline,
+    ],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "overridedByUserId",
+    type: TableColumnType.Entity,
+    modelType: User,
+    title: "Overridden by User",
+    description: "Relation to User who overrode this alert",
+  })
+  @ManyToOne(
+    () => {
+      return User;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "CASCADE",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "overridedByUserId" })
+  public overridedByUser?: User = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [Permission.CurrentUser],
+    update: [],
+  })
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    title: "Overridden by User ID",
+    description: "User ID who overrode this alert",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public overridedByUserId?: ObjectID = undefined;
 }

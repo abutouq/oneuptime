@@ -28,6 +28,7 @@ import {
   ManyToMany,
   ManyToOne,
 } from "typeorm";
+import NotificationRuleWorkspaceChannel from "../../Types/Workspace/NotificationRules/NotificationRuleWorkspaceChannel";
 
 @EnableDocumentation()
 @AccessControlColumn("labels")
@@ -275,6 +276,7 @@ export default class OnCallDutyPolicy extends BaseModel {
     type: TableColumnType.Slug,
     title: "Slug",
     description: "Friendly globally unique name for your object",
+    computed: true,
   })
   @Column({
     nullable: false,
@@ -358,6 +360,7 @@ export default class OnCallDutyPolicy extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -420,6 +423,7 @@ export default class OnCallDutyPolicy extends BaseModel {
     type: TableColumnType.Boolean,
     title: "Repeat Policy If No One Acknowledges",
     description: "Repeat the policy if no one acknowledges the alert",
+    defaultValue: false,
   })
   @Column({
     nullable: false,
@@ -451,11 +455,12 @@ export default class OnCallDutyPolicy extends BaseModel {
   @TableColumn({
     required: true,
     isDefaultValueColumn: true,
-    type: TableColumnType.Boolean,
+    type: TableColumnType.Number,
     canReadOnRelationQuery: true,
     title: "Repeat Policy Times If No One Acknowledges",
     description:
       "Repeat the policy X number of times if no one acknowledges the alert",
+    defaultValue: 0,
   })
   @Column({
     nullable: false,
@@ -496,4 +501,23 @@ export default class OnCallDutyPolicy extends BaseModel {
     nullable: true,
   })
   public customFields?: JSONObject = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [],
+    update: [],
+  })
+  @TableColumn({
+    isDefaultValueColumn: false,
+    required: false,
+    type: TableColumnType.JSON,
+    title: "Post Updates To Workspace Channel Name",
+    description: "Post Updates To Workspace Channel Name",
+  })
+  @Column({
+    type: ColumnType.JSON,
+    nullable: true,
+  })
+  public postUpdatesToWorkspaceChannels?: Array<NotificationRuleWorkspaceChannel> =
+    undefined;
 }

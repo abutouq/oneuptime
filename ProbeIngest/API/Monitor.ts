@@ -9,9 +9,6 @@ import BadDataException from "Common/Types/Exception/BadDataException";
 import { JSONObject } from "Common/Types/JSON";
 import ObjectID from "Common/Types/ObjectID";
 import PositiveNumber from "Common/Types/PositiveNumber";
-import Semaphore, {
-  SemaphoreMutex,
-} from "Common/Server/Infrastructure/Semaphore";
 import ClusterKeyAuthorization from "Common/Server/Middleware/ClusterKeyAuthorization";
 import MonitorProbeService from "Common/Server/Services/MonitorProbeService";
 import Query from "Common/Server/Types/Database/Query";
@@ -33,6 +30,7 @@ import ProjectService from "Common/Server/Services/ProjectService";
 import MonitorType from "Common/Types/Monitor/MonitorType";
 import MonitorTest from "Common/Models/DatabaseModels/MonitorTest";
 import MonitorTestService from "Common/Server/Services/MonitorTestService";
+import NumberUtil from "Common/Utils/Number";
 
 const router: ExpressRouter = Express.getRouter();
 
@@ -98,6 +96,7 @@ router.get(
               monitorSteps: true,
               monitorType: true,
               monitoringInterval: true,
+              projectId: true,
             },
           },
           skip: 0,
@@ -286,8 +285,6 @@ router.post(
     res: ExpressResponse,
     next: NextFunction,
   ): Promise<void> => {
-    let mutex: SemaphoreMutex | null = null;
-
     logger.debug("Monitor list API called");
 
     try {
@@ -323,37 +320,34 @@ router.post(
         );
       }
 
-      try {
-        mutex = await Semaphore.lock({
-          key: probeId.toString(),
-          namespace: "MonitorAPI.monitor-list",
-          lockTimeout: 15000,
-          acquireTimeout: 20000,
-        });
-        logger.debug(
-          "Mutex acquired - " +
-            probeId.toString() +
-            " at " +
-            OneUptimeDate.getCurrentDateAsFormattedString(),
-        );
-      } catch (err) {
-        logger.debug(
-          "Mutex acquire failed - " +
-            probeId.toString() +
-            " at " +
-            OneUptimeDate.getCurrentDateAsFormattedString(),
-        );
-        logger.error(err);
-      }
-
       //get list of monitors to be monitored
 
-      logger.debug("Fetching monitor list");
+      logger.debug("Fetching monitor list for probes");
 
       // we do this to distribute the load among the probes.
       // so every request will get a different set of monitors to monitor
       // const moduloBy: number = 10;
       // const reminder: number = NumberUtil.getRandomNumber(0, 100) % moduloBy;
+
+      const count: PositiveNumber = await MonitorProbeService.countBy({
+        query: {
+          ...getMonitorFetchQuery((req as OneUptimeRequest).probe!.id!),
+          // version: QueryHelper.modulo(moduloBy, reminder), // distribute the load among the probes
+        },
+        skip: 0,
+        props: {
+          isRoot: true,
+        },
+      });
+
+      // we do this to distribute the load among the probes.
+      // so every request will get a different set of monitors to monitor
+      const countNumber: number = count.toNumber();
+      let skip: number = 0;
+
+      if (countNumber > limit) {
+        skip = NumberUtil.getRandomNumber(0, countNumber - limit);
+      }
 
       const monitorProbes: Array<MonitorProbe> =
         await MonitorProbeService.findBy({
@@ -364,7 +358,7 @@ router.post(
           sort: {
             nextPingAt: SortOrder.Ascending,
           },
-          skip: 0,
+          skip: skip,
           limit: limit,
           select: {
             nextPingAt: true,
@@ -374,6 +368,7 @@ router.post(
               monitorSteps: true,
               monitorType: true,
               monitoringInterval: true,
+              projectId: true,
             },
           },
           props: {
@@ -422,26 +417,6 @@ router.post(
 
       await Promise.all(updatePromises);
 
-      if (mutex) {
-        try {
-          await Semaphore.release(mutex);
-          logger.debug(
-            "Mutex released - " +
-              probeId.toString() +
-              " at " +
-              OneUptimeDate.getCurrentDateAsFormattedString(),
-          );
-        } catch (err) {
-          logger.debug(
-            "Mutex release failed - " +
-              probeId.toString() +
-              " at " +
-              OneUptimeDate.getCurrentDateAsFormattedString(),
-          );
-          logger.error(err);
-        }
-      }
-
       const monitors: Array<Monitor> = monitorProbes
         .map((monitorProbe: MonitorProbe) => {
           return monitorProbe.monitor!;
@@ -483,14 +458,6 @@ router.post(
         Monitor,
       );
     } catch (err) {
-      try {
-        if (mutex) {
-          await Semaphore.release(mutex);
-        }
-      } catch (err) {
-        logger.error(err);
-      }
-
       return next(err);
     }
   },
@@ -504,15 +471,13 @@ router.post(
     res: ExpressResponse,
     next: NextFunction,
   ): Promise<void> => {
-    let mutex: SemaphoreMutex | null = null;
-
-    logger.debug("Monitor list API called");
+    logger.debug("Monitor test list API called");
 
     try {
       const data: JSONObject = req.body;
       const limit: number = (data["limit"] as number) || 100;
 
-      logger.debug("Monitor list API called with limit: " + limit);
+      logger.debug("Monitor test list API called with limit: " + limit);
       logger.debug("Data:");
       logger.debug(data);
 
@@ -541,18 +506,9 @@ router.post(
         );
       }
 
-      try {
-        mutex = await Semaphore.lock({
-          key: probeId.toString(),
-          namespace: "MonitorAPI.monitor-test-list",
-        });
-      } catch (err) {
-        logger.error(err);
-      }
-
       //get list of monitors to be monitored
 
-      logger.debug("Fetching monitor list");
+      logger.debug("Fetching test monitor list");
 
       const monitorTests: Array<MonitorTest> = await MonitorTestService.findBy({
         query: {
@@ -569,6 +525,8 @@ router.post(
           monitorType: true,
           monitorSteps: true,
           _id: true,
+          projectId: true,
+          monitorId: true,
         },
         props: {
           isRoot: true,
@@ -598,32 +556,41 @@ router.post(
 
       await Promise.all(updatePromises);
 
-      if (mutex) {
-        try {
-          await Semaphore.release(mutex);
-        } catch (err) {
-          logger.error(err);
-        }
+      logger.debug("Populating secrets");
+      logger.debug(monitorTests);
+
+      // check if the monitor needs secrets to be filled.
+
+      let monitorTestsWithSecretPopulated: Array<MonitorTest> = [];
+      const monitorTestsWithSecretsPopulatePromises: Array<
+        Promise<MonitorTest>
+      > = [];
+
+      for (const monitorTest of monitorTests) {
+        monitorTestsWithSecretsPopulatePromises.push(
+          MonitorUtil.populateSecretsOnMonitorTest(monitorTest),
+        );
       }
+
+      monitorTestsWithSecretPopulated = await Promise.all(
+        monitorTestsWithSecretsPopulatePromises,
+      );
+
+      logger.debug("Populated secrets");
+      logger.debug(monitorTestsWithSecretPopulated);
+
+      // return the list of monitors to be monitored
 
       logger.debug("Sending response");
 
       return Response.sendEntityArrayResponse(
         req,
         res,
-        monitorTests,
-        new PositiveNumber(monitorTests.length),
+        monitorTestsWithSecretPopulated,
+        new PositiveNumber(monitorTestsWithSecretPopulated.length),
         MonitorTest,
       );
     } catch (err) {
-      try {
-        if (mutex) {
-          await Semaphore.release(mutex);
-        }
-      } catch (err) {
-        logger.error(err);
-      }
-
       return next(err);
     }
   },

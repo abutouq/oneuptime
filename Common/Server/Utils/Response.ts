@@ -8,22 +8,25 @@ import JsonToCsv from "./JsonToCsv";
 import logger from "./Logger";
 import AnalyticsDataModel, {
   AnalyticsBaseModelType,
-} from "Common/Models/AnalyticsModels/AnalyticsBaseModel/AnalyticsBaseModel";
+} from "../../Models/AnalyticsModels/AnalyticsBaseModel/AnalyticsBaseModel";
 import BaseModel, {
   DatabaseBaseModelType,
-} from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import FileModel from "Common/Models/DatabaseModels/DatabaseBaseModel/FileModel";
-import EmptyResponse from "Common/Types/API/EmptyResponse";
-import StatusCode from "Common/Types/API/StatusCode";
-import URL from "Common/Types/API/URL";
-import { DEFAULT_LIMIT } from "Common/Types/Database/LimitMax";
-import Dictionary from "Common/Types/Dictionary";
-import Exception from "Common/Types/Exception/Exception";
-import { JSONArray, JSONObject } from "Common/Types/JSON";
-import ListData from "Common/Types/ListData";
-import PositiveNumber from "Common/Types/PositiveNumber";
+} from "../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import FileModel from "../../Models/DatabaseModels/DatabaseBaseModel/FileModel";
+import EmptyResponse from "../../Types/API/EmptyResponse";
+import StatusCode from "../../Types/API/StatusCode";
+import URL from "../../Types/API/URL";
+import { DEFAULT_LIMIT } from "../../Types/Database/LimitMax";
+import Dictionary from "../../Types/Dictionary";
+import Exception from "../../Types/Exception/Exception";
+import { JSONArray, JSONObject } from "../../Types/JSON";
+import ListData from "../../Types/ListData";
+import PositiveNumber from "../../Types/PositiveNumber";
+import Route from "../../Types/API/Route";
+import CaptureSpan from "./Telemetry/CaptureSpan";
 
 export default class Response {
+  @CaptureSpan()
   public static sendEmptySuccessResponse(
     _req: ExpressRequest,
     res: ExpressResponse,
@@ -33,6 +36,16 @@ export default class Response {
     oneUptimeResponse.status(200).send({} as EmptyResponse);
   }
 
+  @CaptureSpan()
+  public static sendFileByPath(
+    _req: ExpressRequest,
+    res: ExpressResponse,
+    path: string,
+  ): void {
+    res.sendFile(path);
+  }
+
+  @CaptureSpan()
   public static sendCustomResponse(
     _req: ExpressRequest,
     res: ExpressResponse,
@@ -51,6 +64,7 @@ export default class Response {
     oneUptimeResponse.status(statusCode).send(body);
   }
 
+  @CaptureSpan()
   public static async sendFileResponse(
     _req: ExpressRequest | ExpressRequest,
     res: ExpressResponse,
@@ -61,7 +75,7 @@ export default class Response {
     const oneUptimeResponse: OneUptimeResponse = res as OneUptimeResponse;
 
     /** Set the proper content type */
-    oneUptimeResponse.set("Content-Type", file.type);
+    oneUptimeResponse.set("Content-Type", file.fileType);
     oneUptimeResponse.status(200);
     /** Return response */
     // readstream.pipe(res);
@@ -69,6 +83,7 @@ export default class Response {
     oneUptimeResponse.send(file.file);
   }
 
+  @CaptureSpan()
   public static render(
     _req: ExpressRequest,
     res: ExpressResponse,
@@ -80,6 +95,7 @@ export default class Response {
     oneUptimeResponse.render(path, vars);
   }
 
+  @CaptureSpan()
   public static sendErrorResponse(
     _req: ExpressRequest,
     res: ExpressResponse,
@@ -96,6 +112,7 @@ export default class Response {
     oneUptimeResponse.status(status).send({ message });
   }
 
+  @CaptureSpan()
   public static sendEntityArrayResponse(
     req: ExpressRequest,
     res: ExpressResponse,
@@ -128,6 +145,7 @@ export default class Response {
     return this.sendJsonArrayResponse(req, res, jsonArray, count);
   }
 
+  @CaptureSpan()
   public static sendEntityResponse(
     req: ExpressRequest,
     res: ExpressResponse,
@@ -159,14 +177,16 @@ export default class Response {
     return this.sendJsonObjectResponse(req, res, response);
   }
 
+  @CaptureSpan()
   public static redirect(
     _req: ExpressRequest,
     res: ExpressResponse,
-    url: URL,
+    to: URL | Route,
   ): void {
-    return res.redirect(url.toString());
+    return res.redirect(to.toString());
   }
 
+  @CaptureSpan()
   public static sendJsonArrayResponse(
     req: ExpressRequest,
     res: ExpressResponse,
@@ -218,6 +238,7 @@ export default class Response {
     }
   }
 
+  @CaptureSpan()
   public static sendJsonObjectResponse(
     req: ExpressRequest,
     res: ExpressResponse,
@@ -242,6 +263,7 @@ export default class Response {
       .send(item);
   }
 
+  @CaptureSpan()
   public static sendTextResponse(
     _req: ExpressRequest,
     res: ExpressResponse,
@@ -253,6 +275,7 @@ export default class Response {
     oneUptimeResponse.status(200).send(text);
   }
 
+  @CaptureSpan()
   public static sendHtmlResponse(
     _req: ExpressRequest,
     res: ExpressResponse,
@@ -265,6 +288,7 @@ export default class Response {
     oneUptimeResponse.end(html);
   }
 
+  @CaptureSpan()
   public static sendMarkdownResponse(
     _req: ExpressRequest,
     res: ExpressResponse,
@@ -273,6 +297,7 @@ export default class Response {
     return Response.sendHtmlResponse(_req, res, html);
   }
 
+  @CaptureSpan()
   public static sendXmlResponse(
     _req: ExpressRequest,
     res: ExpressResponse,
@@ -285,6 +310,7 @@ export default class Response {
     oneUptimeResponse.end(xml);
   }
 
+  @CaptureSpan()
   public static sendJavaScriptResponse(
     _req: ExpressRequest,
     res: ExpressResponse,

@@ -3,12 +3,12 @@ import ErrorMessage from "../ErrorMessage/ErrorMessage";
 import ConfirmModal from "../Modal/ConfirmModal";
 import SideOver from "../SideOver/SideOver";
 import RunForm from "./RunForm";
-import JSONFunctions from "Common/Types/JSONFunctions";
+import JSONFunctions from "../../../Types/JSONFunctions";
 import {
   ComponentInputType,
   NodeDataProp,
   NodeType,
-} from "Common/Types/Workflow/Component";
+} from "../../../Types/Workflow/Component";
 import React, { FunctionComponent, ReactElement, useState } from "react";
 
 export interface ComponentProps {
@@ -111,7 +111,7 @@ const RunModal: FunctionComponent<ComponentProps> = (
         )}
 
         {component.nodeType === NodeType.PlaceholderNode && (
-          <ErrorMessage error="No trigger added. Please add a trigger in order to run this workflow" />
+          <ErrorMessage message="No trigger added. Please add a trigger in order to run this workflow" />
         )}
       </>
     </SideOver>

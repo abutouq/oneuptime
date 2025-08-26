@@ -13,20 +13,21 @@ import Express, {
   OneUptimeRequest,
 } from "../Utils/Express";
 import Response from "../Utils/Response";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 import CommonAPI from "./CommonAPI";
-import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import DatabaseCommonInteractionProps from "Common/Types/BaseDatabase/DatabaseCommonInteractionProps";
+import BaseModel from "../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import DatabaseCommonInteractionProps from "../../Types/BaseDatabase/DatabaseCommonInteractionProps";
 import {
   DEFAULT_LIMIT,
   LIMIT_PER_PROJECT,
-} from "Common/Types/Database/LimitMax";
-import PartialEntity from "Common/Types/Database/PartialEntity";
-import BadRequestException from "Common/Types/Exception/BadRequestException";
-import { JSONObject } from "Common/Types/JSON";
-import JSONFunctions from "Common/Types/JSONFunctions";
-import ObjectID from "Common/Types/ObjectID";
-import { UserPermission } from "Common/Types/Permission";
-import PositiveNumber from "Common/Types/PositiveNumber";
+} from "../../Types/Database/LimitMax";
+import PartialEntity from "../../Types/Database/PartialEntity";
+import BadRequestException from "../../Types/Exception/BadRequestException";
+import { JSONObject } from "../../Types/JSON";
+import JSONFunctions from "../../Types/JSONFunctions";
+import ObjectID from "../../Types/ObjectID";
+import { UserPermission } from "../../Types/Permission";
+import PositiveNumber from "../../Types/PositiveNumber";
 
 export default class BaseAPI<
   TBaseModel extends BaseModel,
@@ -131,9 +132,57 @@ export default class BaseAPI<
       },
     );
 
+    router.post(
+      `${new this.entityType().getCrudApiPath()?.toString()}/:id/update-item`,
+      UserMiddleware.getUserMiddleware,
+      async (req: ExpressRequest, res: ExpressResponse, next: NextFunction) => {
+        try {
+          await this.updateItem(req, res);
+        } catch (err) {
+          next(err);
+        }
+      },
+    );
+
+    router.get(
+      `${new this.entityType().getCrudApiPath()?.toString()}/:id/update-item`,
+      UserMiddleware.getUserMiddleware,
+      async (req: ExpressRequest, res: ExpressResponse, next: NextFunction) => {
+        try {
+          await this.updateItem(req, res);
+        } catch (err) {
+          next(err);
+        }
+      },
+    );
+
     // Delete
     router.delete(
       `${new this.entityType().getCrudApiPath()?.toString()}/:id`,
+      UserMiddleware.getUserMiddleware,
+      async (req: ExpressRequest, res: ExpressResponse, next: NextFunction) => {
+        try {
+          await this.deleteItem(req, res);
+        } catch (err) {
+          next(err);
+        }
+      },
+    );
+
+    router.post(
+      `${new this.entityType().getCrudApiPath()?.toString()}/:id/delete-item`,
+      UserMiddleware.getUserMiddleware,
+      async (req: ExpressRequest, res: ExpressResponse, next: NextFunction) => {
+        try {
+          await this.deleteItem(req, res);
+        } catch (err) {
+          next(err);
+        }
+      },
+    );
+
+    router.get(
+      `${new this.entityType().getCrudApiPath()?.toString()}/:id/delete-item`,
       UserMiddleware.getUserMiddleware,
       async (req: ExpressRequest, res: ExpressResponse, next: NextFunction) => {
         try {
@@ -148,6 +197,7 @@ export default class BaseAPI<
     this.service = service;
   }
 
+  @CaptureSpan()
   public async getPermissionsForTenant(
     req: ExpressRequest,
   ): Promise<Array<UserPermission>> {
@@ -178,6 +228,7 @@ export default class BaseAPI<
     return null;
   }
 
+  @CaptureSpan()
   public async getList(
     req: ExpressRequest,
     res: ExpressResponse,
@@ -254,6 +305,7 @@ export default class BaseAPI<
     );
   }
 
+  @CaptureSpan()
   public async count(req: ExpressRequest, res: ExpressResponse): Promise<void> {
     let query: Query<BaseModel> = {};
 
@@ -276,6 +328,7 @@ export default class BaseAPI<
     });
   }
 
+  @CaptureSpan()
   public async getItem(
     req: ExpressRequest,
     res: ExpressResponse,
@@ -299,6 +352,7 @@ export default class BaseAPI<
     return Response.sendEntityResponse(req, res, item, this.entityType);
   }
 
+  @CaptureSpan()
   public async deleteItem(
     req: ExpressRequest,
     res: ExpressResponse,
@@ -314,6 +368,7 @@ export default class BaseAPI<
     return Response.sendEmptySuccessResponse(req, res);
   }
 
+  @CaptureSpan()
   public async updateItem(
     req: ExpressRequest,
     res: ExpressResponse,
@@ -340,6 +395,7 @@ export default class BaseAPI<
     return Response.sendEmptySuccessResponse(req, res);
   }
 
+  @CaptureSpan()
   public async createItem(
     req: ExpressRequest,
     res: ExpressResponse,

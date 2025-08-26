@@ -18,7 +18,7 @@ const Logout: FunctionComponent<PageComponentProps> = (): ReactElement => {
   useAsyncEffect(async () => {
     try {
       UiAnalytics.logout();
-      await UserUtil.logout();
+      UserUtil.logout();
       Navigation.navigate(ACCOUNTS_URL);
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -40,7 +40,7 @@ const Logout: FunctionComponent<PageComponentProps> = (): ReactElement => {
       ]}
     >
       {!error ? <PageLoader isVisible={true} /> : <></>}
-      {error ? <ErrorMessage error={error} /> : <></>}
+      {error ? <ErrorMessage message={error} /> : <></>}
     </Page>
   );
 };

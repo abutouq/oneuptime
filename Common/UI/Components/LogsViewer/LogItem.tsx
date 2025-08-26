@@ -1,11 +1,12 @@
 import CopyTextButton from "../CopyTextButton/CopyTextButton";
-import OneUptimeDate from "Common/Types/Date";
-import Dictionary from "Common/Types/Dictionary";
-import JSONFunctions from "Common/Types/JSONFunctions";
-import Log from "Common/Models/AnalyticsModels/Log";
-import LogSeverity from "Common/Types/Log/LogSeverity";
-import TelemetryService from "Common/Models/DatabaseModels/TelemetryService";
+import OneUptimeDate from "../../../Types/Date";
+import Dictionary from "../../../Types/Dictionary";
+import JSONFunctions from "../../../Types/JSONFunctions";
+import Log from "../../../Models/AnalyticsModels/Log";
+import LogSeverity from "../../../Types/Log/LogSeverity";
+import TelemetryService from "../../../Models/DatabaseModels/TelemetryService";
 import React, { FunctionComponent, ReactElement, useEffect } from "react";
+import { Logger } from "../../Utils/Logger";
 
 export interface ComponentProps {
   log: Log;
@@ -58,6 +59,7 @@ const LogItem: FunctionComponent<ComponentProps> = (
     logBody = JSON.stringify(JSON.parse(logBody), null, 2);
     isBodyInJSON = true;
   } catch (e) {
+    Logger.error(e as Error);
     isBodyInJSON = false;
   }
 
@@ -112,7 +114,7 @@ const LogItem: FunctionComponent<ComponentProps> = (
         )}
 
         <div className={`${bodyColor} courier-prime`}>
-          {isBodyInJSON && <pre>{logBody}</pre>}
+          {isBodyInJSON && <pre className="whitespace-pre-wrap">{logBody}</pre>}
           {!isBodyInJSON && props.log.body?.toString()}
         </div>
       </div>
@@ -215,7 +217,9 @@ const LogItem: FunctionComponent<ComponentProps> = (
           )}
         </div>
         {isBodyInJSON && (
-          <pre className={`${bodyColor} courier-prime`}>{logBody}</pre>
+          <pre className={`${bodyColor} courier-prime whitespace-pre-wrap`}>
+            {logBody}
+          </pre>
         )}
       </div>
 
@@ -250,7 +254,7 @@ const LogItem: FunctionComponent<ComponentProps> = (
               ATTRIBUTES:
             </div>
           </div>
-          <pre className={`${bodyColor} courier-prime`}>
+          <pre className={`${bodyColor} courier-prime whitespace-pre-wrap`}>
             {JSON.stringify(
               JSONFunctions.unflattenObject(props.log.attributes || {}),
               null,

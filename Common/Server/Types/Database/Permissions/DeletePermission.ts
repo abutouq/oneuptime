@@ -4,10 +4,12 @@ import AccessControlUtil from "./AccessControlPermission";
 import PermissionUtil from "./PermissionsUtil";
 import TablePermission from "./TablePermission";
 import TenantPermission from "./TenantPermission";
-import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import DatabaseCommonInteractionProps from "Common/Types/BaseDatabase/DatabaseCommonInteractionProps";
+import BaseModel from "../../../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import DatabaseCommonInteractionProps from "../../../../Types/BaseDatabase/DatabaseCommonInteractionProps";
+import CaptureSpan from "../../../Utils/Telemetry/CaptureSpan";
 
 export default class DeletePermission {
+  @CaptureSpan()
   public static async checkDeletePermissionByModel<
     TBaseModel extends BaseModel,
   >(data: {
@@ -26,6 +28,7 @@ export default class DeletePermission {
     });
   }
 
+  @CaptureSpan()
   public static async checkDeletePermission<TBaseModel extends BaseModel>(
     modelType: { new (): TBaseModel },
     query: Query<TBaseModel>,

@@ -76,6 +76,10 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
 @Entity({
   name: "AlertState",
 })
+@Index(["projectId", "isCreatedState"])
+@Index(["projectId", "isResolvedState"])
+@Index(["projectId", "isAcknowledgedState"])
+@Index(["projectId", "order"])
 export default class AlertState extends BaseModel {
   @ColumnAccessControl({
     create: [
@@ -290,6 +294,7 @@ export default class AlertState extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })

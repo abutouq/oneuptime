@@ -16,8 +16,10 @@ import ProjectSsoAPI from "Common/Server/API/ProjectSSO";
 
 // Import API
 import ResellerPlanAPI from "Common/Server/API/ResellerPlanAPI";
+import MonitorAPI from "Common/Server/API/MonitorAPI";
 import ShortLinkAPI from "Common/Server/API/ShortLinkAPI";
 import StatusPageAPI from "Common/Server/API/StatusPageAPI";
+import WorkspaceNotificationRuleAPI from "Common/Server/API/WorkspaceNotificationRuleAPI";
 import StatusPageDomainAPI from "Common/Server/API/StatusPageDomainAPI";
 import StatusPageSubscriberAPI from "Common/Server/API/StatusPageSubscriberAPI";
 import UserCallAPI from "Common/Server/API/UserCallAPI";
@@ -27,6 +29,7 @@ import MonitorTest from "Common/Models/DatabaseModels/MonitorTest";
 import UserEmailAPI from "Common/Server/API/UserEmailAPI";
 import UserNotificationLogTimelineAPI from "Common/Server/API/UserOnCallLogTimelineAPI";
 import UserSMSAPI from "Common/Server/API/UserSmsAPI";
+import UserPushAPI from "Common/Server/API/UserPushAPI";
 import ApiKeyPermissionService, {
   Service as ApiKeyPermissionServiceType,
 } from "Common/Server/Services/ApiKeyPermissionService";
@@ -168,15 +171,17 @@ import MonitorProbeService, {
 import MonitorSecretService, {
   Service as MonitorSecretServiceType,
 } from "Common/Server/Services/MonitorSecretService";
-import MonitorService, {
-  Service as MonitorServiceType,
-} from "Common/Server/Services/MonitorService";
 import MonitorStatusService, {
   Service as MonitorStatusServiceType,
 } from "Common/Server/Services/MonitorStatusService";
 import MonitorTimelineStatusService, {
   Service as MonitorTimelineStatusServiceType,
 } from "Common/Server/Services/MonitorStatusTimelineService";
+// user override
+import OnCallDutyPolicyUserOverrideService, {
+  Service as OnCallDutyPolicyUserOverrideServiceType,
+} from "Common/Server/Services/OnCallDutyPolicyUserOverrideService";
+import OnCallDutyPolicyUserOverride from "Common/Models/DatabaseModels/OnCallDutyPolicyUserOverride";
 import OnCallDutyPolicyCustomFieldService, {
   Service as OnCallDutyPolicyCustomFieldServiceType,
 } from "Common/Server/Services/OnCallDutyPolicyCustomFieldService";
@@ -207,9 +212,6 @@ import OnCallDutyPolicyScheduleLayerUserService, {
 import OnCallDutyPolicyScheduleService, {
   Service as OnCallDutyPolicyScheduleServiceType,
 } from "Common/Server/Services/OnCallDutyPolicyScheduleService";
-import OnCallDutyPolicyService, {
-  Service as OnCallDutyPolicyServiceType,
-} from "Common/Server/Services/OnCallDutyPolicyService";
 import ProjectCallSMSConfigService, {
   Service as ProjectCallSMSConfigServiceType,
 } from "Common/Server/Services/ProjectCallSMSConfigService";
@@ -280,6 +282,9 @@ import ShortLinkService, {
 import SmsLogService, {
   Service as SmsLogServiceType,
 } from "Common/Server/Services/SmsLogService";
+import PushNotificationLogService, {
+  Service as PushNotificationLogServiceType,
+} from "Common/Server/Services/PushNotificationLogService";
 import SpanService, {
   SpanService as SpanServiceType,
 } from "Common/Server/Services/SpanService";
@@ -377,6 +382,8 @@ import Span from "Common/Models/AnalyticsModels/Span";
 import ApiKey from "Common/Models/DatabaseModels/ApiKey";
 import ApiKeyPermission from "Common/Models/DatabaseModels/ApiKeyPermission";
 import CallLog from "Common/Models/DatabaseModels/CallLog";
+import PushNotificationLog from "Common/Models/DatabaseModels/PushNotificationLog";
+import WorkspaceNotificationLog from "Common/Models/DatabaseModels/WorkspaceNotificationLog";
 import Domain from "Common/Models/DatabaseModels/Domain";
 import EmailLog from "Common/Models/DatabaseModels/EmailLog";
 import EmailVerificationToken from "Common/Models/DatabaseModels/EmailVerificationToken";
@@ -407,7 +414,6 @@ import IncidentTemplateOwnerTeam from "Common/Models/DatabaseModels/IncidentTemp
 import IncidentTemplateOwnerUser from "Common/Models/DatabaseModels/IncidentTemplateOwnerUser";
 
 import Label from "Common/Models/DatabaseModels/Label";
-import Monitor from "Common/Models/DatabaseModels/Monitor";
 import MonitorCustomField from "Common/Models/DatabaseModels/MonitorCustomField";
 import MonitorGroupOwnerTeam from "Common/Models/DatabaseModels/MonitorGroupOwnerTeam";
 import MonitorGroupOwnerUser from "Common/Models/DatabaseModels/MonitorGroupOwnerUser";
@@ -418,7 +424,6 @@ import MonitorProbe from "Common/Models/DatabaseModels/MonitorProbe";
 import MonitorSecret from "Common/Models/DatabaseModels/MonitorSecret";
 import MonitorStatus from "Common/Models/DatabaseModels/MonitorStatus";
 import MonitorTimelineStatus from "Common/Models/DatabaseModels/MonitorStatusTimeline";
-import OnCallDutyPolicy from "Common/Models/DatabaseModels/OnCallDutyPolicy";
 import OnCallDutyPolicyCustomField from "Common/Models/DatabaseModels/OnCallDutyPolicyCustomField";
 import OnCallDutyPolicyEscalationRule from "Common/Models/DatabaseModels/OnCallDutyPolicyEscalationRule";
 import OnCallDutyPolicyEscalationRuleSchedule from "Common/Models/DatabaseModels/OnCallDutyPolicyEscalationRuleSchedule";
@@ -480,6 +485,9 @@ import TelemetryAttribute from "Common/Models/AnalyticsModels/TelemetryAttribute
 import ExceptionInstance from "Common/Models/AnalyticsModels/ExceptionInstance";
 import TelemetyException from "Common/Models/DatabaseModels/TelemetryException";
 import CopilotActionTypePriority from "Common/Models/DatabaseModels/CopilotActionTypePriority";
+import WorkspaceNotificationLogService, {
+  Service as WorkspaceNotificationLogServiceType,
+} from "Common/Server/Services/WorkspaceNotificationLogService";
 
 // scheduled maintenance template
 import ScheduledMaintenanceTemplate from "Common/Models/DatabaseModels/ScheduledMaintenanceTemplate";
@@ -496,6 +504,108 @@ import ScheduledMaintenanceTemplateOwnerUserService, {
 } from "Common/Server/Services/ScheduledMaintenanceTemplateOwnerUserService";
 import TableView from "Common/Models/DatabaseModels/TableView";
 
+import IncidentFeed from "Common/Models/DatabaseModels/IncidentFeed";
+import AlertFeed from "Common/Models/DatabaseModels/AlertFeed";
+import ScheduledMaintenanceFeed from "Common/Models/DatabaseModels/ScheduledMaintenanceFeed";
+
+import IncidentFeedService, {
+  Service as IncidentFeedServiceType,
+} from "Common/Server/Services/IncidentFeedService";
+
+import AlertFeedService, {
+  Service as AlertFeedServiceType,
+} from "Common/Server/Services/AlertFeedService";
+
+import ScheduledMaintenanceFeedService, {
+  Service as ScheduledMaintenanceFeedServiceType,
+} from "Common/Server/Services/ScheduledMaintenanceFeedService";
+
+import SlackAPI from "Common/Server/API/SlackAPI";
+
+import WorkspaceProjectAuthToken from "Common/Models/DatabaseModels/WorkspaceProjectAuthToken";
+import WorkspaceProjectAuthTokenService, {
+  Service as WorkspaceProjectAuthTokenServiceType,
+} from "Common/Server/Services/WorkspaceProjectAuthTokenService";
+
+import WorkspaceUserAuthToken from "Common/Models/DatabaseModels/WorkspaceUserAuthToken";
+
+import WorkspaceUserAuthTokenService, {
+  Service as WorkspaceUserAuthTokenServiceType,
+} from "Common/Server/Services/WorkspaceUserAuthTokenService";
+
+import WorkspaceSetting from "Common/Models/DatabaseModels/WorkspaceSetting";
+import WorkspaceSettingService, {
+  Service as WorkspaceSettingServiceType,
+} from "Common/Server/Services/WorkspaceSettingService";
+
+import ProjectUser from "Common/Models/DatabaseModels/ProjectUser";
+import ProjectUserService, {
+  Service as ProjectUserServiceType,
+} from "Common/Server/Services/ProjectUserService";
+
+import MonitorFeed from "Common/Models/DatabaseModels/MonitorFeed";
+import MonitorFeedService, {
+  Service as MonitorFeedServiceType,
+} from "Common/Server/Services/MonitorFeedService";
+
+// MetricType.
+import MetricTypeService, {
+  Service as MetricTypeServiceType,
+} from "Common/Server/Services/MetricTypeService";
+import MetricType from "Common/Models/DatabaseModels/MetricType";
+
+import OnCallDutyPolicyAPI from "Common/Server/API/OnCallDutyPolicyAPI";
+
+// OnCallDutyPolicyOwnerTeam
+// OnCallDutyPolicyOwnerUser
+// OnCallDutyPolicyFeed
+
+import OnCallDutyPolicyFeed from "Common/Models/DatabaseModels/OnCallDutyPolicyFeed";
+import OnCallDutyPolicyFeedService, {
+  Service as OnCallDutyPolicyFeedServiceType,
+} from "Common/Server/Services/OnCallDutyPolicyFeedService";
+
+import OnCallDutyPolicyOwnerTeam from "Common/Models/DatabaseModels/OnCallDutyPolicyOwnerTeam";
+import OnCallDutyPolicyOwnerTeamService, {
+  Service as OnCallDutyPolicyOwnerTeamServiceType,
+} from "Common/Server/Services/OnCallDutyPolicyOwnerTeamService";
+
+import OnCallDutyPolicyOwnerUser from "Common/Models/DatabaseModels/OnCallDutyPolicyOwnerUser";
+import OnCallDutyPolicyOwnerUserService, {
+  Service as OnCallDutyPolicyOwnerUserServiceType,
+} from "Common/Server/Services/OnCallDutyPolicyOwnerUserService";
+import MonitorLog from "Common/Models/AnalyticsModels/MonitorLog";
+import MonitorLogService, {
+  Service as MonitorLogServiceType,
+} from "Common/Server/Services/MonitorLogService";
+
+//OnCallDutyPolicyTimeLog
+import OnCallDutyPolicyTimeLog from "Common/Models/DatabaseModels/OnCallDutyPolicyTimeLog";
+import OnCallDutyPolicyTimeLogService, {
+  Service as OnCallDutyPolicyTimeLogServiceType,
+} from "Common/Server/Services/OnCallDutyPolicyTimeLogService";
+
+// statu spage announcement templates
+import StatusPageAnnouncementTemplate from "Common/Models/DatabaseModels/StatusPageAnnouncementTemplate";
+import StatusPageAnnouncementTemplateService, {
+  Service as StatusPageAnnouncementTemplateServiceType,
+} from "Common/Server/Services/StatusPageAnnouncementTemplateService";
+
+// ProjectSCIM
+import ProjectSCIM from "Common/Models/DatabaseModels/ProjectSCIM";
+import ProjectSCIMService, {
+  Service as ProjectSCIMServiceType,
+} from "Common/Server/Services/ProjectSCIMService";
+
+// StatusPageSCIM
+import StatusPageSCIM from "Common/Models/DatabaseModels/StatusPageSCIM";
+import StatusPageSCIMService, {
+  Service as StatusPageSCIMServiceType,
+} from "Common/Server/Services/StatusPageSCIMService";
+
+// Open API Spec
+import OpenAPI from "Common/Server/API/OpenAPI";
+
 const BaseAPIFeatureSet: FeatureSet = {
   init: async (): Promise<void> => {
     const app: ExpressApplication = Express.getExpressApp();
@@ -510,11 +620,111 @@ const BaseAPIFeatureSet: FeatureSet = {
       ).getRouter(),
     );
 
+    app.use(`/${APP_NAME.toLocaleLowerCase()}`, OpenAPI.getRouter());
+
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAnalyticsAPI<MonitorLog, MonitorLogServiceType>(
+        MonitorLog,
+        MonitorLogService,
+      ).getRouter(),
+    );
+
     app.use(
       `/${APP_NAME.toLocaleLowerCase()}`,
       new BaseAPI<AlertState, AlertStateServiceType>(
         AlertState,
         AlertStateService,
+      ).getRouter(),
+    );
+
+    // Project SCIM
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAPI<ProjectSCIM, ProjectSCIMServiceType>(
+        ProjectSCIM,
+        ProjectSCIMService,
+      ).getRouter(),
+    );
+
+    // Status Page SCIM
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAPI<StatusPageSCIM, StatusPageSCIMServiceType>(
+        StatusPageSCIM,
+        StatusPageSCIMService,
+      ).getRouter(),
+    );
+
+    // status page announcement templates
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAPI<
+        StatusPageAnnouncementTemplate,
+        StatusPageAnnouncementTemplateServiceType
+      >(
+        StatusPageAnnouncementTemplate,
+        StatusPageAnnouncementTemplateService,
+      ).getRouter(),
+    );
+
+    // OnCallDutyPolicyTimeLogService
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAPI<OnCallDutyPolicyTimeLog, OnCallDutyPolicyTimeLogServiceType>(
+        OnCallDutyPolicyTimeLog,
+        OnCallDutyPolicyTimeLogService,
+      ).getRouter(),
+    );
+
+    // on-call policy owner user.
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAPI<
+        OnCallDutyPolicyOwnerUser,
+        OnCallDutyPolicyOwnerUserServiceType
+      >(
+        OnCallDutyPolicyOwnerUser,
+        OnCallDutyPolicyOwnerUserService,
+      ).getRouter(),
+    );
+
+    // on-call policy owner team.
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAPI<
+        OnCallDutyPolicyOwnerTeam,
+        OnCallDutyPolicyOwnerTeamServiceType
+      >(
+        OnCallDutyPolicyOwnerTeam,
+        OnCallDutyPolicyOwnerTeamService,
+      ).getRouter(),
+    );
+
+    // on-call policy feed.
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAPI<OnCallDutyPolicyFeed, OnCallDutyPolicyFeedServiceType>(
+        OnCallDutyPolicyFeed,
+        OnCallDutyPolicyFeedService,
+      ).getRouter(),
+    );
+
+    // monitor feed
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAPI<MonitorFeed, MonitorFeedServiceType>(
+        MonitorFeed,
+        MonitorFeedService,
+      ).getRouter(),
+    );
+
+    // MetricType
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAPI<MetricType, MetricTypeServiceType>(
+        MetricType,
+        MetricTypeService,
       ).getRouter(),
     );
 
@@ -528,9 +738,82 @@ const BaseAPIFeatureSet: FeatureSet = {
 
     app.use(
       `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAPI<ProjectUser, ProjectUserServiceType>(
+        ProjectUser,
+        ProjectUserService,
+      ).getRouter(),
+    );
+
+    //service provider setting
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAPI<WorkspaceSetting, WorkspaceSettingServiceType>(
+        WorkspaceSetting,
+        WorkspaceSettingService,
+      ).getRouter(),
+    );
+
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAPI<IncidentFeed, IncidentFeedServiceType>(
+        IncidentFeed,
+        IncidentFeedService,
+      ).getRouter(),
+    );
+
+    // user override
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAPI<
+        OnCallDutyPolicyUserOverride,
+        OnCallDutyPolicyUserOverrideServiceType
+      >(
+        OnCallDutyPolicyUserOverride,
+        OnCallDutyPolicyUserOverrideService,
+      ).getRouter(),
+    );
+
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAPI<AlertFeed, AlertFeedServiceType>(
+        AlertFeed,
+        AlertFeedService,
+      ).getRouter(),
+    );
+
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAPI<
+        ScheduledMaintenanceFeed,
+        ScheduledMaintenanceFeedServiceType
+      >(ScheduledMaintenanceFeed, ScheduledMaintenanceFeedService).getRouter(),
+    );
+
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
       new BaseAPI<AlertNoteTemplate, AlertNoteTemplateServiceType>(
         AlertNoteTemplate,
         AlertNoteTemplateService,
+      ).getRouter(),
+    );
+
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAPI<
+        WorkspaceProjectAuthToken,
+        WorkspaceProjectAuthTokenServiceType
+      >(
+        WorkspaceProjectAuthToken,
+        WorkspaceProjectAuthTokenService,
+      ).getRouter(),
+    );
+
+    // user auth token
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAPI<WorkspaceUserAuthToken, WorkspaceUserAuthTokenServiceType>(
+        WorkspaceUserAuthToken,
+        WorkspaceUserAuthTokenService,
       ).getRouter(),
     );
 
@@ -1253,15 +1536,23 @@ const BaseAPIFeatureSet: FeatureSet = {
 
     app.use(
       `/${APP_NAME.toLocaleLowerCase()}`,
-      new BaseAPI<Monitor, MonitorServiceType>(
-        Monitor,
-        MonitorService,
+      new BaseAPI<SmsLog, SmsLogServiceType>(SmsLog, SmsLogService).getRouter(),
+    );
+
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new BaseAPI<PushNotificationLog, PushNotificationLogServiceType>(
+        PushNotificationLog,
+        PushNotificationLogService,
       ).getRouter(),
     );
 
     app.use(
       `/${APP_NAME.toLocaleLowerCase()}`,
-      new BaseAPI<SmsLog, SmsLogServiceType>(SmsLog, SmsLogService).getRouter(),
+      new BaseAPI<
+        WorkspaceNotificationLog,
+        WorkspaceNotificationLogServiceType
+      >(WorkspaceNotificationLog, WorkspaceNotificationLogService).getRouter(),
     );
 
     app.use(
@@ -1305,9 +1596,21 @@ const BaseAPIFeatureSet: FeatureSet = {
     );
 
     app.use(`/${APP_NAME.toLocaleLowerCase()}`, new ShortLinkAPI().getRouter());
+    app.use(`/${APP_NAME.toLocaleLowerCase()}`, new MonitorAPI().getRouter());
     app.use(
       `/${APP_NAME.toLocaleLowerCase()}`,
       new StatusPageAPI().getRouter(),
+    );
+
+    // OnCallDutyPolicyAPI
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new OnCallDutyPolicyAPI().getRouter(),
+    );
+
+    app.use(
+      `/${APP_NAME.toLocaleLowerCase()}`,
+      new WorkspaceNotificationRuleAPI().getRouter(),
     );
     app.use(`/${APP_NAME.toLocaleLowerCase()}`, new FileAPI().getRouter());
     app.use(
@@ -1328,6 +1631,7 @@ const BaseAPIFeatureSet: FeatureSet = {
       `/${APP_NAME.toLocaleLowerCase()}`,
       new ResellerPlanAPI().getRouter(),
     );
+    app.use(`/${APP_NAME.toLocaleLowerCase()}`, new SlackAPI().getRouter());
     app.use(
       `/${APP_NAME.toLocaleLowerCase()}`,
       new GlobalConfigAPI().getRouter(),
@@ -1359,6 +1663,7 @@ const BaseAPIFeatureSet: FeatureSet = {
     );
     app.use(`/${APP_NAME.toLocaleLowerCase()}`, new UserEmailAPI().getRouter());
     app.use(`/${APP_NAME.toLocaleLowerCase()}`, new UserSMSAPI().getRouter());
+    app.use(`/${APP_NAME.toLocaleLowerCase()}`, new UserPushAPI().getRouter());
     app.use(`/${APP_NAME.toLocaleLowerCase()}`, new ProbeAPI().getRouter());
 
     app.use(
@@ -1413,14 +1718,6 @@ const BaseAPIFeatureSet: FeatureSet = {
       new BaseAPI<IncidentInternalNote, IncidentInternalNoteServiceType>(
         IncidentInternalNote,
         IncidentInternalNoteService,
-      ).getRouter(),
-    );
-
-    app.use(
-      `/${APP_NAME.toLocaleLowerCase()}`,
-      new BaseAPI<OnCallDutyPolicy, OnCallDutyPolicyServiceType>(
-        OnCallDutyPolicy,
-        OnCallDutyPolicyService,
       ).getRouter(),
     );
 

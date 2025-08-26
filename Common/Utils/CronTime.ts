@@ -7,3 +7,5 @@ export const EVERY_WEEK: string = "0 0 * * 0";
 export const EVERY_FIFTEEN_MINUTE: string = "*/15 * * * *";
 export const EVERY_THIRTY_SECONDS: string = "*/30 * * * * *";
 export const EVERY_THIRTY_MINUTES: string = "*/30 * * * *";
+export const EVERY_THREE_HOURS: string = "0 */3 * * *";
+export const EVERY_TEN_SECONDS: string = "*/10 * * * * *";

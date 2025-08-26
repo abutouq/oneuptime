@@ -399,6 +399,7 @@ export default class StatusPagePrivateUser extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -437,6 +438,7 @@ export default class StatusPagePrivateUser extends BaseModel {
     type: TableColumnType.Boolean,
     title: "SSO User",
     description: "Did this user sign up via SSO?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,

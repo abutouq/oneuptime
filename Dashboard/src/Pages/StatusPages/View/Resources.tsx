@@ -1,6 +1,5 @@
 import MonitorElement from "../../../Components/Monitor/Monitor";
 import MonitorGroupElement from "../../../Components/MonitorGroup/MonitorGroupElement";
-import DashboardNavigation from "../../../Utils/Navigation";
 import PageComponentProps from "../../PageComponentProps";
 import SortOrder from "Common/Types/BaseDatabase/SortOrder";
 import { LIMIT_PER_PROJECT } from "Common/Types/Database/LimitMax";
@@ -12,7 +11,6 @@ import ErrorMessage from "Common/UI/Components/ErrorMessage/ErrorMessage";
 import { ModelField } from "Common/UI/Components/Forms/ModelForm";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
 import FormValues from "Common/UI/Components/Forms/Types/FormValues";
-import Link from "Common/UI/Components/Link/Link";
 import ModelTable from "Common/UI/Components/ModelTable/ModelTable";
 import FieldType from "Common/UI/Components/Types/FieldType";
 import { GetReactElementFunction } from "Common/UI/Types/FunctionTypes";
@@ -32,6 +30,9 @@ import React, {
   useState,
 } from "react";
 import UptimePrecision from "Common/Types/StatusPage/UptimePrecision";
+import Link from "Common/UI/Components/Link/Link";
+import ProjectUtil from "Common/UI/Utils/Project";
+import MarkdownUtil from "Common/UI/Utils/Markdown";
 
 const StatusPageDelete: FunctionComponent<PageComponentProps> = (
   props: PageComponentProps,
@@ -180,6 +181,9 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
       required: false,
       placeholder: "",
       stepId: "monitor-details",
+      description: MarkdownUtil.getMarkdownCheatsheet(
+        "Describe this resource here",
+      ),
     },
     {
       field: {
@@ -257,6 +261,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
       <ModelTable<StatusPageResource>
         modelType={StatusPageResource}
         id={`status-page-group-${statusPageGroupId?.toString() || ""}`}
+        userPreferencesKey="status-page-resource-table"
         isDeleteable={true}
         name="Status Page > Resources"
         sortBy="order"
@@ -267,7 +272,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
         isEditable={true}
         query={{
           statusPageId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
           statusPageGroupId: statusPageGroupId!,
         }}
         enableDragAndDrop={true}
@@ -331,7 +336,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
             type: FieldType.Entity,
             filterEntityType: Monitor,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -405,7 +410,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
       <>
         {isLoading ? <ComponentLoader /> : <></>}
 
-        {error ? <ErrorMessage error={error} /> : <></>}
+        {error ? <ErrorMessage message={error} /> : <></>}
 
         {!isLoading && !error ? getModelTable(null, null) : <></>}
 

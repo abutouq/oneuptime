@@ -101,6 +101,28 @@ const DashboardSideMenu: FunctionComponent<ComponentProps> = (
           }}
           icon={IconProp.SMS}
         />
+        <SideMenuItem
+          link={{
+            title: "Slack Subscribers",
+            to: RouteUtil.populateRouteParams(
+              RouteMap[PageMap.STATUS_PAGE_VIEW_SLACK_SUBSCRIBERS] as Route,
+              { modelId: props.modelId },
+            ),
+          }}
+          icon={IconProp.Slack}
+        />
+        <SideMenuItem
+          link={{
+            title: "MS Teams Subscribers",
+            to: RouteUtil.populateRouteParams(
+              RouteMap[
+                PageMap.STATUS_PAGE_VIEW_MICROSOFT_TEAMS_SUBSCRIBERS
+              ] as Route,
+              { modelId: props.modelId },
+            ),
+          }}
+          icon={IconProp.MicrosoftTeams}
+        />
 
         {/* <SideMenuItem
                     link={{
@@ -124,6 +146,19 @@ const DashboardSideMenu: FunctionComponent<ComponentProps> = (
             ),
           }}
           icon={IconProp.Settings}
+        />
+      </SideMenuSection>
+
+      <SideMenuSection title="Notification Logs">
+        <SideMenuItem
+          link={{
+            title: "Notification Logs",
+            to: RouteUtil.populateRouteParams(
+              RouteMap[PageMap.STATUS_PAGE_VIEW_NOTIFICATION_LOGS] as Route,
+              { modelId: props.modelId },
+            ),
+          }}
+          icon={IconProp.Bell}
         />
       </SideMenuSection>
 
@@ -218,6 +253,17 @@ const DashboardSideMenu: FunctionComponent<ComponentProps> = (
             ),
           }}
           icon={IconProp.Lock}
+        />
+
+        <SideMenuItem
+          link={{
+            title: "SCIM",
+            to: RouteUtil.populateRouteParams(
+              RouteMap[PageMap.STATUS_PAGE_VIEW_SCIM] as Route,
+              { modelId: props.modelId },
+            ),
+          }}
+          icon={IconProp.Refresh}
         />
 
         <SideMenuItem

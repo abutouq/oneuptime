@@ -13,6 +13,7 @@ import ProjectSmtpConfig from "Common/Models/DatabaseModels/ProjectSmtpConfig";
 import StatusPage from "Common/Models/DatabaseModels/StatusPage";
 import React, { Fragment, FunctionComponent, ReactElement } from "react";
 import TimezonesElement from "../../../Components/Timezone/TimezonesElement";
+import FormValues from "Common/UI/Components/Forms/Types/FormValues";
 
 const StatusPageDelete: FunctionComponent<
   PageComponentProps
@@ -22,10 +23,10 @@ const StatusPageDelete: FunctionComponent<
   return (
     <Fragment>
       <CardModelDetail<StatusPage>
-        name="Status Page > Branding > Subscriber"
+        name="Status Page > Branding > Subscriber > Email"
         cardProps={{
-          title: "Subscriber Settings",
-          description: "Subscriber settings for this status page.",
+          title: "Email Subscribers",
+          description: "Email subscriber settings for this status page.",
         }}
         isEditable={true}
         formFields={[
@@ -38,6 +39,32 @@ const StatusPageDelete: FunctionComponent<
             required: false,
             placeholder: "Can email subscribers subscribe to this status page?",
           },
+        ]}
+        modelDetailProps={{
+          showDetailsInNumberOfColumns: 1,
+          modelType: StatusPage,
+          id: "model-detail-email-subscribers",
+          fields: [
+            {
+              field: {
+                enableEmailSubscribers: true,
+              },
+              fieldType: FieldType.Boolean,
+              title: "Enable Email Subscribers",
+            },
+          ],
+          modelId: modelId,
+        }}
+      />
+
+      <CardModelDetail<StatusPage>
+        name="Status Page > Branding > Subscriber > SMS"
+        cardProps={{
+          title: "SMS Subscribers",
+          description: "SMS subscriber settings for this status page.",
+        }}
+        isEditable={true}
+        formFields={[
           {
             field: {
               enableSmsSubscribers: true,
@@ -51,21 +78,86 @@ const StatusPageDelete: FunctionComponent<
         modelDetailProps={{
           showDetailsInNumberOfColumns: 1,
           modelType: StatusPage,
-          id: "model-detail-status-page",
+          id: "model-detail-sms-subscribers",
           fields: [
-            {
-              field: {
-                enableEmailSubscribers: true,
-              },
-              fieldType: FieldType.Boolean,
-              title: "Enable Email Subscribers",
-            },
             {
               field: {
                 enableSmsSubscribers: true,
               },
               fieldType: FieldType.Boolean,
               title: "Enable SMS Subscribers",
+            },
+          ],
+          modelId: modelId,
+        }}
+      />
+
+      <CardModelDetail<StatusPage>
+        name="Status Page > Branding > Subscriber > Slack"
+        cardProps={{
+          title: "Slack Subscribers",
+          description: "Slack subscriber settings for this status page.",
+        }}
+        isEditable={true}
+        formFields={[
+          {
+            field: {
+              enableSlackSubscribers: true,
+            },
+            title: "Enable Slack Subscribers",
+            fieldType: FormFieldSchemaType.Toggle,
+            required: false,
+            placeholder: "Can Slack subscribers subscribe to this status page?",
+          },
+        ]}
+        modelDetailProps={{
+          showDetailsInNumberOfColumns: 1,
+          modelType: StatusPage,
+          id: "model-detail-slack-subscribers",
+          fields: [
+            {
+              field: {
+                enableSlackSubscribers: true,
+              },
+              fieldType: FieldType.Boolean,
+              title: "Enable Slack Subscribers",
+            },
+          ],
+          modelId: modelId,
+        }}
+      />
+
+      <CardModelDetail<StatusPage>
+        name="Status Page > Branding > Subscriber > Microsoft Teams"
+        cardProps={{
+          title: "Microsoft Teams Subscribers",
+          description:
+            "Microsoft Teams subscriber settings for this status page.",
+        }}
+        isEditable={true}
+        formFields={[
+          {
+            field: {
+              enableMicrosoftTeamsSubscribers: true,
+            },
+            title: "Enable Microsoft Teams Subscribers",
+            fieldType: FormFieldSchemaType.Toggle,
+            required: false,
+            placeholder:
+              "Can Microsoft Teams subscribers subscribe to this status page?",
+          },
+        ]}
+        modelDetailProps={{
+          showDetailsInNumberOfColumns: 1,
+          modelType: StatusPage,
+          id: "model-detail-microsoft-teams-subscribers",
+          fields: [
+            {
+              field: {
+                enableMicrosoftTeamsSubscribers: true,
+              },
+              fieldType: FieldType.Boolean,
+              title: "Enable Microsoft Teams Subscribers",
             },
           ],
           modelId: modelId,
@@ -157,6 +249,71 @@ const StatusPageDelete: FunctionComponent<
                   <PlaceholderText text="No subscriber timezones selected so far. Subscribers will receive notifications with times shown in GMT, EST, PST, IST, ACT timezones by default." />
                 );
               },
+            },
+          ],
+          modelId: modelId,
+        }}
+      />
+
+      <CardModelDetail<StatusPage>
+        name="Status Page > Branding > Subscriber > Email Footer"
+        cardProps={{
+          title: "Email Footer Settings",
+          description:
+            "Custom footer text settings for subscriber email notifications.",
+        }}
+        isEditable={true}
+        formFields={[
+          {
+            field: {
+              enableCustomSubscriberEmailNotificationFooterText: true,
+            },
+            title: "Enable Custom Email Footer Text",
+            fieldType: FormFieldSchemaType.Toggle,
+            required: false,
+            description:
+              "Enable custom footer text in subscriber email notifications. If disabled, default footer text will be used.",
+          },
+          {
+            field: {
+              subscriberEmailNotificationFooterText: true,
+            },
+            title: "Subscriber Email Notification Footer Text",
+            fieldType: FormFieldSchemaType.LongText,
+            required: false,
+            placeholder:
+              "This is an automated email sent to you because you are subscribed to Status Page.",
+            description:
+              "This text will be added at the end of the email notification sent to subscribers. You can use this to add any additional information or links.",
+            showIf: (item: FormValues<StatusPage>): boolean => {
+              return (
+                item.enableCustomSubscriberEmailNotificationFooterText === true
+              );
+            },
+          },
+        ]}
+        modelDetailProps={{
+          showDetailsInNumberOfColumns: 1,
+          modelType: StatusPage,
+          id: "model-detail-email-footer",
+          fields: [
+            {
+              field: {
+                enableCustomSubscriberEmailNotificationFooterText: true,
+              },
+              fieldType: FieldType.Boolean,
+              title: "Enable Custom Email Footer Text",
+              description:
+                "Enable custom footer text in subscriber email notifications. If disabled, default footer text will be used.",
+            },
+            {
+              field: {
+                subscriberEmailNotificationFooterText: true,
+              },
+              fieldType: FieldType.LongText,
+              title: "Subscriber Email Notification Footer Text",
+              description:
+                "This text will be added at the end of the email notification sent to subscribers. You can use this to add any additional information or links.",
             },
           ],
           modelId: modelId,

@@ -1,5 +1,5 @@
 import Icon, { ThickProp } from "../Icon/Icon";
-import IconProp from "Common/Types/Icon/IconProp";
+import IconProp from "../../../Types/Icon/IconProp";
 import React, { ReactElement } from "react";
 import Tooltip from "../Tooltip/Tooltip";
 import { GetReactElementFunction } from "../../Types/FunctionTypes";
@@ -20,6 +20,7 @@ export interface ComponentProps {
   alertType: HeaderAlertType;
   tooltip?: string | undefined;
   colorSwatch?: ColorSwatch | undefined;
+  suffix?: string | undefined;
 }
 
 const HeaderAlert: (props: ComponentProps) => ReactElement = (
@@ -29,7 +30,7 @@ const HeaderAlert: (props: ComponentProps) => ReactElement = (
 
   switch (props.alertType) {
     case HeaderAlertType.SUCCESS:
-      textColor = "text-green-500 hover:text-green-600";
+      textColor = "text-emerald-500 hover:text-emerald-600";
       break;
     case HeaderAlertType.ERROR:
       textColor = "text-red-500 hover:text-red-600";
@@ -46,7 +47,7 @@ const HeaderAlert: (props: ComponentProps) => ReactElement = (
 
   switch (props.alertType) {
     case HeaderAlertType.SUCCESS:
-      bgColor = "bg-green";
+      bgColor = "bg-emerald";
       break;
     case HeaderAlertType.ERROR:
       bgColor = "bg-red";
@@ -70,10 +71,10 @@ const HeaderAlert: (props: ComponentProps) => ReactElement = (
       <div
         className={`cursor-pointer ${bgColor}-50 hover:${bgColor}-200 mr-2 ml-2 p-1 h-7 pl-2 pr-2 rounded-full ${props.className}`}
         onClick={() => {
-          props.onClick && props.onClick();
+          props.onClick?.();
         }}
       >
-        <div className="flex ">
+        <div className="flex">
           <div className={`flex-shrink-0 mt-0.5 ${textColor}`}>
             <Icon
               icon={props.icon}
@@ -85,6 +86,13 @@ const HeaderAlert: (props: ComponentProps) => ReactElement = (
             <p className={`text-sm font-semibold ${textColor}`}>
               {props.title}
             </p>
+            {props.suffix && (
+              <span
+                className={`ml-1 ${textColor} text-sm font-semibold hidden md:block`}
+              >
+                {props.suffix}
+              </span>
+            )}
           </div>
         </div>
       </div>

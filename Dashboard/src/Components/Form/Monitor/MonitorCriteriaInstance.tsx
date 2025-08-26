@@ -2,10 +2,7 @@ import CriteriaFilters from "./CriteriaFilters";
 import MonitorCriteriaIncidentsForm from "./MonitorCriteriaIncidentsForm";
 import Dictionary from "Common/Types/Dictionary";
 import IconProp from "Common/Types/Icon/IconProp";
-import {
-  CriteriaFilter,
-  FilterCondition,
-} from "Common/Types/Monitor/CriteriaFilter";
+import { CriteriaFilter } from "Common/Types/Monitor/CriteriaFilter";
 import { CriteriaIncident } from "Common/Types/Monitor/CriteriaIncident";
 import MonitorCriteriaInstance from "Common/Types/Monitor/MonitorCriteriaInstance";
 import MonitorType from "Common/Types/Monitor/MonitorType";
@@ -34,6 +31,7 @@ import React, {
 import MonitorCriteriaAlertsForm from "./MonitorCriteriaAlertsForm";
 import { CriteriaAlert } from "Common/Types/Monitor/CriteriaAlert";
 import MonitorStep from "Common/Types/Monitor/MonitorStep";
+import FilterCondition from "Common/Types/Filter/FilterCondition";
 
 export interface ComponentProps {
   monitorStatusDropdownOptions: Array<DropdownOption>;
@@ -42,7 +40,7 @@ export interface ComponentProps {
   onCallPolicyDropdownOptions: Array<DropdownOption>;
   monitorType: MonitorType;
   monitorStep: MonitorStep;
-  initialValue?: undefined | MonitorCriteriaInstance;
+  value?: undefined | MonitorCriteriaInstance;
   onChange?: undefined | ((value: MonitorCriteriaInstance) => void);
   onDelete?: undefined | (() => void);
 }
@@ -50,20 +48,12 @@ export interface ComponentProps {
 const MonitorCriteriaInstanceElement: FunctionComponent<ComponentProps> = (
   props: ComponentProps,
 ): ReactElement => {
-  const [monitorCriteriaInstance, setMonitorCriteriaInstance] =
-    useState<MonitorCriteriaInstance>(
-      props.initialValue || new MonitorCriteriaInstance(),
-    );
+  const monitorCriteriaInstance: MonitorCriteriaInstance =
+    props.value || new MonitorCriteriaInstance();
 
   const [defaultMonitorStatusId, setDefaultMonitorStatusId] = useState<
     ObjectID | undefined
   >(monitorCriteriaInstance?.data?.monitorStatusId);
-
-  useEffect(() => {
-    if (props.onChange && monitorCriteriaInstance) {
-      props.onChange(monitorCriteriaInstance);
-    }
-  }, [monitorCriteriaInstance]);
 
   const filterConditionOptions: Array<DropdownOption> =
     DropdownUtil.getDropdownOptionsFromEnum(FilterCondition);
@@ -86,15 +76,13 @@ const MonitorCriteriaInstanceElement: FunctionComponent<ComponentProps> = (
   }, [props.monitorStatusDropdownOptions]);
 
   const [showMonitorStatusChangeControl, setShowMonitorStatusChangeControl] =
-    useState<boolean>(
-      Boolean(props.initialValue?.data?.monitorStatusId?.id) || false,
-    );
+    useState<boolean>(Boolean(props.value?.data?.monitorStatusId?.id) || false);
   const [showIncidentControl, setShowIncidentControl] = useState<boolean>(
-    props.initialValue?.data?.createIncidents || false,
+    props.value?.data?.createIncidents || false,
   );
 
   const [showAlertControl, setShowAlertControl] = useState<boolean>(
-    props.initialValue?.data?.createAlerts || false,
+    props.value?.data?.createAlerts || false,
   );
 
   return (
@@ -143,9 +131,11 @@ const MonitorCriteriaInstanceElement: FunctionComponent<ComponentProps> = (
             }
 
             monitorCriteriaInstance.setName(value);
-            setMonitorCriteriaInstance(
-              MonitorCriteriaInstance.clone(monitorCriteriaInstance),
-            );
+            if (props.onChange) {
+              props.onChange(
+                MonitorCriteriaInstance.clone(monitorCriteriaInstance),
+              );
+            }
           }}
         />
       </div>
@@ -195,9 +185,11 @@ const MonitorCriteriaInstanceElement: FunctionComponent<ComponentProps> = (
               });
             }
             monitorCriteriaInstance.setDescription(value);
-            setMonitorCriteriaInstance(
-              MonitorCriteriaInstance.clone(monitorCriteriaInstance),
-            );
+            if (props.onChange) {
+              props.onChange(
+                MonitorCriteriaInstance.clone(monitorCriteriaInstance),
+              );
+            }
           }}
           placeholder="This criteria checks if the monitor is online."
         />
@@ -209,21 +201,20 @@ const MonitorCriteriaInstanceElement: FunctionComponent<ComponentProps> = (
           required={true}
         />
         <Radio
-          value={filterConditionOptions.find((i: DropdownOption) => {
-            return (
-              i.value ===
-              (monitorCriteriaInstance?.data?.filterCondition ||
-                FilterCondition.All)
-            );
-          })}
+          value={
+            monitorCriteriaInstance?.data?.filterCondition ||
+            FilterCondition.All
+          }
           options={filterConditionOptions}
           onChange={(value: DropdownValue | Array<DropdownValue> | null) => {
             monitorCriteriaInstance.setFilterCondition(
               value as FilterCondition,
             );
-            setMonitorCriteriaInstance(
-              MonitorCriteriaInstance.clone(monitorCriteriaInstance),
-            );
+            if (props.onChange) {
+              props.onChange(
+                MonitorCriteriaInstance.clone(monitorCriteriaInstance),
+              );
+            }
           }}
         />
       </div>
@@ -237,12 +228,14 @@ const MonitorCriteriaInstanceElement: FunctionComponent<ComponentProps> = (
         <CriteriaFilters
           monitorStep={props.monitorStep}
           monitorType={props.monitorType}
-          initialValue={monitorCriteriaInstance?.data?.filters || []}
+          value={monitorCriteriaInstance?.data?.filters || []}
           onChange={(value: Array<CriteriaFilter>) => {
             monitorCriteriaInstance.setFilters(value);
-            setMonitorCriteriaInstance(
-              MonitorCriteriaInstance.clone(monitorCriteriaInstance),
-            );
+            if (props.onChange) {
+              props.onChange(
+                MonitorCriteriaInstance.clone(monitorCriteriaInstance),
+              );
+            }
           }}
         />
       </div>
@@ -259,9 +252,11 @@ const MonitorCriteriaInstanceElement: FunctionComponent<ComponentProps> = (
               monitorCriteriaInstance.setMonitorStatusId(undefined);
             }
 
-            setMonitorCriteriaInstance(
-              MonitorCriteriaInstance.clone(monitorCriteriaInstance),
-            );
+            if (props.onChange) {
+              props.onChange(
+                MonitorCriteriaInstance.clone(monitorCriteriaInstance),
+              );
+            }
           }}
         />
       </div>
@@ -287,9 +282,11 @@ const MonitorCriteriaInstanceElement: FunctionComponent<ComponentProps> = (
               monitorCriteriaInstance.setMonitorStatusId(
                 value ? new ObjectID(value.toString()) : undefined,
               );
-              setMonitorCriteriaInstance(
-                MonitorCriteriaInstance.clone(monitorCriteriaInstance),
-              );
+              if (props.onChange) {
+                props.onChange(
+                  MonitorCriteriaInstance.clone(monitorCriteriaInstance),
+                );
+              }
             }}
           />
         </div>
@@ -318,9 +315,11 @@ const MonitorCriteriaInstanceElement: FunctionComponent<ComponentProps> = (
               ]);
             }
 
-            setMonitorCriteriaInstance(
-              MonitorCriteriaInstance.clone(monitorCriteriaInstance),
-            );
+            if (props.onChange) {
+              props.onChange(
+                MonitorCriteriaInstance.clone(monitorCriteriaInstance),
+              );
+            }
           }}
         />
       </div>
@@ -335,9 +334,11 @@ const MonitorCriteriaInstanceElement: FunctionComponent<ComponentProps> = (
             onCallPolicyDropdownOptions={props.onCallPolicyDropdownOptions}
             onChange={(value: Array<CriteriaAlert>) => {
               monitorCriteriaInstance.setAlerts(value);
-              setMonitorCriteriaInstance(
-                MonitorCriteriaInstance.clone(monitorCriteriaInstance),
-              );
+              if (props.onChange) {
+                props.onChange(
+                  MonitorCriteriaInstance.clone(monitorCriteriaInstance),
+                );
+              }
             }}
           />
         </div>
@@ -366,9 +367,11 @@ const MonitorCriteriaInstanceElement: FunctionComponent<ComponentProps> = (
               ]);
             }
 
-            setMonitorCriteriaInstance(
-              MonitorCriteriaInstance.clone(monitorCriteriaInstance),
-            );
+            if (props.onChange) {
+              props.onChange(
+                MonitorCriteriaInstance.clone(monitorCriteriaInstance),
+              );
+            }
           }}
         />
       </div>
@@ -385,9 +388,11 @@ const MonitorCriteriaInstanceElement: FunctionComponent<ComponentProps> = (
             onCallPolicyDropdownOptions={props.onCallPolicyDropdownOptions}
             onChange={(value: Array<CriteriaIncident>) => {
               monitorCriteriaInstance.setIncidents(value);
-              setMonitorCriteriaInstance(
-                MonitorCriteriaInstance.clone(monitorCriteriaInstance),
-              );
+              if (props.onChange) {
+                props.onChange(
+                  MonitorCriteriaInstance.clone(monitorCriteriaInstance),
+                );
+              }
             }}
           />
         </div>

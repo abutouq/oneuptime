@@ -1,4 +1,5 @@
 import { Renderer, marked } from "marked";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export type MarkdownRenderer = Renderer;
 
@@ -13,13 +14,13 @@ export default class Markdown {
   private static docsRenderer: Renderer | null = null;
   private static emailRenderer: Renderer | null = null;
 
+  @CaptureSpan()
   public static async convertToHTML(
     markdown: string,
     contentType: MarkdownContentType,
   ): Promise<string> {
-    // convert tags > and < to &gt; and &lt;
-    markdown = markdown.replace(/</g, "&lt;");
-    markdown = markdown.replace(/>/g, "&gt;");
+    // Basic sanitization: neutralize script tags but preserve markdown syntax like '>' for blockquotes.
+    markdown = markdown.replace(/<script/gi, "&lt;script");
 
     let renderer: Renderer | null = null;
 
@@ -76,7 +77,7 @@ export default class Markdown {
     };
 
     renderer.code = function (code, language) {
-      return `<pre class="language-${language} rounded-md"><code class="language-${language} rounded-md">${code}</code></pre>`;
+      return `<pre class="language-${language} rounded-xl bg-slate-900/95 text-slate-100 p-5 overflow-x-auto text-sm shadow-md ring-1 ring-slate-900/10"><code class="language-${language}">${code}</code></pre>`;
     };
 
     renderer.heading = function (text, level) {
@@ -133,6 +134,63 @@ export default class Markdown {
         return `<h5 class="my-5  mt-8 text-lg font-bold tracking-tight text-gray-800">${text}</h5>`;
       }
       return `<h6 class="my-5 tracking-tight font-bold text-gray-800">${text}</h6>`;
+    };
+
+    // Lists
+    renderer.list = function (body, ordered, start) {
+      const tag: string = ordered ? "ol" : "ul";
+      const cls: string = ordered
+        ? "list-decimal pl-6 my-6 space-y-2 text-gray-700"
+        : "list-disc pl-6 my-6 space-y-2 text-gray-700";
+      const startAttr: string =
+        ordered && start !== 1 ? ` start="${start}"` : "";
+      return `<${tag}${startAttr} class="${cls}">${body}</${tag}>`;
+    };
+    renderer.listitem = function (text) {
+      return `<li class="leading-7">${text}</li>`;
+    };
+
+    // Tables
+    renderer.table = function (header, body) {
+      return `<div class="overflow-x-auto my-8"><table class="min-w-full border border-gray-200 text-sm text-left">
+        ${header}${body}
+      </table></div>`;
+    };
+    renderer.tablerow = function (content) {
+      return `<tr class="border-b last:border-b-0">${content}</tr>`;
+    };
+    renderer.tablecell = function (content, flags) {
+      const type: string = flags.header ? "th" : "td";
+      const base: string = "px-4 py-2 border-r last:border-r-0 border-gray-200";
+      const align: string = flags.align ? ` text-${flags.align}` : "";
+      const weight: string = flags.header ? " font-semibold bg-gray-50" : "";
+      return `<${type} class="${base}${align}${weight}">${content}</${type}>`;
+    };
+
+    // Inline code
+    renderer.codespan = function (code) {
+      return `<code class="rounded-md bg-gray-100 px-1.5 py-0.5 text-sm text-pink-600">${code}</code>`;
+    };
+
+    // Horizontal rule
+    renderer.hr = function () {
+      return '<hr class="my-12 border-t border-gray-200" />';
+    };
+
+    // Emphasis / Strong / Strikethrough
+    renderer.strong = function (text) {
+      return `<strong class="font-semibold text-gray-800">${text}</strong>`;
+    };
+    renderer.em = function (text) {
+      return `<em class="italic text-gray-700">${text}</em>`;
+    };
+    renderer.del = function (text) {
+      return `<del class="line-through text-gray-400">${text}</del>`;
+    };
+
+    // Images
+    renderer.image = function (href, _title, text) {
+      return `<figure class="my-8"><img src="${href}" alt="${text}" class="rounded-xl shadow-sm border border-gray-200" loading="lazy"/><figcaption class="mt-2 text-center text-sm text-gray-500">${text || ""}</figcaption></figure>`;
     };
 
     this.blogRenderer = renderer;

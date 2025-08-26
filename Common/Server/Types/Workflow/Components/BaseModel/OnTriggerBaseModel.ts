@@ -7,16 +7,19 @@ import Response from "../../../../Utils/Response";
 import Select from "../../../Database/Select";
 import { RunOptions, RunReturnType } from "../../ComponentCode";
 import TriggerCode, { ExecuteWorkflowType, InitProps } from "../../TriggerCode";
-import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import LIMIT_MAX from "Common/Types/Database/LimitMax";
-import BadDataException from "Common/Types/Exception/BadDataException";
-import { JSONObject } from "Common/Types/JSON";
-import JSONFunctions from "Common/Types/JSONFunctions";
-import ObjectID from "Common/Types/ObjectID";
-import Text from "Common/Types/Text";
-import ComponentMetadata, { Port } from "Common/Types/Workflow/Component";
-import BaseModelComponents from "Common/Types/Workflow/Components/BaseModel";
-import Workflow from "Common/Models/DatabaseModels/Workflow";
+import BaseModel from "../../../../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import LIMIT_MAX from "../../../../../Types/Database/LimitMax";
+import BadDataException from "../../../../../Types/Exception/BadDataException";
+import { JSONObject } from "../../../../../Types/JSON";
+import JSONFunctions from "../../../../../Types/JSONFunctions";
+import ObjectID from "../../../../../Types/ObjectID";
+import Text from "../../../../../Types/Text";
+import ComponentMetadata, {
+  Port,
+} from "../../../../../Types/Workflow/Component";
+import BaseModelComponents from "../../../../../Types/Workflow/Components/BaseModel";
+import Workflow from "../../../../../Models/DatabaseModels/Workflow";
+import CaptureSpan from "../../../../Utils/Telemetry/CaptureSpan";
 
 export default class OnTriggerBaseModel<
   TBaseModel extends BaseModel,
@@ -52,6 +55,7 @@ export default class OnTriggerBaseModel<
     this.setMetadata(BaseModelComponent);
   }
 
+  @CaptureSpan()
   public override async init(props: InitProps): Promise<void> {
     props.router.get(
       `/model/:projectId/${this.modelId}/${this.type}`,
@@ -70,11 +74,20 @@ export default class OnTriggerBaseModel<
     );
   }
 
+  @CaptureSpan()
   public override async run(
     args: JSONObject,
     options: RunOptions,
   ): Promise<RunReturnType> {
-    const data: JSONObject = args["data"] as JSONObject;
+    let data: JSONObject = args["data"] as JSONObject;
+
+    if (!data) {
+      data = {};
+    }
+
+    if (args["_id"]) {
+      data["_id"] = args["_id"];
+    }
 
     const miscData: JSONObject = (data?.["miscData"] as JSONObject) || {};
 
@@ -106,14 +119,15 @@ export default class OnTriggerBaseModel<
 
     let select: Select<TBaseModel> = args["select"] as Select<TBaseModel>;
 
-    if (select) {
-      select = JSONFunctions.deserialize(
-        args["select"] as JSONObject,
-      ) as Select<TBaseModel>;
+    logger.debug("Select: ");
+    logger.debug(select);
+
+    if (select && typeof select === "string") {
+      select = JSONFunctions.parse(select) as Select<TBaseModel>;
     }
 
     const model: TBaseModel | null = await this.service!.findOneById({
-      id: new ObjectID(data["_id"] as string),
+      id: new ObjectID(data["_id"].toString()),
       props: {
         isRoot: true,
       },
@@ -124,8 +138,10 @@ export default class OnTriggerBaseModel<
     });
 
     if (!model) {
+      options.log("Model not found with id " + data["_id"].toString());
+
       throw new BadDataException(
-        ("Model not found with id " + args["_id"]) as string,
+        ("Model not found with id " + data["_id"].toString()) as string,
       );
     }
 
@@ -139,6 +155,7 @@ export default class OnTriggerBaseModel<
     };
   }
 
+  @CaptureSpan()
   public async initTrigger(
     req: ExpressRequest,
     res: ExpressResponse,

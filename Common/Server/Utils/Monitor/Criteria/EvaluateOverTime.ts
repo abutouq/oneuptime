@@ -1,20 +1,23 @@
 import Query from "../../../Types/AnalyticsDatabase/Query";
-import GreaterThanOrEqual from "Common/Types/BaseDatabase/GreaterThanOrEqual";
-import { LIMIT_PER_PROJECT } from "Common/Types/Database/LimitMax";
-import OneUptimeDate from "Common/Types/Date";
-import { JSONObject } from "Common/Types/JSON";
+import { LIMIT_PER_PROJECT } from "../../../../Types/Database/LimitMax";
+import OneUptimeDate from "../../../../Types/Date";
+import { JSONObject } from "../../../../Types/JSON";
 import {
   CheckOn,
   EvaluateOverTimeOptions,
   EvaluateOverTimeType,
-} from "Common/Types/Monitor/CriteriaFilter";
-import ObjectID from "Common/Types/ObjectID";
+} from "../../../../Types/Monitor/CriteriaFilter";
+import ObjectID from "../../../../Types/ObjectID";
 import Metric from "../../../../Models/AnalyticsModels/Metric";
 import MonitorMetricTypeUtil from "../../../../Utils/Monitor/MonitorMetricType";
 import MetricService from "../../../Services/MetricService";
+import CaptureSpan from "../../Telemetry/CaptureSpan";
+import InBetween from "../../../../Types/BaseDatabase/InBetween";
 
 export default class EvaluateOverTime {
+  @CaptureSpan()
   public static async getValueOverTime(data: {
+    projectId: ObjectID;
     monitorId: ObjectID;
     evaluateOverTimeOptions: EvaluateOverTimeOptions;
     metricType: CheckOn;
@@ -28,8 +31,11 @@ export default class EvaluateOverTime {
 
     // TODO: Query over miscData
 
+    const now: Date = OneUptimeDate.getCurrentDate();
+
     const query: Query<Metric> = {
-      createdAt: new GreaterThanOrEqual(lastMinutesDate),
+      projectId: data.projectId,
+      time: new InBetween(lastMinutesDate, now),
       serviceId: data.monitorId,
       name: MonitorMetricTypeUtil.getMonitorMeticTypeByCheckOn(data.metricType),
     };
@@ -52,7 +58,10 @@ export default class EvaluateOverTime {
 
     const values: Array<number | boolean> = monitorMetricsItems
       .map((item: Metric) => {
-        if (data.metricType === CheckOn.IsOnline) {
+        if (
+          data.metricType === CheckOn.IsOnline ||
+          data.metricType === CheckOn.IsRequestTimeout
+        ) {
           return item.value === 1;
         }
 

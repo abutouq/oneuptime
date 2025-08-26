@@ -4,9 +4,9 @@ import Detail from "../Detail/Detail";
 import Field from "../Detail/Field";
 import Icon, { ThickProp } from "../Icon/Icon";
 import ConfirmModal from "../Modal/ConfirmModal";
-import GenericObject from "Common/Types/GenericObject";
-import IconProp from "Common/Types/Icon/IconProp";
-import React, { ReactElement, useState } from "react";
+import GenericObject from "../../../Types/GenericObject";
+import IconProp from "../../../Types/Icon/IconProp";
+import React, { ReactElement, useState, useEffect } from "react";
 import { Draggable, DraggableProvided } from "react-beautiful-dnd";
 
 export interface ListDetailProps {
@@ -38,6 +38,22 @@ const ListRow: ListRowFunction = <T extends GenericObject>(
   );
 
   const [error, setError] = useState<string>("");
+
+  // Track mobile view for responsive behavior
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+
+  useEffect(() => {
+    const checkMobile: () => void = (): void => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+    };
+  }, []);
 
   type GetRowFunction = (provided?: DraggableProvided) => ReactElement;
 
@@ -88,6 +104,11 @@ const ListRow: ListRowFunction = <T extends GenericObject>(
           {props.actionButtons?.map(
             (button: ActionButtonSchema<T>, i: number) => {
               if (button.isVisible && !button.isVisible(props.item)) {
+                return <></>;
+              }
+
+              // Hide button on mobile if hideOnMobile is true
+              if (button.hideOnMobile && isMobile) {
                 return <></>;
               }
 

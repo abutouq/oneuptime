@@ -1,12 +1,13 @@
 import IncidentSeverity from "./IncidentSeverity";
+import AlertSeverity from "./AlertSeverity";
 import Project from "./Project";
 import User from "./User";
 import UserCall from "./UserCall";
 import UserEmail from "./UserEmail";
+import UserPush from "./UserPush";
 import UserSMS from "./UserSMS";
 import BaseModel from "./DatabaseBaseModel/DatabaseBaseModel";
 import Route from "../../Types/API/Route";
-import AllowAccessIfSubscriptionIsUnpaid from "../../Types/Database/AccessControl/AllowAccessIfSubscriptionIsUnpaid";
 import ColumnAccessControl from "../../Types/Database/AccessControl/ColumnAccessControl";
 import TableAccessControl from "../../Types/Database/AccessControl/TableAccessControl";
 import ColumnLength from "../../Types/Database/ColumnLength";
@@ -24,7 +25,6 @@ import Permission from "../../Types/Permission";
 import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
 
 @TenantColumn("projectId")
-@AllowAccessIfSubscriptionIsUnpaid()
 @TableAccessControl({
   create: [Permission.CurrentUser],
   read: [Permission.CurrentUser],
@@ -208,6 +208,7 @@ class UserNotificationRule extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -289,6 +290,52 @@ class UserNotificationRule extends BaseModel {
     transformer: ObjectID.getDatabaseTransformer(),
   })
   public userCallId?: ObjectID = undefined;
+
+  @ColumnAccessControl({
+    create: [Permission.CurrentUser],
+    read: [Permission.CurrentUser],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "userPushId",
+    type: TableColumnType.Entity,
+    modelType: UserPush,
+    title: "User Push",
+    description: "Relation to User Push Resource in which this object belongs",
+  })
+  @ManyToOne(
+    () => {
+      return UserPush;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "CASCADE",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "userPushId" })
+  public userPush?: UserPush = undefined;
+
+  @ColumnAccessControl({
+    create: [Permission.CurrentUser],
+    read: [Permission.CurrentUser],
+    update: [],
+  })
+  @Index()
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    required: false,
+    canReadOnRelationQuery: true,
+    title: "User Push ID",
+    description: "ID of User Push in which this object belongs",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public userPushId?: ObjectID = undefined;
 
   @ColumnAccessControl({
     create: [Permission.CurrentUser],
@@ -450,6 +497,55 @@ class UserNotificationRule extends BaseModel {
     transformer: ObjectID.getDatabaseTransformer(),
   })
   public incidentSeverityId?: ObjectID = undefined;
+
+  // alert severity.
+
+  @ColumnAccessControl({
+    create: [Permission.CurrentUser],
+    read: [Permission.CurrentUser],
+    update: [],
+  })
+  @TableColumn({
+    manyToOneRelationColumn: "alertSeverityId",
+    type: TableColumnType.Entity,
+    modelType: AlertSeverity,
+    title: "Alert Severity",
+    description:
+      "Relation to Alert Severity Resource in which this object belongs",
+  })
+  @ManyToOne(
+    () => {
+      return AlertSeverity;
+    },
+    {
+      eager: false,
+      nullable: true,
+      onDelete: "CASCADE",
+      orphanedRowAction: "nullify",
+    },
+  )
+  @JoinColumn({ name: "alertSeverityId" })
+  public alertSeverity?: AlertSeverity = undefined;
+
+  @ColumnAccessControl({
+    create: [Permission.CurrentUser],
+    read: [Permission.CurrentUser],
+    update: [],
+  })
+  @Index()
+  @TableColumn({
+    type: TableColumnType.ObjectID,
+    required: false,
+    canReadOnRelationQuery: true,
+    title: "Alert Severity ID",
+    description: "ID of Alert Severity in which this object belongs",
+  })
+  @Column({
+    type: ColumnType.ObjectID,
+    nullable: true,
+    transformer: ObjectID.getDatabaseTransformer(),
+  })
+  public alertSeverityId?: ObjectID = undefined;
 }
 
 export default UserNotificationRule;

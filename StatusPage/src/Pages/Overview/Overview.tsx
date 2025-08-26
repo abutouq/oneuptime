@@ -18,7 +18,6 @@ import URL from "Common/Types/API/URL";
 import { Green } from "Common/Types/BrandColors";
 import OneUptimeDate from "Common/Types/Date";
 import Dictionary from "Common/Types/Dictionary";
-import BadDataException from "Common/Types/Exception/BadDataException";
 import { PromiseVoidFunction } from "Common/Types/FunctionTypes";
 import IconProp from "Common/Types/Icon/IconProp";
 import { JSONArray, JSONObject } from "Common/Types/JSON";
@@ -55,6 +54,7 @@ import React, {
 } from "react";
 import UptimePrecision from "Common/Types/StatusPage/UptimePrecision";
 import StatusPageResourceUptimeUtil from "Common/Utils/StatusPage/ResourceUptime";
+import BadDataException from "Common/Types/Exception/BadDataException";
 
 const Overview: FunctionComponent<PageComponentProps> = (
   props: PageComponentProps,
@@ -256,14 +256,15 @@ const Overview: FunctionComponent<PageComponentProps> = (
       setIncidentStateTimelines(incidentStateTimelines);
       setScheduledMaintenanceStateTimelines(scheduledMaintenanceStateTimelines);
 
+      const overallStatus: MonitorStatus | null = data["overallStatus"]
+        ? BaseModel.fromJSONObject(
+            (data["overallStatus"] as JSONObject) || {},
+            MonitorStatus,
+          )
+        : null;
+
       // Parse Data.
-      setCurrentStatus(
-        getOverallMonitorStatus(
-          statusPageResources,
-          monitorStatuses,
-          monitorGroupCurrentStatuses,
-        ),
-      );
+      setCurrentStatus(overallStatus);
 
       setIsLoading(false);
       props.onLoadComplete();
@@ -365,68 +366,12 @@ const Overview: FunctionComponent<PageComponentProps> = (
       return <></>;
     };
 
-  type GetOverallMonitorStatusFunction = (
-    statusPageResources: Array<StatusPageResource>,
-    monitorStatuses: Array<MonitorStatus>,
-    monitorGroupCurrentStatuses: Dictionary<ObjectID>,
-  ) => MonitorStatus | null;
-
-  const getOverallMonitorStatus: GetOverallMonitorStatusFunction = (
-    statusPageResources: Array<StatusPageResource>,
-    monitorStatuses: Array<MonitorStatus>,
-    monitorGroupCurrentStatuses: Dictionary<ObjectID>,
-  ): MonitorStatus | null => {
-    let currentStatus: MonitorStatus | null =
-      monitorStatuses.length > 0 && monitorStatuses[0]
-        ? monitorStatuses[0]
-        : null;
-
-    const dict: Dictionary<number> = {};
-
-    for (const resource of statusPageResources) {
-      if (resource.monitor?.currentMonitorStatusId) {
-        if (
-          !Object.keys(dict).includes(
-            resource.monitor?.currentMonitorStatusId.toString() || "",
-          )
-        ) {
-          dict[resource.monitor?.currentMonitorStatusId?.toString()] = 1;
-        } else {
-          dict[resource.monitor!.currentMonitorStatusId!.toString()]!++;
-        }
-      }
-    }
-
-    // check status of monitor groups.
-
-    for (const groupId in monitorGroupCurrentStatuses) {
-      const statusId: ObjectID | undefined =
-        monitorGroupCurrentStatuses[groupId];
-
-      if (statusId) {
-        if (!Object.keys(dict).includes(statusId.toString() || "")) {
-          dict[statusId.toString()] = 1;
-        } else {
-          dict[statusId.toString()]!++;
-        }
-      }
-    }
-
-    for (const monitorStatus of monitorStatuses) {
-      if (monitorStatus._id && dict[monitorStatus._id]) {
-        currentStatus = monitorStatus;
-      }
-    }
-
-    return currentStatus;
-  };
-
   if (isLoading) {
     return <PageLoader isVisible={true} />;
   }
 
   if (error) {
-    return <ErrorMessage error={error} />;
+    return <ErrorMessage message={error} />;
   }
 
   type GetMonitorOverviewListInGroupFunction = (
@@ -447,13 +392,13 @@ const Overview: FunctionComponent<PageComponentProps> = (
           group._id?.toString() === resource.statusPageGroupId.toString()) ||
         (!resource.statusPageGroupId && !group)
       ) {
-        // if its not a monitor or a monitor group, then continue. This should ideally not happen.
+        // if it's not a monitor or a monitor group, then continue. This should ideally not happen.
 
         if (!resource.monitor && !resource.monitorGroupId) {
           continue;
         }
 
-        // if its a monitor
+        // if it's a monitor
 
         if (resource.monitor) {
           let currentStatus: MonitorStatus | undefined = monitorStatuses.find(
@@ -474,6 +419,7 @@ const Overview: FunctionComponent<PageComponentProps> = (
           elements.push(
             <MonitorOverview
               key={Math.random()}
+              className="mb-3 sm:mb-5"
               monitorName={resource.displayName || resource.monitor?.name || ""}
               statusPageHistoryChartBarColorRules={
                 statusPageHistoryChartBarColorRules
@@ -505,7 +451,7 @@ const Overview: FunctionComponent<PageComponentProps> = (
           );
         }
 
-        // if its a monitor group, then...
+        // if it's a monitor group, then...
 
         if (resource.monitorGroupId) {
           let currentStatus: MonitorStatus | undefined = monitorStatuses.find(
@@ -528,6 +474,7 @@ const Overview: FunctionComponent<PageComponentProps> = (
           elements.push(
             <MonitorOverview
               key={Math.random()}
+              className="mb-3 sm:mb-5"
               monitorName={resource.displayName || resource.monitor?.name || ""}
               showUptimePercent={Boolean(resource.showUptimePercent)}
               uptimePrecision={
@@ -564,7 +511,7 @@ const Overview: FunctionComponent<PageComponentProps> = (
     if (elements.length === 0) {
       elements.push(
         <div key={1} className="mb-20">
-          <ErrorMessage error="No resources added to this group." />
+          <ErrorMessage message="No resources added to this group." />
         </div>,
       );
     }
@@ -580,17 +527,14 @@ const Overview: FunctionComponent<PageComponentProps> = (
 
       for (const activeIncident of activeIncidents) {
         if (!activeIncident.currentIncidentState) {
-          throw new BadDataException("Incident State not found.");
+          //should not happen.
+          continue;
         }
 
         const timeline: IncidentStateTimeline | undefined =
           incidentStateTimelines.find((timeline: IncidentStateTimeline) => {
             return timeline.incidentId?.toString() === activeIncident._id;
           });
-
-        if (!timeline) {
-          throw new BadDataException("Incident Timeline not found.");
-        }
 
         const group: IncidentGroup = {
           incident: activeIncident,
@@ -602,7 +546,7 @@ const Overview: FunctionComponent<PageComponentProps> = (
             },
           ),
           incidentSeverity: activeIncident.incidentSeverity!,
-          incidentStateTimelines: [timeline],
+          incidentStateTimelines: timeline ? [timeline] : [],
           monitorsInGroup: monitorsInGroup,
         };
 
@@ -621,7 +565,8 @@ const Overview: FunctionComponent<PageComponentProps> = (
 
       for (const activeEvent of activeScheduledMaintenanceEvents) {
         if (!activeEvent.currentScheduledMaintenanceState) {
-          throw new BadDataException("Scheduled Maintenance State not found.");
+          //should not happen.
+          continue;
         }
 
         const timeline: ScheduledMaintenanceStateTimeline | undefined =
@@ -632,10 +577,6 @@ const Overview: FunctionComponent<PageComponentProps> = (
               );
             },
           );
-
-        if (!timeline) {
-          throw new BadDataException("Incident Timeline not found.");
-        }
 
         const group: ScheduledMaintenanceGroup = {
           scheduledMaintenance: activeEvent,
@@ -650,7 +591,7 @@ const Overview: FunctionComponent<PageComponentProps> = (
               );
             },
           ),
-          scheduledMaintenanceStateTimelines: [timeline],
+          scheduledMaintenanceStateTimelines: timeline ? [timeline] : [],
           monitorsInGroup: monitorsInGroup,
         };
 
@@ -668,7 +609,7 @@ const Overview: FunctionComponent<PageComponentProps> = (
   return (
     <Page>
       {isLoading ? <PageLoader isVisible={true} /> : <></>}
-      {error ? <ErrorMessage error={error} /> : <></>}
+      {error ? <ErrorMessage message={error} /> : <></>}
 
       {!isLoading && !error ? (
         <div data-testid="status-page-overview">
@@ -739,7 +680,7 @@ const Overview: FunctionComponent<PageComponentProps> = (
           </div>
 
           {statusPageResources.length > 0 && (
-            <div className="bg-white pl-5 pr-5 mt-5 rounded-xl shadow space-y-5 mb-6">
+            <div className="bg-white pl-3 pr-3 sm:pl-5 sm:pr-5 mt-5 rounded-xl shadow space-y-3 sm:space-y-5 mb-6">
               <AccordionGroup>
                 {statusPageResources.filter((resources: StatusPageResource) => {
                   return !resources.statusPageGroupId;

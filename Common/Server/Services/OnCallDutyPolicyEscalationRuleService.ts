@@ -24,25 +24,98 @@ import ObjectID from "../../Types/ObjectID";
 import OnCallDutyExecutionLogTimelineStatus from "../../Types/OnCallDutyPolicy/OnCalDutyExecutionLogTimelineStatus";
 import PositiveNumber from "../../Types/PositiveNumber";
 import UserNotificationEventType from "../../Types/UserNotification/UserNotificationEventType";
-import Model from "Common/Models/DatabaseModels/OnCallDutyPolicyEscalationRule";
-import OnCallDutyPolicyEscalationRuleSchedule from "Common/Models/DatabaseModels/OnCallDutyPolicyEscalationRuleSchedule";
-import OnCallDutyPolicyEscalationRuleTeam from "Common/Models/DatabaseModels/OnCallDutyPolicyEscalationRuleTeam";
-import OnCallDutyPolicyEscalationRuleUser from "Common/Models/DatabaseModels/OnCallDutyPolicyEscalationRuleUser";
-import OnCallDutyPolicyExecutionLogTimeline from "Common/Models/DatabaseModels/OnCallDutyPolicyExecutionLogTimeline";
-import User from "Common/Models/DatabaseModels/User";
+import Model from "../../Models/DatabaseModels/OnCallDutyPolicyEscalationRule";
+import OnCallDutyPolicyEscalationRuleSchedule from "../../Models/DatabaseModels/OnCallDutyPolicyEscalationRuleSchedule";
+import OnCallDutyPolicyEscalationRuleTeam from "../../Models/DatabaseModels/OnCallDutyPolicyEscalationRuleTeam";
+import OnCallDutyPolicyEscalationRuleUser from "../../Models/DatabaseModels/OnCallDutyPolicyEscalationRuleUser";
+import OnCallDutyPolicyExecutionLogTimeline from "../../Models/DatabaseModels/OnCallDutyPolicyExecutionLogTimeline";
+import User from "../../Models/DatabaseModels/User";
+import logger from "../Utils/Logger";
+import OnCallDutyPolicyUserOverride from "../../Models/DatabaseModels/OnCallDutyPolicyUserOverride";
+import OnCallDutyPolicyUserOverrideService from "./OnCallDutyPolicyUserOverrideService";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export class Service extends DatabaseService<Model> {
+  @CaptureSpan()
+  public async getRouteAlertToUserId(data: {
+    userId: ObjectID;
+    onCallDutyPolicyId: ObjectID;
+    projectId: ObjectID;
+  }): Promise<ObjectID | null> {
+    logger.debug(
+      `Getting route alert to user id for userId: ${data.userId.toString()}`,
+    );
+
+    const currentDate: Date = OneUptimeDate.getCurrentDate();
+
+    const alertRoutedTo: Array<OnCallDutyPolicyUserOverride> =
+      await OnCallDutyPolicyUserOverrideService.findBy({
+        query: {
+          overrideUserId: data.userId,
+          onCallDutyPolicyId: QueryHelper.equalToOrNull(
+            data.onCallDutyPolicyId,
+          ), // find global overrides as well. If this is null, then it will find global overrides.
+          projectId: data.projectId,
+          startsAt: QueryHelper.lessThanEqualTo(currentDate),
+          endsAt: QueryHelper.greaterThanEqualTo(currentDate),
+        },
+        props: {
+          isRoot: true,
+        },
+        limit: LIMIT_PER_PROJECT,
+        skip: 0,
+        select: {
+          routeAlertsToUserId: true,
+          onCallDutyPolicyId: true,
+        },
+      });
+
+    logger.debug(`Found alert routed to: ${JSON.stringify(alertRoutedTo)}`);
+
+    // local override takes precedence over global override.
+    const localOverride: OnCallDutyPolicyUserOverride | undefined =
+      alertRoutedTo.find((item: OnCallDutyPolicyUserOverride) => {
+        return (
+          item.onCallDutyPolicyId?.toString() ===
+          data.onCallDutyPolicyId.toString()
+        );
+      });
+
+    if (localOverride && localOverride.routeAlertsToUserId) {
+      logger.debug(
+        `Route alert to user id found: ${localOverride.routeAlertsToUserId.toString()}`,
+      );
+      return localOverride.routeAlertsToUserId;
+    }
+
+    const globalOverride: OnCallDutyPolicyUserOverride | undefined =
+      alertRoutedTo.find((item: OnCallDutyPolicyUserOverride) => {
+        return !item.onCallDutyPolicyId;
+      });
+
+    if (globalOverride && globalOverride.routeAlertsToUserId) {
+      logger.debug(
+        `Route alert to user id found: ${globalOverride.routeAlertsToUserId.toString()}`,
+      );
+      return globalOverride.routeAlertsToUserId;
+    }
+
+    return null;
+  }
+
+  @CaptureSpan()
   public async startRuleExecution(
     ruleId: ObjectID,
     options: {
       projectId: ObjectID;
       triggeredByIncidentId?: ObjectID | undefined;
+      triggeredByAlertId?: ObjectID | undefined;
       userNotificationEventType: UserNotificationEventType;
       onCallPolicyExecutionLogId: ObjectID;
       onCallPolicyId: ObjectID;
     },
   ): Promise<void> {
-    // add log timeline.
+    logger.debug(`Starting rule execution for ruleId: ${ruleId.toString()}`);
 
     const rule: Model | null = await this.findOneById({
       id: ruleId,
@@ -62,6 +135,8 @@ export class Service extends DatabaseService<Model> {
       );
     }
 
+    logger.debug(`Found rule: ${JSON.stringify(rule)}`);
+
     await OnCallDutyPolicyExecutionLogService.updateOneById({
       id: options.onCallPolicyExecutionLogId,
       data: {
@@ -74,6 +149,8 @@ export class Service extends DatabaseService<Model> {
         isRoot: true,
       },
     });
+
+    logger.debug(`Updated execution log for ruleId: ${ruleId.toString()}`);
 
     type GetNewLogFunction = () => OnCallDutyPolicyExecutionLogTimeline;
 
@@ -92,6 +169,10 @@ export class Service extends DatabaseService<Model> {
           log.triggeredByIncidentId = options.triggeredByIncidentId;
         }
 
+        if (options.triggeredByAlertId) {
+          log.triggeredByAlertId = options.triggeredByAlertId;
+        }
+
         return log;
       };
 
@@ -102,6 +183,16 @@ export class Service extends DatabaseService<Model> {
     ) {
       throw new BadDataException(
         "triggeredByIncidentId is required when userNotificationEventType is IncidentCreated",
+      );
+    }
+
+    if (
+      UserNotificationEventType.AlertCreated ===
+        options.userNotificationEventType &&
+      !options.triggeredByAlertId
+    ) {
+      throw new BadDataException(
+        "triggeredByAlertId is required when userNotificationEventType is IncidentCreated",
       );
     }
 
@@ -120,6 +211,8 @@ export class Service extends DatabaseService<Model> {
         },
       });
 
+    logger.debug(`Found users in rule: ${JSON.stringify(usersInRule)}`);
+
     const teamsInRule: Array<OnCallDutyPolicyEscalationRuleTeam> =
       await OnCallDutyPolicyEscalationRuleTeamService.findBy({
         query: {
@@ -134,6 +227,8 @@ export class Service extends DatabaseService<Model> {
           teamId: true,
         },
       });
+
+    logger.debug(`Found teams in rule: ${JSON.stringify(teamsInRule)}`);
 
     const schedulesInRule: Array<OnCallDutyPolicyEscalationRuleSchedule> =
       await OnCallDutyPolicyEscalationRuleScheduleService.findBy({
@@ -150,7 +245,7 @@ export class Service extends DatabaseService<Model> {
         },
       });
 
-    // get unique users and notify all the users.
+    logger.debug(`Found schedules in rule: ${JSON.stringify(schedulesInRule)}`);
 
     type StartUserNotificationRuleExecutionFunction = (
       userId: ObjectID,
@@ -164,11 +259,33 @@ export class Service extends DatabaseService<Model> {
         teamId: ObjectID | null,
         scheduleId: ObjectID | null,
       ): Promise<void> => {
-        // no users in this rule. Skipping.
+        // This is where user is notified.
+
+        // get route alert to user id.
+        let routeAlertToUserId: ObjectID | null = null;
+
+        if (options.onCallPolicyId) {
+          routeAlertToUserId = await this.getRouteAlertToUserId({
+            userId,
+            onCallDutyPolicyId: options.onCallPolicyId,
+            projectId: options.projectId,
+          });
+        }
+
+        const alertSentToUserId: ObjectID = routeAlertToUserId || userId;
+
+        logger.debug(
+          `Starting notification rule execution for userId: ${alertSentToUserId.toString()}`,
+        );
         let log: OnCallDutyPolicyExecutionLogTimeline = getNewLog();
         log.statusMessage = "Sending notification to user.";
         log.status = OnCallDutyExecutionLogTimelineStatus.Executing;
-        log.alertSentToUserId = userId;
+        log.alertSentToUserId = alertSentToUserId;
+
+        if (routeAlertToUserId) {
+          log.overridedByUserId = userId;
+        }
+
         if (teamId) {
           log.userBelongsToTeamId = teamId;
         }
@@ -185,10 +302,11 @@ export class Service extends DatabaseService<Model> {
         });
 
         await UserNotificationRuleService.startUserNotificationRulesExecution(
-          userId,
+          alertSentToUserId,
           {
             userNotificationEventType: options.userNotificationEventType!,
             triggeredByIncidentId: options.triggeredByIncidentId || undefined,
+            triggeredByAlertId: options.triggeredByAlertId || undefined,
             onCallPolicyExecutionLogId: options.onCallPolicyExecutionLogId,
             onCallPolicyId: options.onCallPolicyId,
             onCallPolicyEscalationRuleId: ruleId,
@@ -196,6 +314,7 @@ export class Service extends DatabaseService<Model> {
             onCallDutyPolicyExecutionLogTimelineId: log.id!,
             projectId: options.projectId,
             onCallScheduleId: scheduleId || undefined,
+            overridedByUserId: routeAlertToUserId ? userId : undefined,
           },
         );
       };
@@ -220,7 +339,6 @@ export class Service extends DatabaseService<Model> {
             null,
           );
         } else {
-          // no users in this rule. Skipping.
           const log: OnCallDutyPolicyExecutionLogTimeline = getNewLog();
           log.statusMessage =
             "Skipped because notification sent to this user already.";
@@ -247,7 +365,6 @@ export class Service extends DatabaseService<Model> {
         uniqueUserIds.push(userRule.userId!);
         await startUserNotificationRuleExecution(userRule.userId!, null, null);
       } else {
-        // no users in this rule. Skipping.
         const log: OnCallDutyPolicyExecutionLogTimeline = getNewLog();
         log.statusMessage =
           "Skipped because notification sent to this user already.";
@@ -264,23 +381,16 @@ export class Service extends DatabaseService<Model> {
     }
 
     for (const scheduleRule of schedulesInRule) {
-      // get layers and users in this schedule and find a user to notify.
-
       const userIdInSchedule: ObjectID | null =
         await OnCallDutyPolicyScheduleService.getCurrentUserIdInSchedule(
           scheduleRule.onCallDutyPolicyScheduleId!,
         );
 
       if (!userIdInSchedule) {
-        // no user active in this schedule. Skipping.
-
         const log: OnCallDutyPolicyExecutionLogTimeline = getNewLog();
-
         log.statusMessage =
           "Skipped because no active users are found in this schedule.";
-
         log.status = OnCallDutyExecutionLogTimelineStatus.Skipped;
-
         log.onCallDutyScheduleId = scheduleRule.onCallDutyPolicyScheduleId!;
 
         await OnCallDutyPolicyExecutionLogTimelineService.create({
@@ -305,7 +415,6 @@ export class Service extends DatabaseService<Model> {
           scheduleRule.onCallDutyPolicyScheduleId!,
         );
       } else {
-        // no users in this rule. Skipping.
         const log: OnCallDutyPolicyExecutionLogTimeline = getNewLog();
         log.statusMessage =
           "Skipped because notification sent to this user already.";
@@ -323,7 +432,6 @@ export class Service extends DatabaseService<Model> {
     }
 
     if (uniqueUserIds.length === 0) {
-      // no users in this rule. Skipping.
       const log: OnCallDutyPolicyExecutionLogTimeline = getNewLog();
       log.statusMessage = "Skipped because no users in this rule.";
       log.status = OnCallDutyExecutionLogTimelineStatus.Skipped;
@@ -335,12 +443,15 @@ export class Service extends DatabaseService<Model> {
         },
       });
     }
+
+    logger.debug(`Completed rule execution for ruleId: ${ruleId.toString()}`);
   }
 
   public constructor() {
     super(Model);
   }
 
+  @CaptureSpan()
   protected override async onCreateSuccess(
     onCreate: OnCreate<Model>,
     createdItem: Model,
@@ -377,6 +488,7 @@ export class Service extends DatabaseService<Model> {
     return createdItem;
   }
 
+  @CaptureSpan()
   public async addUsersTeamsAndSchedules(
     projectId: ObjectID,
     escalationRuleId: ObjectID,
@@ -417,6 +529,7 @@ export class Service extends DatabaseService<Model> {
     }
   }
 
+  @CaptureSpan()
   public async addTeam(
     projectId: ObjectID,
     escalationRuleId: ObjectID,
@@ -430,6 +543,9 @@ export class Service extends DatabaseService<Model> {
     teamInRule.onCallDutyPolicyId = onCallDutyPolicyId;
     teamInRule.onCallDutyPolicyEscalationRuleId = escalationRuleId;
     teamInRule.teamId = teamId;
+    if (props.userId) {
+      teamInRule.createdByUserId = props.userId;
+    }
 
     await OnCallDutyPolicyEscalationRuleTeamService.create({
       data: teamInRule,
@@ -437,6 +553,7 @@ export class Service extends DatabaseService<Model> {
     });
   }
 
+  @CaptureSpan()
   public async addOnCallSchedules(
     projectId: ObjectID,
     escalationRuleId: ObjectID,
@@ -451,12 +568,17 @@ export class Service extends DatabaseService<Model> {
     scheduleInRule.onCallDutyPolicyEscalationRuleId = escalationRuleId;
     scheduleInRule.onCallDutyPolicyScheduleId = onCallScheduleId;
 
+    if (props.userId) {
+      scheduleInRule.createdByUserId = props.userId;
+    }
+
     await OnCallDutyPolicyEscalationRuleScheduleService.create({
       data: scheduleInRule,
       props,
     });
   }
 
+  @CaptureSpan()
   public async addUser(
     projectId: ObjectID,
     escalationRuleId: ObjectID,
@@ -471,12 +593,17 @@ export class Service extends DatabaseService<Model> {
     userInRule.onCallDutyPolicyEscalationRuleId = escalationRuleId;
     userInRule.userId = userId;
 
+    if (props.userId) {
+      userInRule.createdByUserId = props.userId;
+    }
+
     await OnCallDutyPolicyEscalationRuleUserService.create({
       data: userInRule,
       props,
     });
   }
 
+  @CaptureSpan()
   protected override async onBeforeCreate(
     createBy: CreateBy<Model>,
   ): Promise<OnCreate<Model>> {
@@ -534,6 +661,7 @@ export class Service extends DatabaseService<Model> {
     };
   }
 
+  @CaptureSpan()
   protected override async onBeforeDelete(
     deleteBy: DeleteBy<Model>,
   ): Promise<OnDelete<Model>> {
@@ -554,6 +682,55 @@ export class Service extends DatabaseService<Model> {
         select: {
           order: true,
           onCallDutyPolicyId: true,
+          projectId: true,
+        },
+      });
+
+      if (!resource) {
+        throw new BadDataException(
+          "OnCallDutyPolicyEscalationRule with this id not found",
+        );
+      }
+
+      // delete users in escalation rule, teams in escalation rule and schedules in escalation rule.
+      await OnCallDutyPolicyEscalationRuleScheduleService.deleteBy({
+        query: {
+          onCallDutyPolicyEscalationRuleId: resource.id!,
+          projectId: resource.projectId!,
+        },
+        limit: LIMIT_PER_PROJECT,
+        skip: 0,
+        props: {
+          userId: deleteBy.props.userId,
+          isRoot: true,
+        },
+      });
+
+      // delete users in escalation rule.
+      await OnCallDutyPolicyEscalationRuleUserService.deleteBy({
+        query: {
+          onCallDutyPolicyEscalationRuleId: resource.id!,
+          projectId: resource.projectId!,
+        },
+        limit: LIMIT_PER_PROJECT,
+        skip: 0,
+        props: {
+          userId: deleteBy.props.userId,
+          isRoot: true,
+        },
+      });
+
+      // delete teams in escalation rule.
+      await OnCallDutyPolicyEscalationRuleTeamService.deleteBy({
+        query: {
+          onCallDutyPolicyEscalationRuleId: resource.id!,
+          projectId: resource.projectId!,
+        },
+        limit: LIMIT_PER_PROJECT,
+        skip: 0,
+        props: {
+          userId: deleteBy.props.userId,
+          isRoot: true,
         },
       });
     }
@@ -564,6 +741,7 @@ export class Service extends DatabaseService<Model> {
     };
   }
 
+  @CaptureSpan()
   protected override async onDeleteSuccess(
     onDelete: OnDelete<Model>,
     _itemIdsBeforeDelete: ObjectID[],
@@ -588,6 +766,7 @@ export class Service extends DatabaseService<Model> {
     };
   }
 
+  @CaptureSpan()
   protected override async onBeforeUpdate(
     updateBy: UpdateBy<Model>,
   ): Promise<OnUpdate<Model>> {

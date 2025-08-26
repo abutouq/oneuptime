@@ -1,5 +1,5 @@
 import LabelsElement from "../../Components/Label/Labels";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
 import ModelTable from "Common/UI/Components/ModelTable/ModelTable";
 import FieldType from "Common/UI/Components/Types/FieldType";
@@ -33,6 +33,7 @@ const TelemetryServiceTable: FunctionComponent<ComponentProps> = (
       id="services-table"
       isDeleteable={false}
       isEditable={false}
+      userPreferencesKey="telemetry-services-table"
       query={props.query || {}}
       actionButtons={props.actionButtons}
       isCreateable={!props.disableCreate}
@@ -100,7 +101,7 @@ const TelemetryServiceTable: FunctionComponent<ComponentProps> = (
 
           filterEntityType: Label,
           filterQuery: {
-            projectId: DashboardNavigation.getProjectId()!,
+            projectId: ProjectUtil.getCurrentProjectId()!,
           },
           filterDropdownField: {
             label: "name",

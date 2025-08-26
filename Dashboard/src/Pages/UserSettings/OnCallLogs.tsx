@@ -1,6 +1,6 @@
 import EscalationRuleView from "../../Components/OnCallPolicy/EscalationRule/EscalationRule";
 import OnCallDutyPolicyView from "../../Components/OnCallPolicy/OnCallPolicy";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageComponentProps from "../PageComponentProps";
 import { Green, Red, Yellow } from "Common/Types/BrandColors";
 import { ErrorFunction, VoidFunction } from "Common/Types/FunctionTypes";
@@ -33,9 +33,10 @@ const Settings: FunctionComponent<PageComponentProps> = (): ReactElement => {
       <ModelTable<UserOnCallLog>
         modelType={UserOnCallLog}
         query={{
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
           userId: User.getUserId()?.toString(),
         }}
+        userPreferencesKey="user-notification-logs-table"
         id="notification-logs-table"
         name="User Settings > Notification Logs"
         isDeleteable={false}
@@ -85,7 +86,7 @@ const Settings: FunctionComponent<PageComponentProps> = (): ReactElement => {
             },
             filterEntityType: OnCallDutyPolicy,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -102,7 +103,7 @@ const Settings: FunctionComponent<PageComponentProps> = (): ReactElement => {
             },
             filterEntityType: OnCallDutyPolicyEscalationRule,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -180,6 +181,7 @@ const Settings: FunctionComponent<PageComponentProps> = (): ReactElement => {
             },
             title: "Created At",
             type: FieldType.DateTime,
+            hideOnMobile: true,
           },
           {
             field: {

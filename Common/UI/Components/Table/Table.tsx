@@ -12,8 +12,8 @@ import Pagination from "../Pagination/Pagination";
 import TableBody from "./TableBody";
 import TableHeader from "./TableHeader";
 import Columns from "./Types/Columns";
-import SortOrder from "Common/Types/BaseDatabase/SortOrder";
-import GenericObject from "Common/Types/GenericObject";
+import SortOrder from "../../../Types/BaseDatabase/SortOrder";
+import GenericObject from "../../../Types/GenericObject";
 import React, { ReactElement, useEffect, useState } from "react";
 import { DragDropContext, DropResult } from "react-beautiful-dnd";
 
@@ -51,8 +51,8 @@ export interface ComponentProps<T extends GenericObject> {
   filterError?: string | undefined;
   onFilterChanged?: undefined | ((filterData: FilterData<T>) => void);
   onFilterRefreshClick?: undefined | (() => void);
-  onFilterModalClose: () => void;
-  onFilterModalOpen: () => void;
+  onFilterModalClose?: (() => void) | undefined;
+  onFilterModalOpen?: (() => void) | undefined;
   filterData?: undefined | FilterData<T>;
 
   enableDragAndDrop?: boolean | undefined;
@@ -61,17 +61,17 @@ export interface ComponentProps<T extends GenericObject> {
   onDragDrop?: ((id: string, newIndex: number) => void) | undefined;
 
   // bulk actions
-  bulkActions: BulkActionProps<T>;
-  bulkSelectedItems: Array<T>;
-  onBulkSelectedItemAdded: (item: T) => void;
-  onBulkSelectedItemRemoved: (item: T) => void;
-  onBulkSelectAllItems: () => void;
-  onBulkSelectItemsOnCurrentPage: () => void;
-  onBulkClearAllItems: () => void;
-  matchBulkSelectedItemByField: keyof T; // which field to use to match selected items. For exmaple this could be '_id'
-  onBulkActionEnd: () => void;
-  onBulkActionStart: () => void;
-  bulkItemToString: (item: T) => string;
+  bulkActions?: BulkActionProps<T> | undefined;
+  bulkSelectedItems?: Array<T> | undefined;
+  onBulkSelectedItemAdded?: ((item: T) => void) | undefined;
+  onBulkSelectedItemRemoved?: ((item: T) => void) | undefined;
+  onBulkSelectAllItems?: (() => void) | undefined;
+  onBulkSelectItemsOnCurrentPage?: (() => void) | undefined;
+  onBulkClearAllItems?: (() => void) | undefined;
+  matchBulkSelectedItemByField?: keyof T | undefined; // which field to use to match selected items. For exmaple this could be '_id'
+  onBulkActionEnd?: (() => void) | undefined;
+  onBulkActionStart?: (() => void) | undefined;
+  bulkItemToString?: ((item: T) => string) | undefined;
 }
 
 type TableFunction = <T extends GenericObject>(
@@ -81,16 +81,32 @@ type TableFunction = <T extends GenericObject>(
 const Table: TableFunction = <T extends GenericObject>(
   props: ComponentProps<T>,
 ): ReactElement => {
-  const isBulkActionsEnabled: boolean =
+  const isBulkActionsEnabled: boolean | undefined =
     props.bulkActions &&
     props.bulkActions.buttons &&
     props.bulkActions.buttons.length > 0;
 
   const [isAllItemsSelected, setIsAllItemsSelected] = useState<boolean>(false);
   const [bulkSelectedItems, setBulkSelectedItems] = useState<Array<T>>([]);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
 
   useEffect(() => {
-    setBulkSelectedItems(props.bulkSelectedItems);
+    const checkMobile: () => void = (): void => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (props.bulkSelectedItems) {
+      setBulkSelectedItems(props.bulkSelectedItems);
+    }
   }, [props.bulkSelectedItems]);
 
   let colspan: number = props.columns.length || 0;
@@ -119,7 +135,7 @@ const Table: TableFunction = <T extends GenericObject>(
           <tr>
             <td colSpan={colspan} className="pl-10 pr-10">
               <ErrorMessage
-                error={props.error}
+                message={props.error}
                 onRefreshClick={props.onRefreshClick}
               />
             </td>
@@ -134,7 +150,7 @@ const Table: TableFunction = <T extends GenericObject>(
           <tr>
             <td colSpan={colspan}>
               <ErrorMessage
-                error={
+                message={
                   props.noItemsMessage
                     ? props.noItemsMessage
                     : `No ${props.singularLabel.toLocaleLowerCase()}`
@@ -165,14 +181,17 @@ const Table: TableFunction = <T extends GenericObject>(
         onItemSelected={(item: T) => {
           // set bulk selected items.
           setBulkSelectedItems([...bulkSelectedItems, item]);
-          props.onBulkSelectedItemAdded(item);
+          props.onBulkSelectedItemAdded?.(item);
         }}
         onItemDeselected={(item: T) => {
           // set bulk selected items.
+          if (props.matchBulkSelectedItemByField === undefined) {
+            return;
+          }
           const index: number = bulkSelectedItems.findIndex((x: T) => {
             return (
-              x[props.matchBulkSelectedItemByField]?.toString() ===
-              item[props.matchBulkSelectedItemByField]?.toString()
+              x[props.matchBulkSelectedItemByField!]?.toString() ===
+              item[props.matchBulkSelectedItemByField!]?.toString()
             );
           });
 
@@ -180,10 +199,11 @@ const Table: TableFunction = <T extends GenericObject>(
             bulkSelectedItems.splice(index, 1);
           }
 
-          props.onBulkSelectedItemRemoved(item);
+          props.onBulkSelectedItemRemoved?.(item);
         }}
         selectedItems={bulkSelectedItems}
         matchBulkSelectedItemByField={props.matchBulkSelectedItemByField}
+        isMobile={isMobile}
       />
     );
   };
@@ -193,6 +213,9 @@ const Table: TableFunction = <T extends GenericObject>(
 
   props.data.forEach((item: T) => {
     const index: number = bulkSelectedItems.findIndex((x: T) => {
+      if (props.matchBulkSelectedItemByField === undefined) {
+        return false;
+      }
       return (
         x[props.matchBulkSelectedItemByField]?.toString() ===
         item[props.matchBulkSelectedItemByField]?.toString()
@@ -224,11 +247,11 @@ const Table: TableFunction = <T extends GenericObject>(
         <BulkUpdateForm
           buttons={props.bulkActions.buttons}
           onClearSelectionClick={() => {
-            props.onBulkClearAllItems();
+            props.onBulkClearAllItems?.();
             setIsAllItemsSelected(false);
           }}
           onSelectAllClick={() => {
-            props.onBulkSelectAllItems();
+            props.onBulkSelectAllItems?.();
             setIsAllItemsSelected(true);
           }}
           selectedItems={bulkSelectedItems}
@@ -239,19 +262,19 @@ const Table: TableFunction = <T extends GenericObject>(
           onActionEnd={() => {
             setIsAllItemsSelected(false);
             setBulkSelectedItems([]);
-            props.onBulkActionEnd();
+            props.onBulkActionEnd?.();
           }}
           itemToString={props.bulkItemToString}
         />
       )}
       <DragDropContext
         onDragEnd={(result: DropResult) => {
-          result.destination?.index &&
-            props.onDragDrop &&
+          if (result.destination?.index && props.onDragDrop) {
             props.onDragDrop(result.draggableId, result.destination.index);
+          }
         }}
       >
-        <div className="-my-2 overflow-x-auto -mx-6">
+        <div className="-my-2 overflow-x-auto md:-mx-6">
           <div className="inline-block min-w-full py-2 align-middle">
             <div
               className={
@@ -260,31 +283,41 @@ const Table: TableFunction = <T extends GenericObject>(
                   : "overflow-hidden border-t border-gray-200"
               }
             >
-              <table className="min-w-full divide-y divide-gray-200">
-                <TableHeader
-                  id={`${props.id}-header`}
-                  columns={props.columns}
-                  onSortChanged={props.onSortChanged}
-                  enableDragAndDrop={props.enableDragAndDrop}
-                  sortBy={props.sortBy}
-                  sortOrder={props.sortOrder}
-                  isBulkActionsEnabled={isBulkActionsEnabled}
-                  onAllItemsDeselected={() => {
-                    setIsAllItemsSelected(false);
-                    props.onBulkClearAllItems();
-                  }}
-                  onAllItemsOnThePageSelected={() => {
-                    props.onBulkSelectItemsOnCurrentPage();
-                  }}
-                  isAllItemsOnThePageSelected={isAllItemsOnThePageSelected}
-                  hasTableItems={props.data.length > 0}
-                />
-                {getTablebody()}
-              </table>
+              {isMobile ? (
+                // Mobile view: render as list
+                <div className="min-w-full divide-y divide-gray-200">
+                  {getTablebody()}
+                </div>
+              ) : (
+                // Desktop view: render as table
+                <table className="min-w-full divide-y divide-gray-200">
+                  <TableHeader
+                    id={`${props.id}-header`}
+                    columns={props.columns}
+                    onSortChanged={props.onSortChanged}
+                    enableDragAndDrop={props.enableDragAndDrop}
+                    sortBy={props.sortBy}
+                    sortOrder={props.sortOrder}
+                    isBulkActionsEnabled={isBulkActionsEnabled}
+                    onAllItemsDeselected={() => {
+                      setIsAllItemsSelected(false);
+                      props.onBulkClearAllItems?.();
+                    }}
+                    onAllItemsOnThePageSelected={() => {
+                      if (props.onBulkSelectItemsOnCurrentPage) {
+                        props.onBulkSelectItemsOnCurrentPage();
+                      }
+                    }}
+                    isAllItemsOnThePageSelected={isAllItemsOnThePageSelected}
+                    hasTableItems={props.data.length > 0}
+                  />
+                  {getTablebody()}
+                </table>
+              )}
             </div>
           </div>
         </div>
-        <div className="bg-gray-50 text-right -mr-6 -ml-6 -mb-6">
+        <div className="bg-gray-50 text-right md:-mx-6 -mb-6">
           {!props.disablePagination && (
             <Pagination
               singularLabel={props.singularLabel}

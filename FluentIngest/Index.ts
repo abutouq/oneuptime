@@ -1,4 +1,5 @@
 import FluentIngestAPI from "./API/FluentIngest";
+import MetricsAPI from "./API/Metrics";
 import { PromiseVoidFunction } from "Common/Types/FunctionTypes";
 import { ClickhouseAppInstance } from "Common/Server/Infrastructure/ClickhouseDatabase";
 import PostgresAppInstance from "Common/Server/Infrastructure/PostgresDatabase";
@@ -9,12 +10,15 @@ import logger from "Common/Server/Utils/Logger";
 import Realtime from "Common/Server/Utils/Realtime";
 import App from "Common/Server/Utils/StartServer";
 import Telemetry from "Common/Server/Utils/Telemetry";
+import "./Jobs/FluentIngest/ProcessFluentIngest";
+import { FLUENT_INGEST_CONCURRENCY } from "./Config";
 
 const app: ExpressApplication = Express.getExpressApp();
 
 const APP_NAME: string = "fluent-ingest";
 
 app.use([`/${APP_NAME}`, "/"], FluentIngestAPI);
+app.use([`/${APP_NAME}`, "/"], MetricsAPI);
 
 const init: PromiseVoidFunction = async (): Promise<void> => {
   try {
@@ -31,6 +35,10 @@ const init: PromiseVoidFunction = async (): Promise<void> => {
     Telemetry.init({
       serviceName: APP_NAME,
     });
+
+    logger.info(
+      `FluentIngest Service - Queue concurrency: ${FLUENT_INGEST_CONCURRENCY}`,
+    );
 
     // init the app
     await App.init({

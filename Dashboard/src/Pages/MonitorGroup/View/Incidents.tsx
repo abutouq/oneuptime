@@ -1,5 +1,4 @@
 import IncidentsTable from "../../../Components/Incident/IncidentsTable";
-import DashboardNavigation from "../../../Utils/Navigation";
 import PageComponentProps from "../../PageComponentProps";
 import { LIMIT_PER_PROJECT } from "Common/Types/Database/LimitMax";
 import { PromiseVoidFunction } from "Common/Types/FunctionTypes";
@@ -16,6 +15,7 @@ import React, {
   ReactElement,
   useEffect,
 } from "react";
+import ProjectUtil from "Common/UI/Utils/Project";
 
 const MonitorIncidents: FunctionComponent<
   PageComponentProps
@@ -69,14 +69,14 @@ const MonitorIncidents: FunctionComponent<
   }
 
   if (error) {
-    return <ErrorMessage error={error} />;
+    return <ErrorMessage message={error} />;
   }
 
   return (
     <Fragment>
       <IncidentsTable
         query={{
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
           monitors: monitorIds,
         }}
       />

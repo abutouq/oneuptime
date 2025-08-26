@@ -21,29 +21,30 @@ const Tabs: FunctionComponent<ComponentProps> = (
   }, [props.tabs]);
 
   useEffect(() => {
-    if (currentTab) {
-      props.onTabChange && props.onTabChange(currentTab);
+    if (currentTab && props.onTabChange) {
+      props.onTabChange(currentTab);
     }
   }, [currentTab]);
 
   return (
     <div>
-      <div className="hidden sm:block">
-        <nav className="flex space-x-4" aria-label="Tabs">
-          {props.tabs.map((tab: Tab) => {
-            return (
-              <TabElement
-                key={tab.name}
-                tab={tab}
-                onClick={() => {
-                  setCurrentTab(tab);
-                }}
-                isSelected={tab === currentTab}
-              />
-            );
-          })}
-        </nav>
-      </div>
+      <nav
+        className="flex space-x-2 overflow-x-auto md:overflow-visible md:space-x-4"
+        aria-label="Tabs"
+      >
+        {props.tabs.map((tab: Tab) => {
+          return (
+            <TabElement
+              key={tab.name}
+              tab={tab}
+              onClick={() => {
+                setCurrentTab(tab);
+              }}
+              isSelected={tab === currentTab}
+            />
+          );
+        })}
+      </nav>
       <div className="mt-3 ml-1">{currentTab && currentTab.children}</div>
     </div>
   );

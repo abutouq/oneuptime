@@ -72,6 +72,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
 @Entity({
   name: "MonitorOwnerTeam",
 })
+@Index(["monitorId", "teamId", "projectId"])
 export default class MonitorOwnerTeam extends BaseModel {
   @ColumnAccessControl({
     create: [
@@ -351,6 +352,7 @@ export default class MonitorOwnerTeam extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -414,6 +416,7 @@ export default class MonitorOwnerTeam extends BaseModel {
     isDefaultValueColumn: true,
     title: "Are Owners Notified",
     description: "Are owners notified of this resource ownership?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,

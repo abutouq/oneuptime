@@ -1,8 +1,10 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
+import CaptureSpan from "../../../Utils/Telemetry/CaptureSpan";
 
 export class MigrationName1727194579925 implements MigrationInterface {
   public name = "MigrationName1727194579925";
 
+  @CaptureSpan()
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       `ALTER TABLE "User" ALTER COLUMN "deletedAt" TYPE TIMESTAMP WITH TIME ZONE`,
@@ -489,5 +491,6 @@ export class MigrationName1727194579925 implements MigrationInterface {
     );
   }
 
+  @CaptureSpan()
   public async down(_queryRunner: QueryRunner): Promise<void> {}
 }

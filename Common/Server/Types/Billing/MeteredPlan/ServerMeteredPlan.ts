@@ -1,8 +1,9 @@
 import BillingService from "../../../Services/BillingService";
-import MeteredPlan from "Common/Types/Billing/MeteredPlan";
-import NotImplementedException from "Common/Types/Exception/NotImplementedException";
-import ProductType from "Common/Types/MeteredPlan/ProductType";
-import ObjectID from "Common/Types/ObjectID";
+import MeteredPlan from "../../../../Types/Billing/MeteredPlan";
+import NotImplementedException from "../../../../Types/Exception/NotImplementedException";
+import ProductType from "../../../../Types/MeteredPlan/ProductType";
+import ObjectID from "../../../../Types/ObjectID";
+import CaptureSpan from "../../../Utils/Telemetry/CaptureSpan";
 
 export default class ServerMeteredPlan {
   public getProductType(): ProductType {
@@ -16,6 +17,7 @@ export default class ServerMeteredPlan {
     return meteredPlan.getPricePerUnit() * quantity;
   }
 
+  @CaptureSpan()
   public async reportQuantityToBillingProvider(
     _projectId: ObjectID,
     _options: {

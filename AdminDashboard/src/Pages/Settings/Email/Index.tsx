@@ -21,7 +21,7 @@ import React, { FunctionComponent, ReactElement, useEffect } from "react";
 
 const Settings: FunctionComponent = (): ReactElement => {
   const [emailServerType, setemailServerType] = React.useState<EmailServerType>(
-    EmailServerType.Internal,
+    EmailServerType.CustomSMTP,
   );
 
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
@@ -43,7 +43,7 @@ const Settings: FunctionComponent = (): ReactElement => {
 
     if (globalConfig) {
       setemailServerType(
-        globalConfig.emailServerType || EmailServerType.Internal,
+        globalConfig.emailServerType || EmailServerType.CustomSMTP,
       );
     }
 
@@ -61,7 +61,7 @@ const Settings: FunctionComponent = (): ReactElement => {
   }
 
   if (error) {
-    return <ErrorMessage error={error} />;
+    return <ErrorMessage message={error} />;
   }
 
   return (
@@ -106,6 +106,7 @@ const Settings: FunctionComponent = (): ReactElement => {
             title: "Admin Notification Email",
             fieldType: FormFieldSchemaType.Email,
             required: false,
+            disableSpellCheck: true,
           },
         ]}
         modelDetailProps={{
@@ -126,7 +127,7 @@ const Settings: FunctionComponent = (): ReactElement => {
       />
 
       <CardModelDetail
-        name="Internal SMTP Settings"
+        name="Email Server Settings"
         cardProps={{
           title: "Email Server Settings",
           description:
@@ -171,7 +172,7 @@ const Settings: FunctionComponent = (): ReactElement => {
           cardProps={{
             title: "Custom Email and SMTP Settings",
             description:
-              "If you have not enabled Internal SMTP server to send emails. Please configure your SMTP server here.",
+              "Please configure your SMTP server here to send emails.",
           }}
           isEditable={true}
           editButtonText="Edit SMTP Config"
@@ -199,6 +200,7 @@ const Settings: FunctionComponent = (): ReactElement => {
               fieldType: FormFieldSchemaType.Hostname,
               required: true,
               placeholder: "smtp.server.com",
+              disableSpellCheck: true,
             },
             {
               field: {
@@ -229,6 +231,7 @@ const Settings: FunctionComponent = (): ReactElement => {
               fieldType: FormFieldSchemaType.Text,
               required: false,
               placeholder: "emailuser",
+              disableSpellCheck: true,
             },
             {
               field: {
@@ -239,6 +242,7 @@ const Settings: FunctionComponent = (): ReactElement => {
               fieldType: FormFieldSchemaType.EncryptedText,
               required: false,
               placeholder: "Password",
+              disableSpellCheck: true,
             },
             {
               field: {
@@ -251,6 +255,7 @@ const Settings: FunctionComponent = (): ReactElement => {
               description:
                 "Email used to log in to this SMTP Server. This is also the email your customers will see. ",
               placeholder: "email@company.com",
+              disableSpellCheck: true,
             },
             {
               field: {
@@ -263,6 +268,7 @@ const Settings: FunctionComponent = (): ReactElement => {
               description:
                 "This is the display name your team and customers see, when they receive emails from OneUptime.",
               placeholder: "Company, Inc.",
+              disableSpellCheck: true,
             },
           ]}
           modelDetailProps={{

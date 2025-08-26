@@ -1,4 +1,4 @@
-import { PROBE_INGEST_URL, PROBE_MONITOR_FETCH_LIMIT } from "../../Config";
+import { PROBE_INGEST_URL } from "../../Config";
 import MonitorUtil from "../../Utils/Monitors/Monitor";
 import ProbeAPIRequest from "../../Utils/ProbeAPIRequest";
 import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
@@ -10,43 +10,46 @@ import MonitorTest from "Common/Models/DatabaseModels/MonitorTest";
 import APIException from "Common/Types/Exception/ApiException";
 import { JSONArray } from "Common/Types/JSON";
 import ProbeMonitorResponse from "Common/Types/Probe/ProbeMonitorResponse";
-import Sleep from "Common/Types/Sleep";
 import API from "Common/Utils/API";
 import logger from "Common/Server/Utils/Logger";
+import BasicCron from "Common/Server/Utils/BasicCron";
+import { EVERY_TEN_SECONDS } from "Common/Utils/CronTime";
 
-export default class FetchMonitorTestAndProbe {
-  private workerName: string = "";
-
-  public constructor(workerName: string) {
-    this.workerName = workerName;
-  }
-
-  public async run(): Promise<void> {
-    logger.debug(`Running worker ${this.workerName}`);
-
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
+const InitJob: VoidFunction = (): void => {
+  BasicCron({
+    jobName: "Probe:MonitorTest",
+    options: {
+      schedule: EVERY_TEN_SECONDS,
+      runOnStartup: true,
+    },
+    runFunction: async () => {
       try {
-        logger.debug(`Probing monitors ${this.workerName}`);
-
-        await this.fetchListAndProbe();
-
-        logger.debug(`Probing monitors ${this.workerName} complete`);
-
-        // sleep for 15 seconds
-
-        await Sleep.sleep(15000);
+        await FetchMonitorTestAndProbe.run();
       } catch (err) {
-        logger.error(`Error in worker ${this.workerName}`);
+        logger.error("Error in worker");
         logger.error(err);
-        await Sleep.sleep(2000);
       }
+    },
+  });
+};
+
+class FetchMonitorTestAndProbe {
+  public static async run(): Promise<void> {
+    try {
+      logger.debug(`MONITOR TEST: Probing monitors `);
+
+      await this.fetchListAndProbe();
+
+      logger.debug(`MONITOR TEST: Probing monitors  complete`);
+    } catch (err) {
+      logger.error(`Error in worker `);
+      logger.error(err);
     }
   }
 
-  private async fetchListAndProbe(): Promise<void> {
+  private static async fetchListAndProbe(): Promise<void> {
     try {
-      logger.debug("Fetching monitor list");
+      logger.debug("MONITOR TEST: Fetching monitor  list");
 
       const monitorListUrl: URL = URL.fromString(
         PROBE_INGEST_URL.toString(),
@@ -58,13 +61,13 @@ export default class FetchMonitorTestAndProbe {
           monitorListUrl,
           {
             ...ProbeAPIRequest.getDefaultRequestBody(),
-            limit: PROBE_MONITOR_FETCH_LIMIT || 100,
+            limit: 100,
           },
           {},
           {},
         );
 
-      logger.debug("Fetched monitor test list");
+      logger.debug("MONITOR TEST: Fetched monitor test list");
       logger.debug(result);
 
       const monitorTests: Array<MonitorTest> = BaseModel.fromJSONArray(
@@ -114,3 +117,5 @@ export default class FetchMonitorTestAndProbe {
     }
   }
 }
+
+export default InitJob;

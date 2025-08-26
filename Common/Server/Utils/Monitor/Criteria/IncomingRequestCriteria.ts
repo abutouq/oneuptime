@@ -1,19 +1,21 @@
 import logger from "../../../Utils/Logger";
 import DataToProcess from "../DataToProcess";
-import OneUptimeDate from "Common/Types/Date";
-import { JSONObject } from "Common/Types/JSON";
+import OneUptimeDate from "../../../../Types/Date";
+import { JSONObject } from "../../../../Types/JSON";
 import {
   CheckOn,
   CriteriaFilter,
   FilterType,
-} from "Common/Types/Monitor/CriteriaFilter";
-import IncomingMonitorRequest from "Common/Types/Monitor/IncomingMonitor/IncomingMonitorRequest";
-import Typeof from "Common/Types/Typeof";
+} from "../../../../Types/Monitor/CriteriaFilter";
+import IncomingMonitorRequest from "../../../../Types/Monitor/IncomingMonitor/IncomingMonitorRequest";
+import Typeof from "../../../../Types/Typeof";
 import EvaluateOverTime from "./EvaluateOverTime";
 import CompareCriteria from "./CompareCriteria";
-import ProbeMonitorResponse from "Common/Types/Probe/ProbeMonitorResponse";
+import ProbeMonitorResponse from "../../../../Types/Probe/ProbeMonitorResponse";
+import CaptureSpan from "../../Telemetry/CaptureSpan";
 
 export default class IncomingRequestCriteria {
+  @CaptureSpan()
   public static async isMonitorInstanceCriteriaFilterMet(input: {
     dataToProcess: DataToProcess;
     criteriaFilter: CriteriaFilter;
@@ -42,18 +44,23 @@ export default class IncomingRequestCriteria {
       input.criteriaFilter.eveluateOverTime &&
       input.criteriaFilter.evaluateOverTimeOptions
     ) {
-      overTimeValue = await EvaluateOverTime.getValueOverTime({
-        monitorId: input.dataToProcess.monitorId!,
-        evaluateOverTimeOptions: input.criteriaFilter.evaluateOverTimeOptions,
-        metricType: input.criteriaFilter.checkOn,
-      });
+      try {
+        overTimeValue = await EvaluateOverTime.getValueOverTime({
+          projectId: (input.dataToProcess as IncomingMonitorRequest).projectId,
+          monitorId: input.dataToProcess.monitorId!,
+          evaluateOverTimeOptions: input.criteriaFilter.evaluateOverTimeOptions,
+          metricType: input.criteriaFilter.checkOn,
+        });
 
-      if (Array.isArray(overTimeValue) && overTimeValue.length === 0) {
-        return null;
-      }
-
-      if (overTimeValue === undefined) {
-        return null;
+        if (Array.isArray(overTimeValue) && overTimeValue.length === 0) {
+          overTimeValue = undefined;
+        }
+      } catch (err) {
+        logger.error(
+          `Error in getting over time value for ${input.criteriaFilter.checkOn}`,
+        );
+        logger.error(err);
+        overTimeValue = undefined;
       }
     }
 
@@ -64,6 +71,18 @@ export default class IncomingRequestCriteria {
 
       return CompareCriteria.compareCriteriaBoolean({
         value: currentIsOnline,
+        criteriaFilter: input.criteriaFilter,
+      });
+    }
+
+    // timeout.
+    if (input.criteriaFilter.checkOn === CheckOn.IsRequestTimeout) {
+      const currentIsTimeout: boolean | Array<boolean> =
+        (overTimeValue as Array<boolean>) ||
+        (input.dataToProcess as ProbeMonitorResponse).isTimeout;
+
+      return CompareCriteria.compareCriteriaBoolean({
+        value: currentIsTimeout,
         criteriaFilter: input.criteriaFilter,
       });
     }
@@ -84,7 +103,8 @@ export default class IncomingRequestCriteria {
 
       const differenceInMinutes: number = OneUptimeDate.getDifferenceInMinutes(
         lastCheckTime,
-        OneUptimeDate.getCurrentDate(),
+        (input.dataToProcess as IncomingMonitorRequest)?.checkedAt ||
+          OneUptimeDate.getCurrentDate(),
       );
 
       logger.debug("Difference in minutes: " + differenceInMinutes);
@@ -117,7 +137,7 @@ export default class IncomingRequestCriteria {
               input.dataToProcess.monitorId.toString() +
               " is true",
           );
-          return `Incoming request / heartbeat received in ${value} minutes.`;
+          return `Incoming request / heartbeat received in ${value} minutes. It was received ${differenceInMinutes} minutes ago.`;
         }
         return null;
       }
@@ -133,7 +153,7 @@ export default class IncomingRequestCriteria {
               input.dataToProcess.monitorId.toString() +
               " is true",
           );
-          return `Incoming request / heartbeat not received in ${value} minutes.`;
+          return `Incoming request / heartbeat not received in ${value} minutes. It was received ${differenceInMinutes} minutes ago.`;
         }
         return null;
       }

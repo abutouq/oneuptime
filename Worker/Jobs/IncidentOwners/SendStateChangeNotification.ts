@@ -8,17 +8,23 @@ import EmailTemplateType from "Common/Types/Email/EmailTemplateType";
 import NotificationSettingEventType from "Common/Types/NotificationSetting/NotificationSettingEventType";
 import ObjectID from "Common/Types/ObjectID";
 import { SMSMessage } from "Common/Types/SMS/SMS";
+import PushNotificationMessage from "Common/Types/PushNotification/PushNotificationMessage";
 import { EVERY_MINUTE } from "Common/Utils/CronTime";
 import IncidentService from "Common/Server/Services/IncidentService";
 import IncidentStateTimelineService from "Common/Server/Services/IncidentStateTimelineService";
 import ProjectService from "Common/Server/Services/ProjectService";
 import UserNotificationSettingService from "Common/Server/Services/UserNotificationSettingService";
+import PushNotificationUtil from "Common/Server/Utils/PushNotificationUtil";
 import Markdown, { MarkdownContentType } from "Common/Server/Types/Markdown";
 import Incident from "Common/Models/DatabaseModels/Incident";
 import IncidentState from "Common/Models/DatabaseModels/IncidentState";
 import IncidentStateTimeline from "Common/Models/DatabaseModels/IncidentStateTimeline";
 import Monitor from "Common/Models/DatabaseModels/Monitor";
 import User from "Common/Models/DatabaseModels/User";
+import IncidentFeedService from "Common/Server/Services/IncidentFeedService";
+import { IncidentFeedEventType } from "Common/Models/DatabaseModels/IncidentFeed";
+import { Blue500 } from "Common/Types/BrandColors";
+import UserService from "Common/Server/Services/UserService";
 
 RunCron(
   "IncidentOwner:SendStateChangeEmail",
@@ -52,6 +58,8 @@ RunCron(
       });
 
     for (const incidentStateTimeline of incidentStateTimelines) {
+      let moreIncidentFeedInformationInMarkdown: string = "";
+
       const incidentId: ObjectID = incidentStateTimeline.incidentId!;
 
       if (!incidentId) {
@@ -69,9 +77,11 @@ RunCron(
           _id: true,
           title: true,
           description: true,
+          projectId: true,
           monitors: {
             name: true,
           },
+          incidentNumber: true,
         },
       });
 
@@ -198,16 +208,47 @@ RunCron(
           ],
         };
 
+        const pushMessage: PushNotificationMessage =
+          PushNotificationUtil.createIncidentStateChangedNotification({
+            incidentTitle: incident.title!,
+            projectName: incidentStateTimeline.project!.name!,
+            newState: incidentState!.name!,
+            incidentViewLink: vars["incidentViewLink"] || "",
+          });
+
         await UserNotificationSettingService.sendUserNotification({
           userId: user.id!,
           projectId: incidentStateTimeline.projectId!,
           emailEnvelope: emailMessage,
           smsMessage: sms,
           callRequestMessage: callMessage,
+          pushNotificationMessage: pushMessage,
           eventType:
             NotificationSettingEventType.SEND_INCIDENT_STATE_CHANGED_OWNER_NOTIFICATION,
         });
+
+        moreIncidentFeedInformationInMarkdown += `**Notified:** ${await UserService.getUserMarkdownString(
+          {
+            userId: user.id!,
+            projectId: incidentStateTimeline.projectId!,
+          },
+        )})\n`;
       }
+
+      const incidentNumber: number = incident.incidentNumber!;
+      const projectId: ObjectID = incident.projectId!;
+
+      await IncidentFeedService.createIncidentFeedItem({
+        incidentId: incident.id!,
+        projectId: incident.projectId!,
+        incidentFeedEventType: IncidentFeedEventType.OwnerNotificationSent,
+        displayColor: Blue500,
+        feedInfoInMarkdown: `🔔 **Owners have been notified about the state change of the [Incident ${incidentNumber}](${(await IncidentService.getIncidentLinkInDashboard(projectId, incidentId)).toString()}).**: Owners have been notified about the state change of the incident because the incident state changed to **${incidentState.name}**.`,
+        moreInformationInMarkdown: moreIncidentFeedInformationInMarkdown,
+        workspaceNotification: {
+          sendWorkspaceNotification: true,
+        },
+      });
     }
   },
 );

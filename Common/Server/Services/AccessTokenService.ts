@@ -10,17 +10,20 @@ import Permission, {
   UserPermission,
   UserTenantAccessPermission,
 } from "../../Types/Permission";
-import Label from "Common/Models/DatabaseModels/Label";
-import TeamMember from "Common/Models/DatabaseModels/TeamMember";
-import TeamPermission from "Common/Models/DatabaseModels/TeamPermission";
+import Label from "../../Models/DatabaseModels/Label";
+import TeamMember from "../../Models/DatabaseModels/TeamMember";
+import TeamPermission from "../../Models/DatabaseModels/TeamPermission";
 import UserPermissionUtil from "../Utils/UserPermission/UserPermission";
 import PermissionNamespace from "../Types/Permission/PermissionNamespace";
+import DatabaseCommonInteractionProps from "../../Types/BaseDatabase/DatabaseCommonInteractionProps";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export class AccessTokenService extends BaseService {
   public constructor() {
     super();
   }
 
+  @CaptureSpan()
   public async refreshUserAllPermissions(userId: ObjectID): Promise<void> {
     await this.refreshUserGlobalAccessPermission(userId);
 
@@ -59,6 +62,7 @@ export class AccessTokenService extends BaseService {
     }
   }
 
+  @CaptureSpan()
   public async refreshUserGlobalAccessPermission(
     userId: ObjectID,
   ): Promise<UserGlobalAccessPermission> {
@@ -103,6 +107,7 @@ export class AccessTokenService extends BaseService {
     return permissionToStore;
   }
 
+  @CaptureSpan()
   public async getUserGlobalAccessPermission(
     userId: ObjectID,
   ): Promise<UserGlobalAccessPermission | null> {
@@ -116,6 +121,7 @@ export class AccessTokenService extends BaseService {
     return json;
   }
 
+  @CaptureSpan()
   public async refreshUserTenantAccessPermission(
     userId: ObjectID,
     projectId: ObjectID,
@@ -198,6 +204,28 @@ export class AccessTokenService extends BaseService {
     return permission;
   }
 
+  @CaptureSpan()
+  public async getDatabaseCommonInteractionPropsByUserAndProject(data: {
+    userId: ObjectID;
+    projectId: ObjectID;
+  }): Promise<DatabaseCommonInteractionProps> {
+    const { userId, projectId } = data;
+
+    return {
+      userId: userId,
+      userGlobalAccessPermission:
+        (await this.getUserGlobalAccessPermission(userId)) || undefined,
+      userTenantAccessPermission: {
+        [projectId.toString()]: (await this.getUserTenantAccessPermission(
+          userId,
+          projectId,
+        ))!,
+      },
+      tenantId: projectId,
+    };
+  }
+
+  @CaptureSpan()
   public async getUserTenantAccessPermission(
     userId: ObjectID,
     projectId: ObjectID,

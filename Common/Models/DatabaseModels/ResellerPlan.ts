@@ -248,6 +248,7 @@ export default class ResellerPlan extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -295,7 +296,7 @@ export default class ResellerPlan extends BaseModel {
     canReadOnRelationQuery: true,
     title: "Other Features",
     description:
-      "Other Features of this Reseller Plan. This is shown on the dashboard. Its a comma seperated list of features",
+      "Other Features of this Reseller Plan. This is shown on the dashboard. Its a comma separated list of features",
   })
   @Column({
     nullable: true,

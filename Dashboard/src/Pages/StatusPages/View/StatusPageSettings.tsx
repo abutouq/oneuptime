@@ -25,6 +25,14 @@ const StatusPageDelete: FunctionComponent<
         formFields={[
           {
             field: {
+              showIncidentsOnStatusPage: true,
+            },
+            title: "Show Incidents",
+            fieldType: FormFieldSchemaType.Toggle,
+            required: false,
+          },
+          {
+            field: {
               showIncidentHistoryInDays: true,
             },
             title: "Show Incident History (in days)",
@@ -46,6 +54,14 @@ const StatusPageDelete: FunctionComponent<
           modelType: StatusPage,
           id: "model-detail-status-page",
           fields: [
+            {
+              field: {
+                showIncidentsOnStatusPage: true,
+              },
+              fieldType: FieldType.Boolean,
+              title: "Show Incidents",
+              placeholder: "No",
+            },
             {
               field: {
                 showIncidentHistoryInDays: true,
@@ -77,6 +93,14 @@ const StatusPageDelete: FunctionComponent<
         formFields={[
           {
             field: {
+              showAnnouncementsOnStatusPage: true,
+            },
+            title: "Show Announcements",
+            fieldType: FormFieldSchemaType.Toggle,
+            required: false,
+          },
+          {
+            field: {
               showAnnouncementHistoryInDays: true,
             },
             title: "Show Announcement History (in days)",
@@ -90,6 +114,14 @@ const StatusPageDelete: FunctionComponent<
           modelType: StatusPage,
           id: "model-detail-status-page",
           fields: [
+            {
+              field: {
+                showAnnouncementsOnStatusPage: true,
+              },
+              fieldType: FieldType.Boolean,
+              title: "Show Announcements",
+              placeholder: "No",
+            },
             {
               field: {
                 showAnnouncementHistoryInDays: true,
@@ -111,6 +143,14 @@ const StatusPageDelete: FunctionComponent<
         editButtonText="Edit Settings"
         isEditable={true}
         formFields={[
+          {
+            field: {
+              showScheduledMaintenanceEventsOnStatusPage: true,
+            },
+            title: "Show Scheduled Maintenance Events",
+            fieldType: FormFieldSchemaType.Toggle,
+            required: false,
+          },
           {
             field: {
               showScheduledEventHistoryInDays: true,
@@ -136,6 +176,14 @@ const StatusPageDelete: FunctionComponent<
           fields: [
             {
               field: {
+                showScheduledMaintenanceEventsOnStatusPage: true,
+              },
+              fieldType: FieldType.Boolean,
+              title: "Show Scheduled Maintenance Events",
+              placeholder: "No",
+            },
+            {
+              field: {
                 showScheduledEventHistoryInDays: true,
               },
               fieldType: FieldType.Number,
@@ -147,6 +195,90 @@ const StatusPageDelete: FunctionComponent<
               },
               fieldType: FieldType.Boolean,
               title: "Show Event Labels",
+              placeholder: "No",
+            },
+          ],
+          modelId: modelId,
+        }}
+      />
+
+      <CardModelDetail<StatusPage>
+        name="Status Page > Settings"
+        cardProps={{
+          title: "Subscriber Settings",
+          description: "Subscriber Settings for Status Page",
+        }}
+        editButtonText="Edit Settings"
+        isEditable={true}
+        formFields={[
+          {
+            field: {
+              showSubscriberPageOnStatusPage: true,
+            },
+            title: "Show Subscriber Page",
+            fieldType: FormFieldSchemaType.Toggle,
+            required: false,
+          },
+          {
+            field: {
+              enableEmailSubscribers: true,
+            },
+            title: "Enable Email Subscribers",
+            fieldType: FormFieldSchemaType.Toggle,
+            required: false,
+          },
+          {
+            field: {
+              enableSmsSubscribers: true,
+            },
+            title: "Enable SMS Subscribers",
+            fieldType: FormFieldSchemaType.Toggle,
+            required: false,
+          },
+          {
+            field: {
+              enableSlackSubscribers: true,
+            },
+            title: "Enable Slack Subscribers",
+            fieldType: FormFieldSchemaType.Toggle,
+            required: false,
+          },
+        ]}
+        modelDetailProps={{
+          showDetailsInNumberOfColumns: 1,
+          modelType: StatusPage,
+          id: "model-detail-status-page",
+          fields: [
+            {
+              field: {
+                showSubscriberPageOnStatusPage: true,
+              },
+              fieldType: FieldType.Boolean,
+              title: "Show Subscriber Page",
+              placeholder: "No",
+            },
+            {
+              field: {
+                enableEmailSubscribers: true,
+              },
+              fieldType: FieldType.Boolean,
+              title: "Enable Email Subscribers",
+              placeholder: "No",
+            },
+            {
+              field: {
+                enableSmsSubscribers: true,
+              },
+              fieldType: FieldType.Boolean,
+              title: "Enable SMS Subscribers",
+              placeholder: "No",
+            },
+            {
+              field: {
+                enableSlackSubscribers: true,
+              },
+              fieldType: FieldType.Boolean,
+              title: "Enable Slack Subscribers",
               placeholder: "No",
             },
           ],

@@ -1,5 +1,5 @@
 import MonitorsElement from "../../Components/Monitor/Monitors";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageComponentProps from "../PageComponentProps";
 import URL from "Common/Types/API/URL";
 import SortOrder from "Common/Types/BaseDatabase/SortOrder";
@@ -37,11 +37,13 @@ const MonitorSecrets: FunctionComponent<
         title="How to use Monitor Secrets?"
         description="Learn how to use monitor secrets to store sensitive information like API keys, passwords, etc. that can be shared with monitors."
         link={URL.fromString("https://www.youtube.com/watch?v=V5eIpd_IPlU")}
+        hideOnMobile={true}
       />
       <ModelTable<MonitorSecret>
+        userPreferencesKey={"monitor-secrets-table"}
         modelType={MonitorSecret}
         query={{
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         id="monitor-secret-table"
         name="Settings > Monitor Secret"
@@ -83,6 +85,8 @@ const MonitorSecrets: FunctionComponent<
             },
             title: "Name",
             fieldType: FormFieldSchemaType.Text,
+            description:
+              "Name of the secret. This is a unique identifier and cannot have spaces or special characters. You can then use this name to access the secret in your monitors.",
             required: true,
             placeholder: "Secret Name",
             validation: {
@@ -91,6 +95,7 @@ const MonitorSecrets: FunctionComponent<
               noNumbers: true,
               noSpecialCharacters: true,
             },
+            disableSpellCheck: true,
           },
           {
             field: {
@@ -147,7 +152,7 @@ const MonitorSecrets: FunctionComponent<
 
             filterEntityType: Monitor,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -168,7 +173,7 @@ const MonitorSecrets: FunctionComponent<
               description: true,
             },
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
           {
             field: {
@@ -209,7 +214,7 @@ const MonitorSecrets: FunctionComponent<
               });
 
               setCurrentlyEditingItem(null);
-            } catch (err) {
+            } catch {
               // do nothing
             }
 

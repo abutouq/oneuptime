@@ -30,6 +30,22 @@ router.post(
       userOnCallLogTimelineId:
         (body["userOnCallLogTimelineId"] as ObjectID) || undefined,
       customTwilioConfig: body["customTwilioConfig"] as any,
+      incidentId: (body["incidentId"] as ObjectID) || undefined,
+      alertId: (body["alertId"] as ObjectID) || undefined,
+      scheduledMaintenanceId:
+        (body["scheduledMaintenanceId"] as ObjectID) || undefined,
+      statusPageId: (body["statusPageId"] as ObjectID) || undefined,
+      statusPageAnnouncementId:
+        (body["statusPageAnnouncementId"] as ObjectID) || undefined,
+      userId: (body["userId"] as ObjectID) || undefined,
+      onCallPolicyId: (body["onCallPolicyId"] as ObjectID) || undefined,
+      onCallPolicyEscalationRuleId:
+        (body["onCallPolicyEscalationRuleId"] as ObjectID) || undefined,
+      onCallDutyPolicyExecutionLogTimelineId:
+        (body["onCallDutyPolicyExecutionLogTimelineId"] as ObjectID) ||
+        undefined,
+      onCallScheduleId: (body["onCallScheduleId"] as ObjectID) || undefined,
+      teamId: (body["teamId"] as ObjectID) || undefined,
     });
 
     return Response.sendEmptySuccessResponse(req, res);
@@ -53,7 +69,8 @@ router.post("/test", async (req: ExpressRequest, res: ExpressResponse) => {
         _id: true,
         twilioAccountSID: true,
         twilioAuthToken: true,
-        twilioPhoneNumber: true,
+        twilioPrimaryPhoneNumber: true,
+        twilioSecondaryPhoneNumbers: true,
         projectId: true,
       },
     });
@@ -96,11 +113,11 @@ router.post("/test", async (req: ExpressRequest, res: ExpressResponse) => {
     );
   }
 
-  if (!config.twilioPhoneNumber) {
+  if (!config.twilioPrimaryPhoneNumber) {
     return Response.sendErrorResponse(
       req,
       res,
-      new BadDataException("twilioPhoneNumber is required"),
+      new BadDataException("twilioPrimaryPhoneNumber is required"),
     );
   }
 

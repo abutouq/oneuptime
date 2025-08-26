@@ -1,4 +1,4 @@
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageComponentProps from "../PageComponentProps";
 import NotificationSettingEventType from "Common/Types/NotificationSetting/NotificationSettingEventType";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
@@ -9,6 +9,7 @@ import User from "Common/UI/Utils/User";
 import UserNotificationSetting from "Common/Models/DatabaseModels/UserNotificationSetting";
 import React, { Fragment, FunctionComponent, ReactElement } from "react";
 import Includes from "Common/Types/BaseDatabase/Includes";
+import { ShowAs } from "Common/UI/Components/ModelTable/BaseModelTable";
 
 const Settings: FunctionComponent<PageComponentProps> = (): ReactElement => {
   type GetModelTableFunctionProps = {
@@ -27,19 +28,21 @@ const Settings: FunctionComponent<PageComponentProps> = (): ReactElement => {
     return (
       <ModelTable<UserNotificationSetting>
         modelType={UserNotificationSetting}
+        userPreferencesKey="user-notification-settings-table"
         query={{
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
           userId: User.getUserId().toString(),
           eventType: new Includes(options.eventOptions),
         }}
         onBeforeCreate={(
           model: UserNotificationSetting,
         ): Promise<UserNotificationSetting> => {
-          model.projectId = DashboardNavigation.getProjectId()!;
+          model.projectId = ProjectUtil.getCurrentProjectId()!;
           model.userId = User.getUserId();
           return Promise.resolve(model);
         }}
         createVerb={"Add"}
+        showAs={ShowAs.List}
         id="notification-settings"
         name={`User Settings > Notification Rules > ${options.title}`}
         isDeleteable={true}
@@ -93,6 +96,16 @@ const Settings: FunctionComponent<PageComponentProps> = (): ReactElement => {
             fieldType: FormFieldSchemaType.Toggle,
             required: false,
           },
+          {
+            field: {
+              alertByPush: true,
+            },
+            title: "Alert By Push Notification",
+            description:
+              "Select if you want to be alerted by push notifications.",
+            fieldType: FormFieldSchemaType.Toggle,
+            required: false,
+          },
         ]}
         showRefreshButton={true}
         filters={[]}
@@ -123,6 +136,13 @@ const Settings: FunctionComponent<PageComponentProps> = (): ReactElement => {
               alertByCall: true,
             },
             title: "Call Alerts",
+            type: FieldType.Boolean,
+          },
+          {
+            field: {
+              alertByPush: true,
+            },
+            title: "Push Alerts",
             type: FieldType.Boolean,
           },
         ]}
@@ -163,20 +183,6 @@ const Settings: FunctionComponent<PageComponentProps> = (): ReactElement => {
       <div>
         {getModelTable({
           eventOptions: [
-            NotificationSettingEventType.SEND_INCIDENT_NOTE_POSTED_OWNER_NOTIFICATION,
-            NotificationSettingEventType.SEND_INCIDENT_OWNER_ADDED_NOTIFICATION,
-            NotificationSettingEventType.SEND_INCIDENT_CREATED_OWNER_NOTIFICATION,
-            NotificationSettingEventType.SEND_INCIDENT_STATE_CHANGED_OWNER_NOTIFICATION,
-          ],
-          title: "Alert Notifications",
-          description:
-            "Here are the list of notification methods we will use when an event happens on an incident.",
-        })}
-      </div>
-
-      <div>
-        {getModelTable({
-          eventOptions: [
             NotificationSettingEventType.SEND_MONITOR_OWNER_ADDED_NOTIFICATION,
             NotificationSettingEventType.SEND_MONITOR_CREATED_OWNER_NOTIFICATION,
             NotificationSettingEventType.SEND_MONITOR_STATUS_CHANGED_OWNER_NOTIFICATION,
@@ -186,6 +192,21 @@ const Settings: FunctionComponent<PageComponentProps> = (): ReactElement => {
           title: "Monitor Notifications",
           description:
             "Here are the list of notification methods we will use when an event happens on a monitor.",
+        })}
+      </div>
+
+      <div>
+        {getModelTable({
+          eventOptions: [
+            NotificationSettingEventType.SEND_WHEN_USER_IS_ON_CALL_ROSTER,
+            NotificationSettingEventType.SEND_WHEN_USER_IS_NEXT_ON_CALL_ROSTER,
+            NotificationSettingEventType.SEND_WHEN_USER_IS_ADDED_TO_ON_CALL_POLICY,
+            NotificationSettingEventType.SEND_WHEN_USER_IS_REMOVED_FROM_ON_CALL_POLICY,
+            NotificationSettingEventType.SEND_WHEN_USER_IS_NO_LONGER_ACTIVE_ON_ON_CALL_ROSTER,
+          ],
+          title: "On-Call Notifications",
+          description:
+            "Here are the list of notification methods we will use when an event happens on an alert.",
         })}
       </div>
 

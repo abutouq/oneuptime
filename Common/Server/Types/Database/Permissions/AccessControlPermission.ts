@@ -2,25 +2,27 @@ import DatabaseRequestType from "../../BaseDatabase/DatabaseRequestType";
 import Query from "../Query";
 import Select from "../Select";
 import TablePermission from "./TablePermission";
-import AccessControlModel from "Common/Models/DatabaseModels/DatabaseBaseModel/AccessControlModel";
+import AccessControlModel from "../../../../Models/DatabaseModels/DatabaseBaseModel/AccessControlModel";
 import BaseModel, {
   DatabaseBaseModelType,
-} from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import ArrayUtil from "Common/Utils/Array";
-import { ColumnAccessControl } from "Common/Types/BaseDatabase/AccessControl";
-import DatabaseCommonInteractionProps from "Common/Types/BaseDatabase/DatabaseCommonInteractionProps";
+} from "../../../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import ArrayUtil from "../../../../Utils/Array";
+import { ColumnAccessControl } from "../../../../Types/BaseDatabase/AccessControl";
+import DatabaseCommonInteractionProps from "../../../../Types/BaseDatabase/DatabaseCommonInteractionProps";
 import DatabaseCommonInteractionPropsUtil, {
   PermissionType,
-} from "Common/Types/BaseDatabase/DatabaseCommonInteractionPropsUtil";
-import BadDataException from "Common/Types/Exception/BadDataException";
-import NotAuthorizedException from "Common/Types/Exception/NotAuthorizedException";
-import ObjectID from "Common/Types/ObjectID";
+} from "../../../../Types/BaseDatabase/DatabaseCommonInteractionPropsUtil";
+import BadDataException from "../../../../Types/Exception/BadDataException";
+import NotAuthorizedException from "../../../../Types/Exception/NotAuthorizedException";
+import ObjectID from "../../../../Types/ObjectID";
 import Permission, {
   PermissionHelper,
   UserPermission,
-} from "Common/Types/Permission";
+} from "../../../../Types/Permission";
+import CaptureSpan from "../../../Utils/Telemetry/CaptureSpan";
 
 export default class AccessControlPermission {
+  @CaptureSpan()
   public static async checkAccessControlBlockPermissionByModel<
     TBaseModel extends BaseModel,
   >(data: {
@@ -123,6 +125,7 @@ export default class AccessControlPermission {
     }
   }
 
+  @CaptureSpan()
   public static async checkAccessControlPermissionByModel<
     TBaseModel extends BaseModel,
   >(data: {
@@ -213,6 +216,7 @@ export default class AccessControlPermission {
     }
   }
 
+  @CaptureSpan()
   public static async addAccessControlIdsToQuery<TBaseModel extends BaseModel>(
     modelType: { new (): TBaseModel },
     query: Query<TBaseModel>,
@@ -236,6 +240,7 @@ export default class AccessControlPermission {
     return query;
   }
 
+  @CaptureSpan()
   public static getAccessControlIdsForModel(
     modelType: DatabaseBaseModelType,
     props: DatabaseCommonInteractionProps,
@@ -260,6 +265,7 @@ export default class AccessControlPermission {
     return distinctLabelIds;
   }
 
+  @CaptureSpan()
   public static getAccessControlIdsForQuery<TBaseModel extends BaseModel>(
     modelType: DatabaseBaseModelType,
     query: Query<TBaseModel>,

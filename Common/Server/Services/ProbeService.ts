@@ -1,4 +1,4 @@
-import User from "Common/Models/DatabaseModels/User";
+import User from "../../Models/DatabaseModels/User";
 import CreateBy from "../Types/Database/CreateBy";
 import { OnCreate, OnUpdate } from "../Types/Database/Hooks";
 import DatabaseService from "./DatabaseService";
@@ -6,11 +6,11 @@ import ObjectID from "../../Types/ObjectID";
 import Version from "../../Types/Version";
 import Model, {
   ProbeConnectionStatus,
-} from "Common/Models/DatabaseModels/Probe";
-import ProbeOwnerUser from "Common/Models/DatabaseModels/ProbeOwnerUser";
+} from "../../Models/DatabaseModels/Probe";
+import ProbeOwnerUser from "../../Models/DatabaseModels/ProbeOwnerUser";
 import ProbeOwnerUserService from "./ProbeOwnerUserService";
 import LIMIT_MAX, { LIMIT_PER_PROJECT } from "../../Types/Database/LimitMax";
-import ProbeOwnerTeam from "Common/Models/DatabaseModels/ProbeOwnerTeam";
+import ProbeOwnerTeam from "../../Models/DatabaseModels/ProbeOwnerTeam";
 import ProbeOwnerTeamService from "./ProbeOwnerTeamService";
 import TeamMemberService from "./TeamMemberService";
 import BadDataException from "../../Types/Exception/BadDataException";
@@ -28,12 +28,104 @@ import DatabaseConfig from "../DatabaseConfig";
 import URL from "../../Types/API/URL";
 import UpdateBy from "../Types/Database/UpdateBy";
 import MonitorService from "./MonitorService";
+import PushNotificationMessage from "../../Types/PushNotification/PushNotificationMessage";
+import PushNotificationUtil from "../Utils/PushNotificationUtil";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
+import { IsBillingEnabled } from "../EnvironmentConfig";
+import GlobalCache from "../Infrastructure/GlobalCache";
 
 export class Service extends DatabaseService<Model> {
   public constructor() {
     super(Model);
   }
 
+  public async saveLastAliveInCache(
+    probeId: ObjectID,
+    lastAlive: Date,
+  ): Promise<void> {
+    if (!probeId) {
+      throw new BadDataException("probeId is required");
+    }
+
+    try {
+      await GlobalCache.setString(
+        "probe-last-alive",
+        probeId.toString(),
+        OneUptimeDate.toString(lastAlive),
+      );
+    } catch (err) {
+      logger.error("Error in saving last alive in cache");
+      logger.error(err);
+    }
+  }
+
+  public async shouldSaveLastAlive(probeId: ObjectID): Promise<boolean> {
+    const now: Date = OneUptimeDate.getCurrentDate();
+
+    try {
+      // before we hit the database, we need to check if the lastAlive was updated in Global Cache.
+      const previousLastAliveCheck: string | null = await GlobalCache.getString(
+        "probe-last-alive",
+        probeId.toString(),
+      );
+
+      if (!previousLastAliveCheck) {
+        await this.saveLastAliveInCache(probeId, now);
+        return true;
+      }
+
+      const previousLastAliveCheckDate: Date | null = OneUptimeDate.fromString(
+        previousLastAliveCheck,
+      );
+
+      // if this date is within 30 seconds of current date, then we will not update the last alive.
+      if (previousLastAliveCheckDate) {
+        const diff: number = OneUptimeDate.getDifferenceInSeconds(
+          now,
+          previousLastAliveCheckDate,
+        );
+
+        if (diff < 30) {
+          return false;
+        }
+      }
+
+      await this.saveLastAliveInCache(probeId, now);
+    } catch (err) {
+      // failed to hit the cache, so we will hit the database
+      logger.error("Error in getting last alive from cache");
+      logger.error(err);
+    }
+
+    return true;
+  }
+
+  public async updateLastAlive(probeId: ObjectID): Promise<void> {
+    if (!probeId) {
+      throw new BadDataException("probeId is required");
+    }
+
+    const shouldSaveLastAlive: boolean =
+      await this.shouldSaveLastAlive(probeId);
+
+    if (!shouldSaveLastAlive) {
+      return;
+    }
+
+    const now: Date = OneUptimeDate.getCurrentDate();
+
+    await this.updateOneById({
+      id: probeId,
+      data: {
+        lastAlive: now,
+      },
+      props: {
+        isRoot: true,
+      },
+    });
+  }
+
+  @CaptureSpan()
   protected override async onBeforeCreate(
     createBy: CreateBy<Model>,
   ): Promise<OnCreate<Model>> {
@@ -48,6 +140,7 @@ export class Service extends DatabaseService<Model> {
     return { createBy: createBy, carryForward: [] };
   }
 
+  @CaptureSpan()
   public async getOwners(probeId: ObjectID): Promise<Array<User>> {
     if (!probeId) {
       throw new BadDataException("probeId is required");
@@ -121,6 +214,7 @@ export class Service extends DatabaseService<Model> {
     return users;
   }
 
+  @CaptureSpan()
   protected override async onBeforeUpdate(
     updateBy: UpdateBy<Model>,
   ): Promise<OnUpdate<Model>> {
@@ -157,6 +251,7 @@ export class Service extends DatabaseService<Model> {
     return { updateBy: updateBy, carryForward };
   }
 
+  @CaptureSpan()
   protected override async onUpdateSuccess(
     onUpdate: OnUpdate<Model>,
     _updatedItemIds: Array<ObjectID>,
@@ -177,6 +272,7 @@ export class Service extends DatabaseService<Model> {
     return Promise.resolve(onUpdate);
   }
 
+  @CaptureSpan()
   public async notifyOwnersOnStatusChange(data: {
     probeId: ObjectID;
   }): Promise<void> {
@@ -189,6 +285,7 @@ export class Service extends DatabaseService<Model> {
         _id: true,
         lastAlive: true,
         connectionStatus: true,
+        isGlobalProbe: true,
         name: true,
         description: true,
         projectId: true,
@@ -204,6 +301,10 @@ export class Service extends DatabaseService<Model> {
 
     if (!probe.projectId) {
       return; // might be global probe. Do not notify.
+    }
+
+    if (probe.isGlobalProbe && IsBillingEnabled) {
+      return; // do not notify for global probes.
     }
 
     // notify the probe owner
@@ -266,12 +367,33 @@ export class Service extends DatabaseService<Model> {
           ],
         };
 
+        const pushMessageParams: {
+          probeName: string;
+          projectName: string;
+          connectionStatus: string;
+          clickAction?: string;
+        } = {
+          probeName: probe.name!,
+          projectName: probe.project?.name || "Project",
+          connectionStatus: connectionStatus,
+        };
+
+        if (vars["viewProbesLink"]) {
+          pushMessageParams.clickAction = vars["viewProbesLink"];
+        }
+
+        const pushMessage: PushNotificationMessage =
+          PushNotificationUtil.createProbeStatusChangedNotification(
+            pushMessageParams,
+          );
+
         await UserNotificationSettingService.sendUserNotification({
           userId: user.id!,
           projectId: probe.projectId!,
           emailEnvelope: emailMessage,
           smsMessage: sms,
           callRequestMessage: callMessage,
+          pushNotificationMessage: pushMessage,
           eventType:
             NotificationSettingEventType.SEND_PROBE_STATUS_CHANGED_OWNER_NOTIFICATION,
         });
@@ -282,6 +404,7 @@ export class Service extends DatabaseService<Model> {
     }
   }
 
+  @CaptureSpan()
   public async getLinkInDashboard(
     projectId: ObjectID,
     probeId: ObjectID,

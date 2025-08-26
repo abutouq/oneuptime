@@ -1,5 +1,4 @@
 import MonitorStatuesElement from "../../../Components/MonitorStatus/MonitorStatusesElement";
-import DashboardNavigation from "../../../Utils/Navigation";
 import PageComponentProps from "../../PageComponentProps";
 import SortOrder from "Common/Types/BaseDatabase/SortOrder";
 import BadDataException from "Common/Types/Exception/BadDataException";
@@ -16,6 +15,8 @@ import React, { Fragment, FunctionComponent, ReactElement } from "react";
 import DropdownUtil from "Common/UI/Utils/Dropdown";
 import UptimePrecision from "Common/Types/StatusPage/UptimePrecision";
 import FormValues from "Common/UI/Components/Forms/Types/FormValues";
+import ProjectUtil from "Common/UI/Utils/Project";
+import MarkdownUtil from "Common/UI/Utils/Markdown";
 
 const StatusPageDelete: FunctionComponent<PageComponentProps> = (
   props: PageComponentProps,
@@ -40,6 +41,9 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
             title: "Overview Page Description.",
             fieldType: FormFieldSchemaType.Markdown,
             required: false,
+            description: MarkdownUtil.getMarkdownCheatsheet(
+              "Describe your status page overview here",
+            ),
           },
         ]}
         modelDetailProps={{
@@ -65,6 +69,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
         id={`status-page-history-chart-bar-color-rules`}
         isDeleteable={true}
         name="Status Page > Branding > History Chart Bar Color Rules"
+        userPreferencesKey="status-page-history-chart-bar-color-rules"
         sortBy="order"
         showViewIdButton={true}
         sortOrder={SortOrder.Ascending}
@@ -73,7 +78,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
         isEditable={true}
         query={{
           statusPageId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         enableDragAndDrop={true}
         dragDropIndexField="order"
@@ -193,6 +198,7 @@ const StatusPageDelete: FunctionComponent<PageComponentProps> = (
                 if (item["downtimeMonitorStatuses"]) {
                   return (
                     <MonitorStatuesElement
+                      shouldAnimate={false}
                       monitorStatuses={
                         (item[
                           "downtimeMonitorStatuses"

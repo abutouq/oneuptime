@@ -1,5 +1,11 @@
-import ResellerPlan from "Common/Models/DatabaseModels/ResellerPlan";
-import { IsBillingEnabled, getAllEnvVars } from "../EnvironmentConfig";
+import ResellerPlan from "../../Models/DatabaseModels/ResellerPlan";
+import {
+  IsBillingEnabled,
+  NotificationSlackWebhookOnCreateProject,
+  NotificationSlackWebhookOnDeleteProject,
+  NotificationSlackWebhookOnSubscriptionUpdate,
+  getAllEnvVars,
+} from "../EnvironmentConfig";
 import AllMeteredPlans from "../Types/Billing/MeteredPlan/AllMeteredPlans";
 import CreateBy from "../Types/Database/CreateBy";
 import DeleteBy from "../Types/Database/DeleteBy";
@@ -39,28 +45,32 @@ import {
 import Color from "../../Types/Color";
 import LIMIT_MAX from "../../Types/Database/LimitMax";
 import OneUptimeDate from "../../Types/Date";
-import Email from "../../Types/Email";
 import EmailTemplateType from "../../Types/Email/EmailTemplateType";
 import BadDataException from "../../Types/Exception/BadDataException";
 import NotAuthorizedException from "../../Types/Exception/NotAuthorizedException";
 import ObjectID from "../../Types/ObjectID";
 import Permission from "../../Types/Permission";
-import IncidentSeverity from "Common/Models/DatabaseModels/IncidentSeverity";
-import IncidentState from "Common/Models/DatabaseModels/IncidentState";
-import MonitorStatus from "Common/Models/DatabaseModels/MonitorStatus";
-import Model from "Common/Models/DatabaseModels/Project";
-import PromoCode from "Common/Models/DatabaseModels/PromoCode";
-import ScheduledMaintenanceState from "Common/Models/DatabaseModels/ScheduledMaintenanceState";
-import Team from "Common/Models/DatabaseModels/Team";
-import TeamMember from "Common/Models/DatabaseModels/TeamMember";
-import TeamPermission from "Common/Models/DatabaseModels/TeamPermission";
-import User from "Common/Models/DatabaseModels/User";
+import IncidentSeverity from "../../Models/DatabaseModels/IncidentSeverity";
+import IncidentState from "../../Models/DatabaseModels/IncidentState";
+import MonitorStatus from "../../Models/DatabaseModels/MonitorStatus";
+import Model from "../../Models/DatabaseModels/Project";
+import PromoCode from "../../Models/DatabaseModels/PromoCode";
+import ScheduledMaintenanceState from "../../Models/DatabaseModels/ScheduledMaintenanceState";
+import Team from "../../Models/DatabaseModels/Team";
+import TeamMember from "../../Models/DatabaseModels/TeamMember";
+import TeamPermission from "../../Models/DatabaseModels/TeamPermission";
+import User from "../../Models/DatabaseModels/User";
 import Select from "../Types/Database/Select";
 import Query from "../Types/Database/Query";
 import AlertSeverity from "../../Models/DatabaseModels/AlertSeverity";
 import AlertSeverityService from "./AlertSeverityService";
 import AlertState from "../../Models/DatabaseModels/AlertState";
 import AlertStateService from "./AlertStateService";
+import SlackUtil from "../Utils/Workspace/Slack/Slack";
+import URL from "../../Types/API/URL";
+import Exception from "../../Types/Exception/Exception";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
+import DatabaseConfig from "../DatabaseConfig";
 
 export interface CurrentPlan {
   plan: PlanType | null;
@@ -80,6 +90,7 @@ export class ProjectService extends DatabaseService<Model> {
     return SubscriptionPlan.getPlanType(planId);
   }
 
+  @CaptureSpan()
   protected override async onBeforeCreate(
     data: CreateBy<Model>,
   ): Promise<OnCreate<Model>> {
@@ -94,6 +105,8 @@ export class ProjectService extends DatabaseService<Model> {
         "User should be logged in to create the project.",
       );
     }
+
+    logger.debug("Creating project for user " + data.props.userId);
 
     const user: User | null = await UserService.findOneById({
       id: data.props.userId,
@@ -255,6 +268,7 @@ export class ProjectService extends DatabaseService<Model> {
     return Promise.resolve({ createBy: data, carryForward: null });
   }
 
+  @CaptureSpan()
   protected override async onBeforeUpdate(
     updateBy: UpdateBy<Model>,
   ): Promise<OnUpdate<Model>> {
@@ -398,11 +412,69 @@ export class ProjectService extends DatabaseService<Model> {
               project.paymentProviderSubscriptionSeats +
               " completed and project updated.",
           );
+
+          if (project.id) {
+            // send slack message on plan change.
+            await this.sendSubscriptionChangeWebhookSlackNotification(
+              project.id,
+            );
+          }
         }
       }
     }
 
     return { updateBy, carryForward: [] };
+  }
+
+  private async sendSubscriptionChangeWebhookSlackNotification(
+    projectId: ObjectID,
+  ): Promise<void> {
+    if (NotificationSlackWebhookOnSubscriptionUpdate) {
+      // fetch project again.
+      const project: Model | null = await this.findOneById({
+        id: new ObjectID(projectId.toString()),
+        select: {
+          name: true,
+          _id: true,
+          createdOwnerName: true,
+          createdOwnerEmail: true,
+          planName: true,
+          createdByUserId: true,
+          paymentProviderSubscriptionStatus: true,
+        },
+        props: {
+          isRoot: true,
+        },
+      });
+
+      if (!project) {
+        throw new BadDataException("Project not found");
+      }
+
+      let slackMessage: string = `*Project Plan Changed:*
+*Project Name:* ${project.name?.toString() || "N/A"}
+*Project ID:* ${project.id?.toString() || "N/A"}
+`;
+
+      if (project.createdOwnerName && project.createdOwnerEmail) {
+        slackMessage += `*Project Created By:* ${project?.createdOwnerName?.toString() + " (" + project.createdOwnerEmail.toString() + ")" || "N/A"}
+`;
+      }
+
+      if (IsBillingEnabled) {
+        // which plan?
+        slackMessage += `*Plan:* ${project.planName?.toString() || "N/A"} 
+*Subscription Status:* ${project.paymentProviderSubscriptionStatus?.toString() || "N/A"}
+`;
+      }
+
+      SlackUtil.sendMessageToChannelViaIncomingWebhook({
+        url: URL.fromString(NotificationSlackWebhookOnSubscriptionUpdate),
+        text: slackMessage,
+      }).catch((error: Exception) => {
+        logger.error("Error sending slack message: " + error);
+      });
+    }
   }
 
   private async addDefaultScheduledMaintenanceState(
@@ -483,6 +555,7 @@ export class ProjectService extends DatabaseService<Model> {
     return createdItem;
   }
 
+  @CaptureSpan()
   protected override async onCreateSuccess(
     _onCreate: OnCreate<Model>,
     createdItem: Model,
@@ -561,6 +634,53 @@ export class ProjectService extends DatabaseService<Model> {
     createdItem = await this.addDefaultScheduledMaintenanceState(createdItem);
     createdItem = await this.addDefaultAlertState(createdItem);
 
+    if (NotificationSlackWebhookOnCreateProject) {
+      // fetch project again.
+      const project: Model | null = await this.findOneById({
+        id: createdItem.id!,
+        select: {
+          name: true,
+          _id: true,
+          createdOwnerName: true,
+          createdOwnerEmail: true,
+          planName: true,
+          createdByUserId: true,
+          paymentProviderSubscriptionStatus: true,
+        },
+        props: {
+          isRoot: true,
+        },
+      });
+
+      if (!project) {
+        throw new BadDataException("Project not found");
+      }
+
+      let slackMessage: string = `*Project Created:*
+*Project Name:* ${project.name?.toString() || "N/A"}
+*Project ID:* ${project.id?.toString() || "N/A"}
+`;
+
+      if (project.createdOwnerName && project.createdOwnerEmail) {
+        slackMessage += `*Created By:* ${project?.createdOwnerName?.toString() + " (" + project.createdOwnerEmail.toString() + ")" || "N/A"}
+`;
+
+        if (IsBillingEnabled) {
+          // which plan?
+          slackMessage += `*Plan:* ${project.planName?.toString() || "N/A"}
+*Subscription Status:* ${project.paymentProviderSubscriptionStatus?.toString() || "N/A"}
+`;
+        }
+
+        SlackUtil.sendMessageToChannelViaIncomingWebhook({
+          url: URL.fromString(NotificationSlackWebhookOnCreateProject),
+          text: slackMessage,
+        }).catch((error: Exception) => {
+          logger.error("Error sending slack message: " + error);
+        });
+      }
+    }
+
     return createdItem;
   }
 
@@ -616,6 +736,7 @@ export class ProjectService extends DatabaseService<Model> {
     return createdItem;
   }
 
+  @CaptureSpan()
   public async addDefaultAlertState(createdItem: Model): Promise<Model> {
     let createdAlertState: AlertState = new AlertState();
     createdAlertState.name = "Identified";
@@ -668,6 +789,7 @@ export class ProjectService extends DatabaseService<Model> {
     return createdItem;
   }
 
+  @CaptureSpan()
   public async addDefaultAlertSeverity(createdItem: Model): Promise<Model> {
     let highSeverity: AlertSeverity = new AlertSeverity();
     highSeverity.name = "High";
@@ -941,6 +1063,7 @@ export class ProjectService extends DatabaseService<Model> {
     return createdItem;
   }
 
+  @CaptureSpan()
   public async updateLastActive(projectId: ObjectID): Promise<void> {
     await this.updateOneById({
       id: projectId,
@@ -953,6 +1076,7 @@ export class ProjectService extends DatabaseService<Model> {
     });
   }
 
+  @CaptureSpan()
   public async getOwners(projectId: ObjectID): Promise<Array<User>> {
     if (!projectId) {
       throw new BadDataException("Project ID is required");
@@ -988,6 +1112,7 @@ export class ProjectService extends DatabaseService<Model> {
     return TeamMemberService.getUsersInTeams(teamIds);
   }
 
+  @CaptureSpan()
   protected override async onBeforeFind(
     findBy: FindBy<Model>,
   ): Promise<OnFind<Model>> {
@@ -1004,32 +1129,76 @@ export class ProjectService extends DatabaseService<Model> {
     return { findBy, carryForward: null };
   }
 
+  @CaptureSpan()
   protected override async onBeforeDelete(
     deleteBy: DeleteBy<Model>,
   ): Promise<OnDelete<Model>> {
-    if (IsBillingEnabled) {
-      const projects: Array<Model> = await this.findBy({
-        query: deleteBy.query,
-        props: deleteBy.props,
-        limit: LIMIT_MAX,
-        skip: 0,
-        select: {
-          _id: true,
-          paymentProviderSubscriptionId: true,
-          paymentProviderMeteredSubscriptionId: true,
+    const projects: Array<Model> = await this.findBy({
+      query: deleteBy.query,
+      props: {
+        isRoot: true,
+      },
+      limit: LIMIT_MAX,
+      skip: 0,
+      select: {
+        _id: true,
+        paymentProviderSubscriptionId: true,
+        paymentProviderMeteredSubscriptionId: true,
+        name: true,
+        createdByUser: {
+          name: true,
+          email: true,
         },
-      });
+      },
+    });
 
-      return { deleteBy, carryForward: projects };
-    }
-
-    return { deleteBy, carryForward: [] };
+    return { deleteBy, carryForward: projects };
   }
 
+  @CaptureSpan()
   protected override async onDeleteSuccess(
     onDelete: OnDelete<Model>,
     _itemIdsBeforeDelete: ObjectID[],
   ): Promise<OnDelete<Model>> {
+    if (NotificationSlackWebhookOnDeleteProject) {
+      for (const project of onDelete.carryForward) {
+        let subscriptionStatus: SubscriptionStatus | null = null;
+
+        if (IsBillingEnabled) {
+          subscriptionStatus = await BillingService.getSubscriptionStatus(
+            project.paymentProviderSubscriptionId!,
+          );
+        }
+
+        let slackMessage: string = `*Project Deleted:*
+*Project Name:* ${project.name?.toString() || "N/A"}
+*Project ID:* ${project._id?.toString() || "N/A"}
+`;
+
+        if (subscriptionStatus) {
+          slackMessage += `*Project Subscription Status:* ${subscriptionStatus?.toString() || "N/A"}
+`;
+        }
+
+        if (
+          project.createdByUser &&
+          project.createdByUser.name &&
+          project.createdByUser.email
+        ) {
+          slackMessage += `*Created By:* ${project?.createdByUser.name?.toString() + " (" + project.createdByUser.email.toString() + ")" || "N/A"}
+`;
+        }
+
+        SlackUtil.sendMessageToChannelViaIncomingWebhook({
+          url: URL.fromString(NotificationSlackWebhookOnDeleteProject),
+          text: slackMessage,
+        }).catch((err: Error) => {
+          // log this error but do not throw it. Not important enough to stop the process.
+          logger.error(err);
+        });
+      }
+    }
+
     // get project id
     if (IsBillingEnabled) {
       for (const project of onDelete.carryForward) {
@@ -1050,6 +1219,7 @@ export class ProjectService extends DatabaseService<Model> {
     return onDelete;
   }
 
+  @CaptureSpan()
   public async getCurrentPlan(projectId: ObjectID): Promise<CurrentPlan> {
     if (!IsBillingEnabled) {
       return { plan: null, isSubscriptionUnpaid: false };
@@ -1093,6 +1263,7 @@ export class ProjectService extends DatabaseService<Model> {
     };
   }
 
+  @CaptureSpan()
   public async sendEmailToProjectOwners(
     projectId: ObjectID,
     subject: string,
@@ -1104,14 +1275,10 @@ export class ProjectService extends DatabaseService<Model> {
       return;
     }
 
-    const emails: Array<Email> = owners.map((owner: User) => {
-      return owner.email!;
-    });
-
-    for (const email of emails) {
+    for (const owner of owners) {
       MailService.sendMail(
         {
-          toEmail: email,
+          toEmail: owner.email!,
           templateType: EmailTemplateType.SimpleMessage,
           vars: {
             subject: subject,
@@ -1121,6 +1288,7 @@ export class ProjectService extends DatabaseService<Model> {
         },
         {
           projectId,
+          userId: owner.id!,
         },
       ).catch((err: Error) => {
         logger.error(err);
@@ -1128,6 +1296,7 @@ export class ProjectService extends DatabaseService<Model> {
     }
   }
 
+  @CaptureSpan()
   public async reactiveSubscription(projectId: ObjectID): Promise<void> {
     logger.debug("Reactivating subscription for project " + projectId);
 
@@ -1224,6 +1393,9 @@ export class ProjectService extends DatabaseService<Model> {
         isRoot: true,
       },
     });
+
+    // send slack message on plan change.
+    await this.sendSubscriptionChangeWebhookSlackNotification(projectId);
   }
 
   public getActiveProjectStatusQuery(): Query<Model> {
@@ -1240,6 +1412,16 @@ export class ProjectService extends DatabaseService<Model> {
     };
   }
 
+  @CaptureSpan()
+  public async getProjectLinkInDashboard(projectId: ObjectID): Promise<URL> {
+    const dashboardUrl: URL = await DatabaseConfig.getDashboardUrl();
+
+    return URL.fromString(dashboardUrl.toString()).addRoute(
+      `/${projectId.toString()}`,
+    );
+  }
+
+  @CaptureSpan()
   public async isSMSNotificationsEnabled(
     projectId: ObjectID,
   ): Promise<boolean> {

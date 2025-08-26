@@ -7,8 +7,16 @@ Synthetic monitoring is a way to proactively monitor your applications by simula
 The following example shows how to use a Synthetic Monitor:
 
 ```javascript
-// You can use axios module, and page object from Playwright here.
-// Page Object is a class that represents a single page in a browser.
+
+// Objects available in the context of the script are:
+
+// - axios: Axios module to make HTTP requests
+// - page: Playwright Page object to interact with the browser
+// - browserType: Browser type in the current run context - Chromium, Firefox, Webkit
+// - screenSizeType: Screen size type in the current run context - Mobile, Tablet, Desktop
+// - browser: Playwright Browser object to interact with the browser
+
+// You can use these objects to interact with the browser and make HTTP requests.
 
 await page.goto('https://playwright.dev/');
 
@@ -32,6 +40,9 @@ screenshots['screenshot-name'] = await page.screenshot(); // you can save multip
 
 // To log data, use console.log
 // console.log('Hello World');
+
+// You also have browser context available in the script. You can use it to interact with the browser if you need to (for example, to create a new page or dealing with popups).
+
 
 return {
     data: 'Hello World',
@@ -61,6 +72,46 @@ return {
 };
 
 ```
+
+
+### Using Monitor Secrets
+
+#### Adding a secret
+
+To add a secret, please go to OneUptime Dashboard -> Project Settings -> Monitor Secrets -> Create Monitor Secret.
+
+![Create Secret](/docs/static/images/CreateMonitorSecret.png)
+
+You can select which monitors have access to the secret. In this case we added `ApiKey` secret and selected monitors to have access to it.
+
+**Please note**: Secrets are encrypted and stored securely. If you lose the secret, you will need to create a new secret. You cannot view or update the secret after its saved. 
+
+#### Using a secret
+
+To use Monitor Secrets in the script, you can use `monitorSecrets` object in the context of the script. You can use it to access the secrets that you have added to the monitor.
+
+```javascript
+// if your secret is of type string then you need to wrap it in quotes
+let stringSecret = '{{monitorSecrets.StringSecret}}';
+
+// if your secret is of type number or boolean then you can use it directly
+let numberSecret = {{monitorSecrets.NumberSecret}};
+
+// if your secret is of type boolean then you can use it directly
+let booleanSecret = {{monitorSecrets.BooleanSecret}};
+
+// you can even console log to see if the secrets is being fetched correctly
+console.log(stringSecret); 
+```
+
+### Modules available in the script
+- `browser`: You can use this module to interact with the browser. It is a Playwright Browser object that allows you to create new pages, close pages, and perform other browser-related actions.
+- `page`: You can use this module to interact with the browser. It is a Playwright Page object that allows you to perform actions like clicking buttons, filling forms, and taking screenshots.
+- `axios`: You can use this module to make HTTP requests. It is a promise-based HTTP client for the browser and Node.js.
+- `crypto`: You can use this module to perform cryptographic operations. It is a built-in Node.js module that provides cryptographic functionality that includes a set of wrappers for OpenSSL's hash, HMAC, cipher, decipher, sign, and verify functions.
+- `console.log`: You can use this module to log data to the console. This is useful for debugging purposes.
+- `http`: You can use this module to make HTTP requests. It is a built-in Node.js module that provides an HTTP client and server.
+- `https`: You can use this module to make HTTPS requests. It is a built-in Node.js module that provides an HTTPS client and server.
 
 ### Things to consider
 

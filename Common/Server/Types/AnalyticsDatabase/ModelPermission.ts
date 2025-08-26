@@ -7,25 +7,26 @@ import Query from "./Query";
 import Select from "./Select";
 import BaseModel, {
   AnalyticsBaseModelType,
-} from "Common/Models/AnalyticsModels/AnalyticsBaseModel/AnalyticsBaseModel";
-import AnalyticsTableColumn from "Common/Types/AnalyticsDatabase/TableColumn";
-import ColumnBillingAccessControl from "Common/Types/BaseDatabase/ColumnBillingAccessControl";
-import DatabaseCommonInteractionProps from "Common/Types/BaseDatabase/DatabaseCommonInteractionProps";
+} from "../../../Models/AnalyticsModels/AnalyticsBaseModel/AnalyticsBaseModel";
+import AnalyticsTableColumn from "../../../Types/AnalyticsDatabase/TableColumn";
+import ColumnBillingAccessControl from "../../../Types/BaseDatabase/ColumnBillingAccessControl";
+import DatabaseCommonInteractionProps from "../../../Types/BaseDatabase/DatabaseCommonInteractionProps";
 import DatabaseCommonInteractionPropsUtil, {
   PermissionType,
-} from "Common/Types/BaseDatabase/DatabaseCommonInteractionPropsUtil";
-import SubscriptionPlan from "Common/Types/Billing/SubscriptionPlan";
-import Columns from "Common/Types/Database/Columns";
-import BadDataException from "Common/Types/Exception/BadDataException";
-import NotAuthenticatedException from "Common/Types/Exception/NotAuthenticatedException";
-import NotAuthorizedException from "Common/Types/Exception/NotAuthorizedException";
-import PaymentRequiredException from "Common/Types/Exception/PaymentRequiredException";
-import ObjectID from "Common/Types/ObjectID";
+} from "../../../Types/BaseDatabase/DatabaseCommonInteractionPropsUtil";
+import SubscriptionPlan from "../../../Types/Billing/SubscriptionPlan";
+import Columns from "../../../Types/Database/Columns";
+import BadDataException from "../../../Types/Exception/BadDataException";
+import NotAuthenticatedException from "../../../Types/Exception/NotAuthenticatedException";
+import NotAuthorizedException from "../../../Types/Exception/NotAuthorizedException";
+import PaymentRequiredException from "../../../Types/Exception/PaymentRequiredException";
+import ObjectID from "../../../Types/ObjectID";
 import Permission, {
   PermissionHelper,
   UserPermission,
-} from "Common/Types/Permission";
-import UserType from "Common/Types/UserType";
+} from "../../../Types/Permission";
+import UserType from "../../../Types/UserType";
+import CaptureSpan from "../../Utils/Telemetry/CaptureSpan";
 
 export interface CheckReadPermissionType<TBaseModel extends BaseModel> {
   query: Query<TBaseModel>;
@@ -33,6 +34,7 @@ export interface CheckReadPermissionType<TBaseModel extends BaseModel> {
 }
 
 export default class ModelPermission {
+  @CaptureSpan()
   public static async checkDeletePermission<TBaseModel extends BaseModel>(
     modelType: { new (): TBaseModel },
     query: Query<TBaseModel>,
@@ -54,6 +56,7 @@ export default class ModelPermission {
     return query;
   }
 
+  @CaptureSpan()
   public static async checkUpdatePermissions<TBaseModel extends BaseModel>(
     modelType: { new (): TBaseModel },
     query: Query<TBaseModel>,
@@ -85,6 +88,7 @@ export default class ModelPermission {
     return query;
   }
 
+  @CaptureSpan()
   public static checkCreatePermissions<TBaseModel extends BaseModel>(
     modelType: { new (): TBaseModel },
     data: TBaseModel,
@@ -220,6 +224,7 @@ export default class ModelPermission {
     }
   }
 
+  @CaptureSpan()
   public static async checkReadPermission<TBaseModel extends BaseModel>(
     modelType: { new (): TBaseModel },
     query: Query<TBaseModel>,
@@ -581,6 +586,7 @@ export default class ModelPermission {
     return isPublicAllowed;
   }
 
+  @CaptureSpan()
   public static checkIfUserIsLoggedIn(
     modelType: AnalyticsBaseModelType,
     props: DatabaseCommonInteractionProps,
@@ -596,7 +602,7 @@ export default class ModelPermission {
 
       // this means the record is not publicly createable and the user is not logged in.
       throw new NotAuthenticatedException(
-        `A user should be logged in to ${type} record of ${
+        `Authenticated user or a valid API key is needed to ${type} record of ${
           new modelType().singularName
         }.`,
       );
@@ -629,12 +635,19 @@ export default class ModelPermission {
         modelPermissions,
       )
     ) {
+      const permissions: Array<string> =
+        PermissionHelper.getPermissionTitles(modelPermissions);
+
+      if (permissions.length === 0) {
+        throw new NotAuthorizedException(
+          `${type} on ${new modelType().singularName} is not allowed.`,
+        );
+      }
+
       throw new NotAuthorizedException(
         `You do not have permissions to ${type} ${
           new modelType().singularName
-        }. You need one of these permissions: ${PermissionHelper.getPermissionTitles(
-          modelPermissions,
-        ).join(", ")}`,
+        }. You need one of these permissions: ${permissions.join(", ")}`,
       );
     }
 

@@ -218,7 +218,7 @@ export default class StatusPageCustomField extends BaseModel {
     type: ColumnType.ShortText,
     length: ColumnLength.ShortText,
   })
-  public type?: CustomFieldType = undefined;
+  public customFieldType?: CustomFieldType = undefined;
 
   @ColumnAccessControl({
     create: [
@@ -297,6 +297,7 @@ export default class StatusPageCustomField extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })

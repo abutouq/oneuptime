@@ -1,8 +1,10 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
+import CaptureSpan from "../../../Utils/Telemetry/CaptureSpan";
 
 export class MigrationName1730117995642 implements MigrationInterface {
   public name = "MigrationName1730117995642";
 
+  @CaptureSpan()
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       `ALTER TABLE "StatusPage" ADD "allowSubscribersToChooseEventTypes" boolean NOT NULL DEFAULT false`,
@@ -15,6 +17,7 @@ export class MigrationName1730117995642 implements MigrationInterface {
     );
   }
 
+  @CaptureSpan()
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       `ALTER TABLE "StatusPageSubscriber" DROP COLUMN "statusPageEventTypes"`,

@@ -1,4 +1,4 @@
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import ProjectUser from "../../Utils/ProjectUser";
 import { RouteUtil } from "../../Utils/RouteMap";
 import PageComponentProps from "../PageComponentProps";
@@ -22,6 +22,7 @@ const IncidentTemplates: FunctionComponent<PageComponentProps> = (
       <ModelTable<IncidentTemplate>
         modelType={IncidentTemplate}
         id="incident-templates-table"
+        userPreferencesKey="incident-templates-table"
         name="Settings > Incident Templates"
         isDeleteable={false}
         isEditable={false}
@@ -34,7 +35,7 @@ const IncidentTemplates: FunctionComponent<PageComponentProps> = (
         }}
         noItemsMessage={"No incident templates found."}
         query={{
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         showViewIdButton={true}
         formSteps={[
@@ -209,7 +210,7 @@ const IncidentTemplates: FunctionComponent<PageComponentProps> = (
             fieldType: FormFieldSchemaType.MultiSelectDropdown,
             fetchDropdownOptions: async () => {
               return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-                DashboardNavigation.getProjectId()!,
+                ProjectUtil.getCurrentProjectId()!,
               );
             },
             required: false,
@@ -250,7 +251,7 @@ const IncidentTemplates: FunctionComponent<PageComponentProps> = (
               templateDescription: true,
             },
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
         ]}
         columns={[
@@ -266,7 +267,7 @@ const IncidentTemplates: FunctionComponent<PageComponentProps> = (
               templateDescription: true,
             },
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
         ]}
       />

@@ -14,7 +14,13 @@ spec:
   selector:
     matchLabels:
       app: {{ printf "%s-%s" $.Release.Name "worker"  }}
+  {{- if $.Values.worker.replicaCount }}
+  replicas: {{ $.Values.worker.replicaCount }}
+  {{- else }}
+  {{- if or (not $.Values.autoscaling.enabled) ($.Values.worker.disableAutoscaler) }}
   replicas: {{ $.Values.deployment.replicaCount }}
+  {{- end }}
+  {{- end }}
   template:
     metadata:
       labels:
@@ -46,7 +52,7 @@ spec:
           startupProbe:
             httpGet:
               path: /status/live
-              port: {{ $.Values.port.worker }}
+              port: {{ $.Values.worker.ports.http }}
             periodSeconds: {{ $.Values.startupProbe.periodSeconds }}
             failureThreshold: {{ $.Values.startupProbe.failureThreshold }}
           {{- end }}
@@ -55,7 +61,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /status/live
-              port: {{ $.Values.port.worker }}
+              port: {{ $.Values.worker.ports.http }}
             periodSeconds: {{ $.Values.livenessProbe.periodSeconds }}
             timeoutSeconds: {{ $.Values.livenessProbe.timeoutSeconds }}
             initialDelaySeconds: {{ $.Values.livenessProbe.initialDelaySeconds }}
@@ -65,7 +71,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /status/ready
-              port: {{ $.Values.port.worker }}
+              port: {{ $.Values.worker.ports.http }}
             periodSeconds: {{ $.Values.readinessProbe.periodSeconds }}
             initialDelaySeconds: {{ $.Values.readinessProbe.initialDelaySeconds }}
             timeoutSeconds: {{ $.Values.readinessProbe.timeoutSeconds }}
@@ -79,22 +85,31 @@ spec:
             {{- include "oneuptime.env.commonServer" . | nindent 12 }}
             {{- include "oneuptime.env.oneuptimeSecret" . | nindent 12 }}
             - name: PORT
-              value: {{ $.Values.port.worker | quote }}
+              value: {{ $.Values.worker.ports.http | quote }}
+            - name: DISABLE_TELEMETRY
+              value: {{ $.Values.worker.disableTelemetryCollection | quote }}
+            - name: WORKER_CONCURRENCY
+              value: {{ $.Values.worker.concurrency | squote }}
           ports:
-            - containerPort: {{ $.Values.port.worker }}
+            - containerPort: {{ $.Values.worker.ports.http }}
               protocol: TCP
               name: http
+          {{- if $.Values.worker.resources }}
+          resources:
+            {{- toYaml $.Values.worker.resources | nindent 12 }}
+          {{- end }}
       restartPolicy: {{ $.Values.image.restartPolicy }}
 
 ---
 
 # OneUptime app Service
-{{- $workerPorts := dict "port" $.Values.port.worker -}}
+{{- $workerPorts := $.Values.worker.ports -}}
 {{- $workerServiceArgs := dict "ServiceName" "worker" "Ports" $workerPorts "Release" $.Release "Values" $.Values -}}
 {{- include "oneuptime.service" $workerServiceArgs }}
 ---
 
 # OneUptime app autoscaler
+{{- if and (not $.Values.worker.disableAutoscaler) (not (and $.Values.keda.enabled $.Values.worker.keda.enabled)) }}
 {{- $workerAutoScalerArgs := dict "ServiceName" "worker" "Release" $.Release "Values" $.Values -}}
 {{- include "oneuptime.autoscaler" $workerAutoScalerArgs }}
----
+{{- end }}

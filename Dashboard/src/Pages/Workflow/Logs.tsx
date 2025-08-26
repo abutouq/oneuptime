@@ -29,6 +29,7 @@ const Workflows: FunctionComponent<PageComponentProps> = (): ReactElement => {
         <ModelTable<WorkflowLog>
           modelType={WorkflowLog}
           id="workflow-logs-table"
+          userPreferencesKey="workflow-logs-table"
           isDeleteable={false}
           actionButtons={[
             {
@@ -143,6 +144,7 @@ const Workflows: FunctionComponent<PageComponentProps> = (): ReactElement => {
               },
               title: "Scheduled At",
               type: FieldType.DateTime,
+              hideOnMobile: true,
             },
             {
               field: {
@@ -150,6 +152,7 @@ const Workflows: FunctionComponent<PageComponentProps> = (): ReactElement => {
               },
               title: "Started At",
               type: FieldType.DateTime,
+              hideOnMobile: true,
             },
             {
               field: {
@@ -157,6 +160,7 @@ const Workflows: FunctionComponent<PageComponentProps> = (): ReactElement => {
               },
               title: "Completed At",
               type: FieldType.DateTime,
+              hideOnMobile: true,
             },
           ]}
         />

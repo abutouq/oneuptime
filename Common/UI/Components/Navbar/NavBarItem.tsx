@@ -2,8 +2,8 @@
 import Navigation from "../../Utils/Navigation";
 import Icon, { ThickProp } from "../Icon/Icon";
 import Link from "../Link/Link";
-import Route from "Common/Types/API/Route";
-import IconProp from "Common/Types/Icon/IconProp";
+import Route from "../../../Types/API/Route";
+import IconProp from "../../../Types/Icon/IconProp";
 import React, { FunctionComponent, ReactElement } from "react";
 
 export interface ComponentProps {
@@ -41,10 +41,10 @@ const NavBarItem: FunctionComponent<ComponentProps> = (
 
   if (props.isRenderedOnMobile) {
     classNames =
-      "text-gray-900 hover:bg-gray-50 hover:text-gray-900 block rounded-md py-2 px-3 text-base font-medium";
+      "text-gray-900 hover:bg-gray-50 hover:text-gray-900 inline-flex items-center rounded-md py-2 px-3 text-base font-medium";
     if (isActive) {
       classNames =
-        "bg-gray-100 text-gray-900 block rounded-md py-2 px-3 text-base font-medium";
+        "bg-gray-100 text-gray-900 inline-flex items-center rounded-md py-2 px-3 text-base font-medium";
     }
   }
 

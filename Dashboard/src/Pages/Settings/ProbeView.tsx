@@ -1,6 +1,6 @@
 import LabelsElement from "../../Components/Label/Labels";
 import UserElement from "../../Components/User/User";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageMap from "../../Utils/PageMap";
 import ProjectUser from "../../Utils/ProjectUser";
 import RouteMap from "../../Utils/RouteMap";
@@ -220,6 +220,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (
       <ModelTable<ProbeOwnerTeam>
         modelType={ProbeOwnerTeam}
         id="table-monitor-owner-team"
+        userPreferencesKey="probe-owner-team-table"
         name="Probe > Owner Team"
         singularName="Team"
         isDeleteable={true}
@@ -229,11 +230,11 @@ const TeamView: FunctionComponent<PageComponentProps> = (
         showViewIdButton={true}
         query={{
           probeId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(item: ProbeOwnerTeam): Promise<ProbeOwnerTeam> => {
           item.probeId = modelId;
-          item.projectId = DashboardNavigation.getProjectId()!;
+          item.projectId = ProjectUtil.getCurrentProjectId()!;
           return Promise.resolve(item);
         }}
         cardProps={{
@@ -269,7 +270,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (
             title: "Team",
             filterEntityType: Team,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -315,6 +316,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (
         modelType={ProbeOwnerUser}
         id="table-monitor-owner-team"
         name="Probe > Owner Team"
+        userPreferencesKey="probe-owner-user-table"
         isDeleteable={true}
         singularName="User"
         isCreateable={true}
@@ -323,11 +325,11 @@ const TeamView: FunctionComponent<PageComponentProps> = (
         createVerb={"Add"}
         query={{
           probeId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(item: ProbeOwnerUser): Promise<ProbeOwnerUser> => {
           item.probeId = modelId;
-          item.projectId = DashboardNavigation.getProjectId()!;
+          item.projectId = ProjectUtil.getCurrentProjectId()!;
           return Promise.resolve(item);
         }}
         cardProps={{
@@ -347,7 +349,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (
             placeholder: "Select User",
             fetchDropdownOptions: async () => {
               return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-                DashboardNavigation.getProjectId()!,
+                ProjectUtil.getCurrentProjectId()!,
               );
             },
           },
@@ -364,7 +366,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (
             filterEntityType: User,
             fetchFilterDropdownOptions: async () => {
               return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-                DashboardNavigation.getProjectId()!,
+                ProjectUtil.getCurrentProjectId()!,
               );
             },
             filterDropdownField: {

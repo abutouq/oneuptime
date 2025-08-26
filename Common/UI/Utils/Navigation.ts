@@ -1,10 +1,10 @@
 import { AgnosticRouteMatch } from "@remix-run/router";
-import Hostname from "Common/Types/API/Hostname";
-import Route from "Common/Types/API/Route";
-import URL from "Common/Types/API/URL";
-import Dictionary from "Common/Types/Dictionary";
-import BadDataException from "Common/Types/Exception/BadDataException";
-import ObjectID from "Common/Types/ObjectID";
+import Hostname from "../../Types/API/Hostname";
+import Route from "../../Types/API/Route";
+import URL from "../../Types/API/URL";
+import Dictionary from "../../Types/Dictionary";
+import BadDataException from "../../Types/Exception/BadDataException";
+import ObjectID from "../../Types/ObjectID";
 import {
   Location,
   NavigateFunction,
@@ -219,23 +219,27 @@ abstract class Navigation {
       forceNavigate?: boolean | undefined;
     },
   ): void {
+    const finalUrl: string = to.toString();
+
+    // add query params if they exist.
+
     if (options?.openInNewTab) {
       // open in new tab
-      window.open(to.toString(), "_blank");
+      window.open(finalUrl, "_blank");
       return;
     }
 
     if (options?.forceNavigate && to instanceof Route) {
-      window.location.href = to.toString();
+      window.location.href = finalUrl;
     }
 
     if (this.navigateHook && to instanceof Route && !this.isOnThisPage(to)) {
-      this.navigateHook(to.toString());
+      this.navigateHook(finalUrl);
     }
 
     // if its an external link outside of react.
     if (to instanceof URL) {
-      window.location.href = to.toString();
+      window.location.href = finalUrl;
     }
   }
 }

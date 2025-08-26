@@ -15,6 +15,7 @@ import MonitorType from "Common/Types/Monitor/MonitorType";
 import BrowserType from "Common/Types/Monitor/SyntheticMonitors/BrowserType";
 import Port from "Common/Types/Port";
 import ScreenSizeType from "Common/Types/ScreenSizeType";
+import ProjectUtil from "Common/UI/Utils/Project";
 import Button, {
   ButtonSize,
   ButtonStyleType,
@@ -32,7 +33,6 @@ import Dropdown, {
 import FieldLabelElement from "Common/UI/Components/Forms/Fields/FieldLabel";
 import HorizontalRule from "Common/UI/Components/HorizontalRule/HorizontalRule";
 import Input from "Common/UI/Components/Input/Input";
-import Link from "Common/UI/Components/Link/Link";
 import { APP_API_URL, DOCS_URL } from "Common/UI/Config";
 import DropdownUtil from "Common/UI/Utils/Dropdown";
 import React, {
@@ -45,7 +45,6 @@ import LogMonitorStepForm from "./LogMonitor/LogMonitorStepFrom";
 import TraceMonitorStepForm from "./TraceMonitor/TraceMonitorStepForm";
 import TelemetryService from "Common/Models/DatabaseModels/TelemetryService";
 import ModelAPI, { ListResult } from "Common/UI/Utils/ModelAPI/ModelAPI";
-import DashboardNavigation from "../../../Utils/Navigation";
 import { LIMIT_PER_PROJECT } from "Common/Types/Database/LimitMax";
 import SortOrder from "Common/Types/BaseDatabase/SortOrder";
 import HTTPErrorResponse from "Common/Types/API/HTTPErrorResponse";
@@ -66,13 +65,14 @@ import MetricMonitorStepForm from "./MetricMonitor/MetricMonitorStepForm";
 import MonitorStepMetricMonitor, {
   MonitorStepMetricMonitorUtil,
 } from "Common/Types/Monitor/MonitorStepMetricMonitor";
+import Link from "Common/UI/Components/Link/Link";
 
 export interface ComponentProps {
   monitorStatusDropdownOptions: Array<DropdownOption>;
   incidentSeverityDropdownOptions: Array<DropdownOption>;
   alertSeverityDropdownOptions: Array<DropdownOption>;
   onCallPolicyDropdownOptions: Array<DropdownOption>;
-  initialValue?: undefined | MonitorStep;
+  value?: undefined | MonitorStep;
   onChange?: undefined | ((value: MonitorStep) => void);
   // onDelete?: undefined | (() => void);
   monitorType: MonitorType;
@@ -91,22 +91,12 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
   const [showDoNotFollowRedirects, setShowDoNotFollowRedirects] =
     useState<boolean>(false);
 
-  const [monitorStep, setMonitorStep] = useState<MonitorStep>(
-    props.initialValue || new MonitorStep(),
-  );
-
   const [telemetryServices, setTelemetryServices] = useState<
     Array<TelemetryService>
   >([]);
   const [attributeKeys, setAttributeKeys] = useState<Array<string>>([]);
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    if (props.onChange && monitorStep) {
-      props.onChange(monitorStep);
-    }
-  }, [monitorStep]);
 
   const fetchLogAttributes: PromiseVoidFunction = async (): Promise<void> => {
     const attributeRepsonse: HTTPResponse<JSONObject> | HTTPErrorResponse =
@@ -158,7 +148,7 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
         await ModelAPI.getList<TelemetryService>({
           modelType: TelemetryService,
           query: {
-            projectId: DashboardNavigation.getProjectId()!,
+            projectId: ProjectUtil.getCurrentProjectId()!,
           },
           limit: LIMIT_PER_PROJECT,
           skip: 0,
@@ -219,48 +209,55 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
     DropdownUtil.getDropdownOptionsFromEnum(HTTPMethod);
 
   const [destinationInputValue, setDestinationInputValue] = useState<string>(
-    props.initialValue?.data?.monitorDestination?.toString() || "",
+    props.value?.data?.monitorDestination?.toString() || "",
   );
 
   let codeEditorPlaceholder: string = "";
 
   if (props.monitorType === MonitorType.CustomJavaScriptCode) {
     codeEditorPlaceholder = `
-        // You can use axios, http modules here.
-        await axios.get('https://example.com'); 
+// You can use axios, http modules here.
+await axios.get('https://example.com'); 
 
-        // when you want to return a value, use return statement with data as a prop.
+// when you want to return a value, use return statement with data as a prop.
 
-        return {
-            data: 'Hello World' 
-        };`;
+return {
+    data: 'Hello World' 
+};
+        `;
   }
 
   if (props.monitorType === MonitorType.SyntheticMonitor) {
     codeEditorPlaceholder = `
-        // You can use axios module, and page object from Playwright here.
-        // Page Object is a class that represents a single page in a browser.
+// Objects available in the context of the script are:
 
-        await page.goto('https://playwright.dev/');
-        
-        // Playwright Documentation here: https://playwright.dev/docs/intro
-    
-        // To take screenshots,
+// - axios: Axios module to make HTTP requests
+// - page: Playwright Page object to interact with the browser
+// - browserType: Browser type in the current run context - Chromium, Firefox, Webkit
+// - screenSizeType: Screen size type in the current run context - Mobile, Tablet, Desktop
+// - browser: Playwright Browser object to interact with the browser
 
-        const screenshots = {};
+await page.goto('https://playwright.dev/');
 
-        screenshots['screenshot-name'] = await page.screenshot(); // you can save multiple screenshots and have them with different names.
+// Playwright Documentation here: https://playwright.dev/docs/intro
+
+// To take screenshots,
+
+const screenshots = {};
+
+screenshots['screenshot-name'] = await page.screenshot(); // you can save multiple screenshots and have them with different names.
 
 
-        // To log data, use console.log
-        console.log('Hello World');
+// To log data, use console.log
+console.log('Hello World');
 
-        // when you want to return a value, use return statement with data as a prop. You can also add screenshots in the screenshots array.
+// when you want to return a value, use return statement with data as a prop. You can also add screenshots in the screenshots array.
 
-        return {
-            data: 'Hello World',
-            screenshots: screenshots // obj containing screenshots
-        };`;
+return {
+    data: 'Hello World',
+    screenshots: screenshots // obj containing screenshots
+};
+        `;
   }
 
   useEffect(() => {
@@ -309,8 +306,10 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
   }
 
   if (error) {
-    return <ErrorMessage error={error} />;
+    return <ErrorMessage message={error} />;
   }
+
+  const monitorStep: MonitorStep = props.value || new MonitorStep();
 
   return (
     <div className="mt-5">
@@ -324,6 +323,7 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
             />
             <Input
               initialValue={destinationInputValue}
+              disableSpellCheck={true}
               onBlur={() => {
                 setTouched({
                   ...touched,
@@ -399,7 +399,9 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
                 }
 
                 setDestinationInputValue(value);
-                setMonitorStep(MonitorStep.clone(monitorStep));
+                if (props.onChange) {
+                  props.onChange(MonitorStep.clone(monitorStep));
+                }
               }}
             />
           </div>
@@ -415,7 +417,9 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
                 onChange={(value: string) => {
                   const port: Port = new Port(value);
                   monitorStep.setPort(port);
-                  setMonitorStep(MonitorStep.clone(monitorStep));
+                  if (props.onChange) {
+                    props.onChange(MonitorStep.clone(monitorStep));
+                  }
                 }}
               />
             </div>
@@ -444,7 +448,9 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
                   monitorStep.setRequestType(
                     (value?.toString() as HTTPMethod) || HTTPMethod.GET,
                   );
-                  setMonitorStep(MonitorStep.clone(monitorStep));
+                  if (props.onChange) {
+                    props.onChange(MonitorStep.clone(monitorStep));
+                  }
                 }}
               />
             </div>
@@ -504,7 +510,9 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
                   initialValue={monitorStep.data?.requestHeaders || {}}
                   onChange={(value: Dictionary<string>) => {
                     monitorStep.setRequestHeaders(value);
-                    setMonitorStep(MonitorStep.clone(monitorStep));
+                    if (props.onChange) {
+                      props.onChange(MonitorStep.clone(monitorStep));
+                    }
                   }}
                 />
               </div>
@@ -552,7 +560,7 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
                         ...errors,
                         requestBody: "",
                       });
-                    } catch (err) {
+                    } catch {
                       setErrors({
                         ...errors,
                         requestBody: "Invalid JSON",
@@ -560,7 +568,9 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
                     }
 
                     monitorStep.setRequestBody(value);
-                    setMonitorStep(MonitorStep.clone(monitorStep));
+                    if (props.onChange) {
+                      props.onChange(MonitorStep.clone(monitorStep));
+                    }
                   }}
                 />
               </div>
@@ -577,7 +587,9 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
                   description="Please check this if you do not want to follow redirects."
                   onChange={(value: boolean) => {
                     monitorStep.setDoNotFollowRedirects(value);
-                    setMonitorStep(MonitorStep.clone(monitorStep));
+                    if (props.onChange) {
+                      props.onChange(MonitorStep.clone(monitorStep));
+                    }
                   }}
                 />
               </div>
@@ -594,7 +606,7 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
             }
             onMonitorStepLogMonitorChanged={(value: MonitorStepLogMonitor) => {
               monitorStep.setLogMonitor(value);
-              setMonitorStep(MonitorStep.clone(monitorStep));
+              props.onChange?.(MonitorStep.clone(monitorStep));
             }}
             attributeKeys={attributeKeys}
             telemetryServices={telemetryServices}
@@ -611,7 +623,7 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
             }
             onChange={(value: MonitorStepMetricMonitor) => {
               monitorStep.setMetricMonitor(value);
-              setMonitorStep(MonitorStep.clone(monitorStep));
+              props.onChange?.(MonitorStep.clone(monitorStep));
             }}
           />
         </div>
@@ -628,7 +640,7 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
               value: MonitorStepTraceMonitor,
             ) => {
               monitorStep.setTraceMonitor(value);
-              setMonitorStep(MonitorStep.clone(monitorStep));
+              props.onChange?.(MonitorStep.clone(monitorStep));
             }}
             attributeKeys={attributeKeys}
             telemetryServices={telemetryServices}
@@ -683,7 +695,9 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
               type={CodeType.JavaScript}
               onChange={(value: string) => {
                 monitorStep.setCustomCode(value);
-                setMonitorStep(MonitorStep.clone(monitorStep));
+                if (props.onChange) {
+                  props.onChange(MonitorStep.clone(monitorStep));
+                }
               }}
               placeholder={codeEditorPlaceholder}
             />
@@ -701,10 +715,12 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
           <div className="mt-1">
             <CheckBoxList
               options={enumToCategoryCheckboxOption(BrowserType)}
-              initialValue={props.initialValue?.data?.browserTypes || []}
+              initialValue={props.value?.data?.browserTypes || []}
               onChange={(values: Array<CategoryCheckboxValue>) => {
                 monitorStep.setBrowserTypes(values as Array<BrowserType>);
-                setMonitorStep(MonitorStep.clone(monitorStep));
+                if (props.onChange) {
+                  props.onChange(MonitorStep.clone(monitorStep));
+                }
               }}
             />
           </div>
@@ -721,10 +737,12 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
           <div className="mt-1">
             <CheckBoxList
               options={enumToCategoryCheckboxOption(ScreenSizeType)}
-              initialValue={props.initialValue?.data?.screenSizeTypes || []}
+              initialValue={props.value?.data?.screenSizeTypes || []}
               onChange={(values: Array<CategoryCheckboxValue>) => {
                 monitorStep.setScreenSizeTypes(values as Array<ScreenSizeType>);
-                setMonitorStep(MonitorStep.clone(monitorStep));
+                if (props.onChange) {
+                  props.onChange(MonitorStep.clone(monitorStep));
+                }
               }}
             />
           </div>
@@ -766,10 +784,10 @@ const MonitorStepElement: FunctionComponent<ComponentProps> = (
           }
           alertSeverityDropdownOptions={props.alertSeverityDropdownOptions}
           onCallPolicyDropdownOptions={props.onCallPolicyDropdownOptions}
-          initialValue={monitorStep?.data?.monitorCriteria}
+          value={monitorStep?.data?.monitorCriteria}
           onChange={(value: MonitorCriteria) => {
             monitorStep.setMonitorCriteria(value);
-            setMonitorStep(MonitorStep.clone(monitorStep));
+            props.onChange?.(MonitorStep.clone(monitorStep));
           }}
         />
       </div>

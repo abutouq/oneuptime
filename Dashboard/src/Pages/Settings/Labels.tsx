@@ -1,4 +1,4 @@
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageComponentProps from "../PageComponentProps";
 import Color from "Common/Types/Color";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
@@ -15,10 +15,11 @@ const Labels: FunctionComponent<PageComponentProps> = (): ReactElement => {
       <ModelTable<Label>
         modelType={Label}
         query={{
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         id="labels-table"
         name="Settings > Labels"
+        userPreferencesKey="labels-table"
         isDeleteable={true}
         isEditable={true}
         isCreateable={true}
@@ -105,7 +106,7 @@ const Labels: FunctionComponent<PageComponentProps> = (): ReactElement => {
             },
             noValueMessage: "-",
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
         ]}
       />

@@ -1,7 +1,7 @@
 // Connect common api's.
 import CommonAPI from "../API/Index";
 import { StatusAPIOptions } from "../API/StatusAPI";
-import { AppVersion } from "../EnvironmentConfig";
+import { AppVersion, IsBillingEnabled } from "../EnvironmentConfig";
 import LocalCache from "../Infrastructure/LocalCache";
 import "./Environment";
 import Express, {
@@ -12,25 +12,26 @@ import Express, {
   ExpressStatic,
   ExpressUrlEncoded,
   NextFunction,
+  OneUptimeRequest,
   RequestHandler,
 } from "./Express";
 import logger from "./Logger";
 import "./Process";
 import Response from "./Response";
 import { api } from "@opentelemetry/sdk-node";
-import StatusCode from "Common/Types/API/StatusCode";
-import Exception from "Common/Types/Exception/Exception";
-import NotFoundException from "Common/Types/Exception/NotFoundException";
-import ServerException from "Common/Types/Exception/ServerException";
-import { PromiseVoidFunction } from "Common/Types/FunctionTypes";
-import { JSONObject } from "Common/Types/JSON";
-import JSONFunctions from "Common/Types/JSONFunctions";
-import Port from "Common/Types/Port";
-import Typeof from "Common/Types/Typeof";
+import StatusCode from "../../Types/API/StatusCode";
+import Exception from "../../Types/Exception/Exception";
+import NotFoundException from "../../Types/Exception/NotFoundException";
+import ServerException from "../../Types/Exception/ServerException";
+import { PromiseVoidFunction } from "../../Types/FunctionTypes";
+import { JSONObject } from "../../Types/JSON";
+import JSONFunctions from "../../Types/JSONFunctions";
+import Port from "../../Types/Port";
+import Typeof from "../../Types/Typeof";
 import CookieParser from "cookie-parser";
 import cors from "cors";
 import zlib from "zlib";
-
+import "ejs";
 // Make sure we have stack trace for debugging.
 Error.stackTraceLimit = Infinity;
 
@@ -49,6 +50,12 @@ const jsonBodyParserMiddleware: RequestHandler = ExpressJson({
 const urlEncodedMiddleware: RequestHandler = ExpressUrlEncoded({
   limit: "50mb",
   extended: true,
+  verify: (req: ExpressRequest, _res: ExpressResponse, buf: Buffer) => {
+    (req as OneUptimeRequest).rawFormUrlEncodedBody = buf.toString();
+    logger.debug(
+      `Raw Form Url Encoded Body: ${(req as OneUptimeRequest).rawFormUrlEncodedBody}`,
+    );
+  },
 }); // 50 MB limit.
 
 const setDefaultHeaders: RequestHandler = (
@@ -82,7 +89,17 @@ app.set("view engine", "ejs");
  * https://stackoverflow.com/questions/19917401/error-request-entity-too-large
  */
 
-app.use((req: ExpressRequest, res: ExpressResponse, next: NextFunction) => {
+// Handle SCIM content type before JSON middleware
+app.use((req: ExpressRequest, _res: ExpressResponse, next: NextFunction) => {
+  const contentType: string | undefined = req.headers["content-type"];
+  if (contentType && contentType.includes("application/scim+json")) {
+    // Set content type to application/json so express.json() can parse it
+    req.headers["content-type"] = "application/json";
+  }
+  next();
+});
+
+app.use((req: OneUptimeRequest, res: ExpressResponse, next: NextFunction) => {
   if (req.headers["content-encoding"] === "gzip") {
     const buffers: any = [];
 
@@ -135,6 +152,10 @@ export interface InitFuctionOptions {
   port?: Port | undefined;
   isFrontendApp?: boolean;
   statusOptions: StatusAPIOptions;
+  getVariablesToRenderIndexPage?: (
+    req: ExpressRequest,
+    res: ExpressResponse,
+  ) => Promise<JSONObject>;
 }
 
 type InitFunction = (
@@ -187,15 +208,42 @@ const init: InitFunction = async (
     app.use(`/${appName}`, ExpressStatic("/usr/src/app/public"));
 
     app.get(
-      `/${appName}/dist/bundle.js`,
+      `/${appName}/dist/Index.js`,
       (_req: ExpressRequest, res: ExpressResponse) => {
-        res.sendFile("/usr/src/app/public/dist/bundle.js");
+        res.sendFile("/usr/src/app/public/dist/Index.js");
       },
     );
 
-    app.get("/*", (_req: ExpressRequest, res: ExpressResponse) => {
-      res.sendFile("/usr/src/app/public/index.html");
-    });
+    app.get(
+      ["/*", `/${appName}/*`],
+      async (_req: ExpressRequest, res: ExpressResponse) => {
+        logger.debug("Rendering index page");
+
+        let variables: JSONObject = {};
+
+        if (data.getVariablesToRenderIndexPage) {
+          logger.debug("Getting variables to render index page");
+          try {
+            const variablesToRenderIndexPage: JSONObject =
+              await data.getVariablesToRenderIndexPage(_req, res);
+            variables = {
+              ...variables,
+              ...variablesToRenderIndexPage,
+            };
+          } catch (error) {
+            logger.error(error);
+          }
+        }
+
+        logger.debug("Rendering index page with variables: ");
+        logger.debug(variables);
+
+        return res.render("/usr/src/app/views/index.ejs", {
+          enableGoogleTagManager: IsBillingEnabled || false,
+          ...variables,
+        });
+      },
+    );
   }
 
   return app;

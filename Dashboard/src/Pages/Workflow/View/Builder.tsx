@@ -35,6 +35,8 @@ import React, {
 } from "react";
 import { Edge, Node } from "reactflow";
 import { useAsyncEffect } from "use-async-effect";
+import HTTPErrorResponse from "Common/Types/API/HTTPErrorResponse";
+import HTTPResponse from "Common/Types/API/HTTPResponse";
 
 const Delete: FunctionComponent<PageComponentProps> = (): ReactElement => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -257,6 +259,7 @@ const Delete: FunctionComponent<PageComponentProps> = (): ReactElement => {
           title="Need help with building workflows?"
           description="Watch this 10 minute video which will help you connect Slack with OneUptime using workflows"
           link={URL.fromString("https://youtu.be/k1-reCQTZnM")}
+          hideOnMobile={true}
         />
         <Card
           title={"Workflow Builder"}
@@ -310,14 +313,19 @@ const Delete: FunctionComponent<PageComponentProps> = (): ReactElement => {
               }}
               onRun={async (component: NodeDataProp) => {
                 try {
-                  await API.post(
-                    URL.fromString(WORKFLOW_URL.toString()).addRoute(
-                      "/manual/run/" + modelId.toString(),
-                    ),
-                    {
-                      data: component.returnValues,
-                    },
-                  );
+                  const result: HTTPErrorResponse | HTTPResponse<JSONObject> =
+                    await API.post(
+                      URL.fromString(WORKFLOW_URL.toString()).addRoute(
+                        "/manual/run/" + modelId.toString(),
+                      ),
+                      {
+                        data: component.arguments,
+                      },
+                    );
+
+                  if (result instanceof HTTPErrorResponse) {
+                    throw result;
+                  }
 
                   setShowRunSuccessConfirmation(true);
                 } catch (err) {

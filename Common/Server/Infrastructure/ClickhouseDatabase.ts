@@ -5,13 +5,14 @@ import {
   testDataSourceOptions,
 } from "./ClickhouseConfig";
 import { PingResult, createClient, ClickHouseClient } from "@clickhouse/client";
-import DatabaseNotConnectedException from "Common/Types/Exception/DatabaseNotConnectedException";
-import Sleep from "Common/Types/Sleep";
+import DatabaseNotConnectedException from "../../Types/Exception/DatabaseNotConnectedException";
+import Sleep from "../../Types/Sleep";
 import API from "../../Utils/API";
 import URL from "../../Types/API/URL";
 import HTTPErrorResponse from "../../Types/API/HTTPErrorResponse";
 import HTTPResponse from "../../Types/API/HTTPResponse";
 import { JSONObject } from "../../Types/JSON";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export type ClickhouseClient = ClickHouseClient;
 
@@ -34,6 +35,7 @@ export default class ClickhouseDatabase {
     return Boolean(this.dataSource);
   }
 
+  @CaptureSpan()
   public async connect(
     dataSourceOptions: ClickHouseClientConfigOptions,
   ): Promise<ClickhouseClient> {
@@ -95,6 +97,7 @@ export default class ClickhouseDatabase {
     }
   }
 
+  @CaptureSpan()
   public async disconnect(): Promise<void> {
     if (this.dataSource) {
       await this.dataSource.close();
@@ -102,6 +105,7 @@ export default class ClickhouseDatabase {
     }
   }
 
+  @CaptureSpan()
   public async checkConnnectionStatus(): Promise<boolean> {
     // Ping clickhouse to check if the connection is still alive
     try {

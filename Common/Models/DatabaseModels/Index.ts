@@ -20,6 +20,7 @@ import GreenlockCertificate from "./GreenlockCertificate";
 import GreenlockChallenge from "./GreenlockChallenge";
 // Incidents
 import Incident from "./Incident";
+import IncidentFeed from "./IncidentFeed";
 import IncidentCustomField from "./IncidentCustomField";
 import IncidentInternalNote from "./IncidentInternalNote";
 import IncidentNoteTemplate from "./IncidentNoteTemplate";
@@ -57,10 +58,18 @@ import OnCallDutyPolicyEscalationRuleTeam from "./OnCallDutyPolicyEscalationRule
 import OnCallDutyPolicyEscalationRuleUser from "./OnCallDutyPolicyEscalationRuleUser";
 import OnCallDutyPolicyExecutionLog from "./OnCallDutyPolicyExecutionLog";
 import OnCallDutyPolicyExecutionLogTimeline from "./OnCallDutyPolicyExecutionLogTimeline";
+// owner team
+import OnCallDutyPolicyOwnerTeam from "./OnCallDutyPolicyOwnerTeam";
+import OnCallDutyPolicyOwnerUser from "./OnCallDutyPolicyOwnerUser";
+
+// OnCall Duty Policy Feed
+import OnCallDutyPolicyFeed from "./OnCallDutyPolicyFeed";
 // On call duty policy schedule
 import OnCallDutyPolicySchedule from "./OnCallDutyPolicySchedule";
 import OnCallDutyPolicyScheduleLayer from "./OnCallDutyPolicyScheduleLayer";
 import OnCallDutyPolicyScheduleLayerUser from "./OnCallDutyPolicyScheduleLayerUser";
+import OnCallDutyPolicyTimeLog from "./OnCallDutyPolicyTimeLog";
+
 import Probe from "./Probe";
 import ProbeOwnerTeam from "./ProbeOwnerTeam";
 import ProbeOwnerUser from "./ProbeOwnerUser";
@@ -91,9 +100,12 @@ import ServiceCopilotCodeRepository from "./ServiceCopilotCodeRepository";
 import ShortLink from "./ShortLink";
 // SMS
 import SmsLog from "./SmsLog";
+import PushNotificationLog from "./PushNotificationLog";
+import WorkspaceNotificationLog from "./WorkspaceNotificationLog";
 // Status Page
 import StatusPage from "./StatusPage";
 import StatusPageAnnouncement from "./StatusPageAnnouncement";
+import StatusPageAnnouncementTemplate from "./StatusPageAnnouncementTemplate";
 import StatusPageCustomField from "./StatusPageCustomField";
 import StatusPageDomain from "./StatusPageDomain";
 import StatusPageFooterLink from "./StatusPageFooterLink";
@@ -104,6 +116,7 @@ import StatusPageOwnerTeam from "./StatusPageOwnerTeam";
 import StatusPageOwnerUser from "./StatusPageOwnerUser";
 import StatusPagePrivateUser from "./StatusPagePrivateUser";
 import StatusPageResource from "./StatusPageResource";
+import StatusPageSCIM from "./StatusPageSCIM";
 import StatusPageSSO from "./StatusPageSso";
 import StatusPageSubscriber from "./StatusPageSubscriber";
 // Team
@@ -116,6 +129,7 @@ import User from "./User";
 import UserCall from "./UserCall";
 // Notification Methods
 import UserEmail from "./UserEmail";
+import UserPush from "./UserPush";
 // User Notification Rules
 import UserNotificationRule from "./UserNotificationRule";
 import UserNotificationSetting from "./UserNotificationSetting";
@@ -142,6 +156,7 @@ import ScheduledMaintenanceTemplateOwnerTeam from "./ScheduledMaintenanceTemplat
 import ScheduledMaintenanceTemplateOwnerUser from "./ScheduledMaintenanceTemplateOwnerUser";
 
 import BaseModel from "./DatabaseBaseModel/DatabaseBaseModel";
+
 import AlertState from "./AlertState";
 import Alert from "./Alert";
 import AlertCustomField from "./AlertCustomField";
@@ -151,15 +166,30 @@ import AlertOwnerTeam from "./AlertOwnerTeam";
 import AlertOwnerUser from "./AlertOwnerUser";
 import AlertSeverity from "./AlertSeverity";
 import AlertNoteTemplate from "./AlertNoteTemplate";
+import AlertFeed from "./AlertFeed";
+
 import TableView from "./TableView";
 import Dashboard from "./Dashboard";
 
 import MonitorTest from "./MonitorTest";
+import ScheduledMaintenanceFeed from "./ScheduledMaintenanceFeed";
+
+import WorkspaceUserAuthToken from "./WorkspaceUserAuthToken";
+import WorkspaceProjectAuthToken from "./WorkspaceProjectAuthToken";
+import WorkspaceSetting from "./WorkspaceSetting";
+import WorkspaceNotificationRule from "./WorkspaceNotificationRule";
+import ProjectUser from "./ProjectUser";
+import OnCallDutyPolicyUserOverride from "./OnCallDutyPolicyUserOverride";
+import MonitorFeed from "./MonitorFeed";
+import MetricType from "./MetricType";
+import ProjectSCIM from "./ProjectSCIM";
 
 const AllModelTypes: Array<{
   new (): BaseModel;
 }> = [
   User,
+  WorkspaceUserAuthToken,
+  WorkspaceProjectAuthToken,
   Probe,
   Project,
   EmailVerificationToken,
@@ -179,6 +209,7 @@ const AllModelTypes: Array<{
   OnCallDutyPolicyEscalationRuleUser,
   OnCallDutyPolicyExecutionLog,
   OnCallDutyPolicyExecutionLogTimeline,
+  OnCallDutyPolicyUserOverride,
 
   Monitor,
   MonitorSecret,
@@ -187,6 +218,7 @@ const AllModelTypes: Array<{
 
   IncidentState,
   Incident,
+  IncidentFeed,
   IncidentCustomField,
   IncidentStateTimeline,
   IncidentInternalNote,
@@ -201,6 +233,7 @@ const AllModelTypes: Array<{
 
   AlertState,
   Alert,
+  AlertFeed,
   AlertCustomField,
   AlertStateTimeline,
   AlertInternalNote,
@@ -220,6 +253,7 @@ const AllModelTypes: Array<{
   StatusPageResource,
 
   StatusPageAnnouncement,
+  StatusPageAnnouncementTemplate,
   StatusPageSubscriber,
   StatusPageFooterLink,
   StatusPageHeaderLink,
@@ -232,6 +266,7 @@ const AllModelTypes: Array<{
   ScheduledMaintenancePublicNote,
   ScheduledMaintenanceInternalNote,
   ScheduledMaintenanceCustomField,
+  ScheduledMaintenanceFeed,
 
   BillingPaymentMethods,
   BillingInvoice,
@@ -245,6 +280,7 @@ const AllModelTypes: Array<{
 
   ProjectSSO,
   StatusPageSSO,
+  StatusPageSCIM,
 
   MonitorProbe,
 
@@ -258,12 +294,15 @@ const AllModelTypes: Array<{
   StatusPageOwnerUser,
 
   SmsLog,
+  PushNotificationLog,
+  WorkspaceNotificationLog,
   CallLog,
   EmailLog,
 
   UserEmail,
   UserSms,
   UserCall,
+  UserPush,
 
   UserNotificationRule,
   UserOnCallLog,
@@ -296,7 +335,9 @@ const AllModelTypes: Array<{
   OnCallDutyPolicySchedule,
   OnCallDutyPolicyScheduleLayer,
   OnCallDutyPolicyScheduleLayerUser,
-
+  OnCallDutyPolicyFeed,
+  OnCallDutyPolicyOwnerTeam,
+  OnCallDutyPolicyOwnerUser,
   OnCallDutyPolicyEscalationRuleSchedule,
 
   UsageBilling,
@@ -335,6 +376,19 @@ const AllModelTypes: Array<{
   Dashboard,
 
   MonitorTest,
+
+  WorkspaceSetting,
+  WorkspaceNotificationRule,
+
+  ProjectUser,
+
+  MonitorFeed,
+
+  MetricType,
+
+  OnCallDutyPolicyTimeLog,
+
+  ProjectSCIM,
 ];
 
 const modelTypeMap: { [key: string]: { new (): BaseModel } } = {};

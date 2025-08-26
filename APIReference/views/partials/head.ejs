@@ -103,6 +103,8 @@
    </style>
    <script src="https://cdn.tailwindcss.com"></script>
 
+   <% if(typeof enableGoogleTagManager !== 'undefined' ? enableGoogleTagManager : false){ %> 
+
    <!-- Google Tag Manager -->
    <script>(function (w, d, s, l, i) {
          w[l] = w[l] || []; w[l].push({
@@ -113,6 +115,7 @@
                'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
       })(window, document, 'script', 'dataLayer', 'GTM-PKQD5WH');</script>
    <!-- End Google Tag Manager -->
+   <% } %>
 
 
    <style>
@@ -132,7 +135,6 @@
    <link rel="apple-touch-icon-precomposed" href="/img/ou-wb.svg">
    <link rel="icon" href="/img/ou-wb.svg">
    <link rel="image_src" type="image/png" href="/img/hou-wb.svg">
-   <link rel="canonical" href="/">
    <link rel="manifest" href="/manifest.json">
    <meta property="og:title" content="OneUptime - One Complete Observability platform.">
    <meta property="og:url" content="https://oneuptime.com">

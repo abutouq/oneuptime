@@ -1,6 +1,6 @@
 import LabelsElement from "../../Components/Label/Labels";
 import UserElement from "../../Components/User/User";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageMap from "../../Utils/PageMap";
 import ProjectUser from "../../Utils/ProjectUser";
 import RouteMap, { RouteUtil } from "../../Utils/RouteMap";
@@ -75,6 +75,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (
     return (
       <ModelTable<TeamPermission>
         modelType={TeamPermission}
+        userPreferencesKey={"team-permission-table-" + permissionType}
         id={"table-team-permission-" + permissionType}
         isDeleteable={true}
         isEditable={true}
@@ -84,7 +85,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (
         createEditFromRef={formRef}
         query={{
           teamId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
           isBlockPermission: permissionType === PermissionType.BlockPermissions,
         }}
         onBeforeCreate={(item: TeamPermission): Promise<TeamPermission> => {
@@ -170,7 +171,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (
             title: "Restrict to Labels",
             filterEntityType: Label,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -298,6 +299,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (
       <ModelTable<TeamMember>
         modelType={TeamMember}
         id="table-team-member"
+        userPreferencesKey="team-member-table"
         isDeleteable={true}
         name="Settings > Team > Member"
         createVerb={"Invite"}
@@ -305,7 +307,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (
         isViewable={false}
         query={{
           teamId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(item: TeamMember): Promise<TeamPermission> => {
           if (!props.currentProject || !props.currentProject._id) {
@@ -347,7 +349,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (
             filterEntityType: User,
             fetchFilterDropdownOptions: async () => {
               return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-                DashboardNavigation.getProjectId()!,
+                ProjectUtil.getCurrentProjectId()!,
               );
             },
             filterDropdownField: {
@@ -403,6 +405,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (
         title="Questions about Team Permissions?"
         description="Watch this 5 minute video to learn how team permissions work in OneUptime."
         link={URL.fromString("https://youtu.be/TzmaTe4sbCI")}
+        hideOnMobile={true}
       />
 
       {/* Team Permisison Table */}

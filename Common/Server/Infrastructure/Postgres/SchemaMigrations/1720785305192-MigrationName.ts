@@ -1,8 +1,10 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
+import CaptureSpan from "../../../Utils/Telemetry/CaptureSpan";
 
 export class MigrationName1720785305192 implements MigrationInterface {
   public name = "MigrationName1720785305192";
 
+  @CaptureSpan()
   public async up(queryRunner: QueryRunner): Promise<void> {
     // delete all data from CopilotAction
     await queryRunner.query(`DELETE FROM "CopilotAction"`);
@@ -60,6 +62,7 @@ export class MigrationName1720785305192 implements MigrationInterface {
     );
   }
 
+  @CaptureSpan()
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       `ALTER TABLE "CopilotAction" DROP CONSTRAINT "FK_c21417d854c9330f4cadc2bc2b0"`,

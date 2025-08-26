@@ -11,14 +11,16 @@ import LIMIT_MAX from "../../Types/Database/LimitMax";
 import BadDataException from "../../Types/Exception/BadDataException";
 import ObjectID from "../../Types/ObjectID";
 import Text from "../../Types/Text";
-import Project from "Common/Models/DatabaseModels/Project";
-import Model from "Common/Models/DatabaseModels/UserSMS";
+import Project from "../../Models/DatabaseModels/Project";
+import Model from "../../Models/DatabaseModels/UserSMS";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export class Service extends DatabaseService<Model> {
   public constructor() {
     super(Model);
   }
 
+  @CaptureSpan()
   protected override async onBeforeDelete(
     deleteBy: DeleteBy<Model>,
   ): Promise<OnDelete<Model>> {
@@ -55,6 +57,7 @@ export class Service extends DatabaseService<Model> {
     };
   }
 
+  @CaptureSpan()
   protected override async onBeforeCreate(
     createBy: CreateBy<Model>,
   ): Promise<OnCreate<Model>> {
@@ -97,6 +100,7 @@ export class Service extends DatabaseService<Model> {
     return { carryForward: null, createBy };
   }
 
+  @CaptureSpan()
   protected override async onCreateSuccess(
     _onCreate: OnCreate<Model>,
     createdItem: Model,
@@ -108,6 +112,7 @@ export class Service extends DatabaseService<Model> {
     return createdItem;
   }
 
+  @CaptureSpan()
   public async resendVerificationCode(itemId: ObjectID): Promise<void> {
     const item: Model | null = await this.findOneById({
       id: itemId,
@@ -160,6 +165,7 @@ export class Service extends DatabaseService<Model> {
       {
         projectId: item.projectId,
         isSensitive: true,
+        userId: item.userId!,
       },
     ).catch((err: Error) => {
       logger.error(err);

@@ -1,10 +1,12 @@
 import DatabaseRequestType from "../../BaseDatabase/DatabaseRequestType";
 import ColumnPermissions from "./ColumnPermission";
 import TablePermission from "./TablePermission";
-import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import DatabaseCommonInteractionProps from "Common/Types/BaseDatabase/DatabaseCommonInteractionProps";
+import BaseModel from "../../../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import DatabaseCommonInteractionProps from "../../../../Types/BaseDatabase/DatabaseCommonInteractionProps";
+import CaptureSpan from "../../../Utils/Telemetry/CaptureSpan";
 
 export default class CreatePermission {
+  @CaptureSpan()
   public static checkCreatePermissions<TBaseModel extends BaseModel>(
     modelType: { new (): TBaseModel },
     data: TBaseModel,
@@ -32,6 +34,7 @@ export default class CreatePermission {
     );
   }
 
+  @CaptureSpan()
   public static checkCreateBlockPermissions<TBaseModel extends BaseModel>(
     modelType: { new (): TBaseModel },
     props: DatabaseCommonInteractionProps,

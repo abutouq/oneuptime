@@ -54,6 +54,9 @@ import LogMonitorPreview from "../../../Components/Monitor/LogMonitor/LogMonitor
 import TraceTable from "../../../Components/Traces/TraceTable";
 import { MonitorStepTraceMonitorUtil } from "Common/Types/Monitor/MonitorStepTraceMonitor";
 import MetricMonitorPreview from "../../../Components/Monitor/MetricMonitor/MetricMonitorPreview";
+import MonitorFeedElement from "../../../Components/Monitor/MonitorFeed";
+import URL from "Common/Types/API/URL";
+import { APP_API_URL } from "Common/UI/Config";
 
 const MonitorView: FunctionComponent<PageComponentProps> = (): ReactElement => {
   const modelId: ObjectID = Navigation.getLastParamAsObjectID();
@@ -124,6 +127,12 @@ const MonitorView: FunctionComponent<PageComponentProps> = (): ReactElement => {
     setError("");
 
     try {
+      await API.get(
+        URL.fromString(APP_API_URL.toString()).addRoute(
+          "/monitor/refresh-status/" + modelId.toString(),
+        ),
+      );
+
       const monitorStatus: ListResult<MonitorStatusTimeline> =
         await ModelAPI.getList({
           modelType: MonitorStatusTimeline,
@@ -164,7 +173,6 @@ const MonitorView: FunctionComponent<PageComponentProps> = (): ReactElement => {
           incomingRequestMonitorHeartbeatCheckedAt: true,
           serverMonitorSecretKey: true,
           serverMonitorRequestReceivedAt: true,
-          incomingRequestReceivedAt: true,
           incomingMonitorRequest: true,
           serverMonitorResponse: true,
           isNoProbeEnabledOnThisMonitor: true,
@@ -281,7 +289,7 @@ const MonitorView: FunctionComponent<PageComponentProps> = (): ReactElement => {
   }
 
   if (error) {
-    return <ErrorMessage error={error} />;
+    return <ErrorMessage message={error} />;
   }
 
   return (
@@ -499,7 +507,7 @@ const MonitorView: FunctionComponent<PageComponentProps> = (): ReactElement => {
       {/* Heartbeat URL */}
       {monitorType === MonitorType.IncomingRequest &&
       monitor?.incomingRequestSecretKey &&
-      !monitor.incomingRequestReceivedAt ? (
+      !incomingMonitorRequest ? (
         <IncomingMonitorLink secretKey={monitor?.incomingRequestSecretKey} />
       ) : (
         <></>
@@ -596,6 +604,8 @@ const MonitorView: FunctionComponent<PageComponentProps> = (): ReactElement => {
             )}
           />
         )}
+
+      <MonitorFeedElement monitorId={modelId} />
     </Fragment>
   );
 };

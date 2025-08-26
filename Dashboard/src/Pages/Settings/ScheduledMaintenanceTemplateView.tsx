@@ -2,7 +2,7 @@ import LabelsElement from "../../Components/Label/Labels";
 import MonitorsElement from "../../Components/Monitor/Monitors";
 import TeamElement from "../../Components/Team/Team";
 import UserElement from "../../Components/User/User";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageMap from "../../Utils/PageMap";
 import ProjectUser from "../../Utils/ProjectUser";
 import RouteMap from "../../Utils/RouteMap";
@@ -22,7 +22,7 @@ import ScheduledMaintenanceTemplateOwnerUser from "Common/Models/DatabaseModels/
 import Team from "Common/Models/DatabaseModels/Team";
 import User from "Common/Models/DatabaseModels/User";
 import React, { Fragment, FunctionComponent, ReactElement } from "react";
-import StatusPagesElement from "../../Components/StatusPage/StatusPagesLabel";
+import StatusPagesElement from "../../Components/StatusPage/StatusPagesElement";
 import CheckboxViewer from "Common/UI/Components/Checkbox/CheckboxViewer";
 import {
   getFormSteps,
@@ -171,7 +171,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (): ReactElement => {
               field: {
                 scheduleNextEventAt: true,
               },
-              title: "Next event will be autoamtically scheduled at",
+              title: "Next event will be automatically scheduled at",
               fieldType: FieldType.DateTime,
               showIf: (item: ScheduledMaintenanceTemplate): boolean => {
                 return Boolean(item.isRecurringEvent);
@@ -189,7 +189,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (): ReactElement => {
                 return (
                   <RecurringArrayViewElement
                     value={item.sendSubscriberNotificationsOnBeforeTheEvent}
-                    postfix=" before the event is scheduled"
+                    postfix=" before the event is begins"
                   />
                 );
               },
@@ -280,6 +280,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (): ReactElement => {
       <ModelTable<ScheduledMaintenanceTemplateOwnerTeam>
         modelType={ScheduledMaintenanceTemplateOwnerTeam}
         id="table-ScheduledMaintenance-owner-team"
+        userPreferencesKey="scheduled-maintenance-owner-team-table"
         name="ScheduledMaintenance Template > Owner Team"
         singularName="Team"
         isDeleteable={true}
@@ -289,13 +290,13 @@ const TeamView: FunctionComponent<PageComponentProps> = (): ReactElement => {
         showViewIdButton={true}
         query={{
           scheduledMaintenanceTemplateId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(
           item: ScheduledMaintenanceTemplateOwnerTeam,
         ): Promise<ScheduledMaintenanceTemplateOwnerTeam> => {
           item.scheduledMaintenanceTemplateId = modelId;
-          item.projectId = DashboardNavigation.getProjectId()!;
+          item.projectId = ProjectUtil.getCurrentProjectId()!;
           return Promise.resolve(item);
         }}
         cardProps={{
@@ -368,6 +369,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (): ReactElement => {
       <ModelTable<ScheduledMaintenanceTemplateOwnerUser>
         modelType={ScheduledMaintenanceTemplateOwnerUser}
         id="table-ScheduledMaintenance-owner-team"
+        userPreferencesKey="scheduled-maintenance-owner-user-table"
         name="ScheduledMaintenance > Owner Team"
         isDeleteable={true}
         singularName="User"
@@ -377,13 +379,13 @@ const TeamView: FunctionComponent<PageComponentProps> = (): ReactElement => {
         createVerb={"Add"}
         query={{
           scheduledMaintenanceTemplateId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(
           item: ScheduledMaintenanceTemplateOwnerUser,
         ): Promise<ScheduledMaintenanceTemplateOwnerUser> => {
           item.scheduledMaintenanceTemplateId = modelId;
-          item.projectId = DashboardNavigation.getProjectId()!;
+          item.projectId = ProjectUtil.getCurrentProjectId()!;
           return Promise.resolve(item);
         }}
         cardProps={{
@@ -405,7 +407,7 @@ const TeamView: FunctionComponent<PageComponentProps> = (): ReactElement => {
             placeholder: "Select User",
             fetchDropdownOptions: async () => {
               return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-                DashboardNavigation.getProjectId()!,
+                ProjectUtil.getCurrentProjectId()!,
               );
             },
           },

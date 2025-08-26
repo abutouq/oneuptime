@@ -7,10 +7,10 @@ import { DropdownOption } from "../../Dropdown/Dropdown";
 import { RadioButton } from "../../RadioButtons/GroupRadioButtons";
 import FormFieldSchemaType from "./FormFieldSchemaType";
 import FormValues from "./FormValues";
-import { DatabaseBaseModelType } from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import Route from "Common/Types/API/Route";
-import URL from "Common/Types/API/URL";
-import MimeType from "Common/Types/File/MimeType";
+import { DatabaseBaseModelType } from "../../../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import Route from "../../../../Types/API/Route";
+import URL from "../../../../Types/API/URL";
+import MimeType from "../../../../Types/File/MimeType";
 import { ReactElement } from "react";
 
 export enum FormFieldStyleType {
@@ -42,7 +42,7 @@ export interface CategoryCheckboxProps {
 export default interface Field<TEntity> {
   name?: string; // form field name, should be unique in thr form. If not provided, the field will be auto generated.
   title?: string;
-  description?: string;
+  description?: string | ReactElement;
   field?: SelectFormFields<TEntity> | undefined;
   placeholder?: string;
   showEvenIfPermissionDoesNotExist?: boolean; // show this field even if user does not have permissions to view.
@@ -53,6 +53,8 @@ export default interface Field<TEntity> {
   fetchDropdownOptions?:
     | ((item: FormValues<TEntity>) => Promise<Array<DropdownOption>>)
     | undefined;
+  showHorizontalRuleBelow?: boolean | undefined;
+  showHorizontalRuleAbove?: boolean | undefined;
   dropdownModal?: {
     type: DatabaseBaseModelType;
     labelField: string;
@@ -80,10 +82,19 @@ export default interface Field<TEntity> {
     | undefined;
   styleType?: FormFieldStyleType | undefined;
   showIf?: ((item: FormValues<TEntity>) => boolean) | undefined;
-  onChange?: ((value: any) => void) | undefined;
+  onChange?:
+    | ((
+        value: any,
+        currentFormValues: FormValues<TEntity>,
+        setNewFormValues: (currentFormValues: FormValues<TEntity>) => void,
+      ) => void)
+    | undefined;
   fieldType?: FormFieldSchemaType;
   overrideFieldKey?: string;
   defaultValue?: boolean | string | Date | number | undefined;
+  getDefaultValue?:
+    | ((item: FormValues<TEntity>) => boolean | string | Date | number)
+    | undefined;
   radioButtonOptions?: Array<RadioButton>;
   footerElement?: ReactElement | undefined;
   id?: string | undefined;
@@ -102,4 +113,9 @@ export default interface Field<TEntity> {
   jsonKeysForDictionary?: Array<string> | undefined;
 
   hideOptionalLabel?: boolean | undefined;
+
+  // Spell check configuration (primarily for Markdown and text fields)
+  disableSpellCheck?: boolean | undefined;
+
+  getSummaryElement?: (item: FormValues<TEntity>) => ReactElement | undefined;
 }

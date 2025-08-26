@@ -1,9 +1,9 @@
+import FilterCondition from "Common/Types/Filter/FilterCondition";
 import {
   CheckOn,
   CriteriaFilter,
   EvaluateOverTimeMinutes,
   EvaluateOverTimeType,
-  FilterCondition,
   FilterType,
 } from "Common/Types/Monitor/CriteriaFilter";
 import MonitorType from "Common/Types/Monitor/MonitorType";
@@ -148,7 +148,11 @@ export default class CriteriaFilterUtil {
       monitorType === MonitorType.Port
     ) {
       options = options.filter((i: DropdownOption) => {
-        return i.value === CheckOn.IsOnline || i.value === CheckOn.ResponseTime;
+        return (
+          i.value === CheckOn.IsOnline ||
+          i.value === CheckOn.ResponseTime ||
+          i.value === CheckOn.IsRequestTimeout
+        );
       });
     }
 
@@ -225,7 +229,8 @@ export default class CriteriaFilterUtil {
           i.value === CheckOn.ResponseHeader ||
           i.value === CheckOn.ResponseHeaderValue ||
           i.value === CheckOn.ResponseStatusCode ||
-          i.value === CheckOn.JavaScriptExpression
+          i.value === CheckOn.JavaScriptExpression ||
+          i.value === CheckOn.IsRequestTimeout
         );
       });
     }
@@ -325,7 +330,7 @@ export default class CriteriaFilterUtil {
       });
     }
 
-    if (checkOn === CheckOn.IsOnline) {
+    if (checkOn === CheckOn.IsOnline || checkOn === CheckOn.IsRequestTimeout) {
       options = options.filter((i: DropdownOption) => {
         return i.value === FilterType.True || i.value === FilterType.False;
       });
@@ -429,37 +434,6 @@ export default class CriteriaFilterUtil {
     }
 
     return options;
-  }
-
-  public static hasValueField(data: {
-    checkOn: CheckOn;
-    filterType: FilterType | undefined;
-  }): boolean {
-    const { checkOn } = data;
-
-    if (checkOn === CheckOn.IsOnline) {
-      return false;
-    }
-
-    if (
-      checkOn === CheckOn.IsValidCertificate ||
-      checkOn === CheckOn.IsSelfSignedCertificate ||
-      checkOn === CheckOn.IsExpiredCertificate ||
-      checkOn === CheckOn.IsNotAValidCertificate
-    ) {
-      return false;
-    }
-
-    if (
-      FilterType.IsEmpty === data.filterType ||
-      FilterType.IsNotEmpty === data.filterType ||
-      FilterType.True === data.filterType ||
-      FilterType.False === data.filterType
-    ) {
-      return false;
-    }
-
-    return true;
   }
 
   public static isDropdownValueField(data: {

@@ -247,6 +247,7 @@ export default class TelemetryIngestionKey extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -284,11 +285,7 @@ export default class TelemetryIngestionKey extends BaseModel {
   public deletedByUserId?: ObjectID = undefined;
 
   @ColumnAccessControl({
-    create: [
-      Permission.ProjectOwner,
-      Permission.ProjectAdmin,
-      Permission.ReadTelemetryIngestionKey,
-    ],
+    create: [],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -304,6 +301,7 @@ export default class TelemetryIngestionKey extends BaseModel {
   @TableColumn({
     type: TableColumnType.ObjectID,
     isDefaultValueColumn: false,
+    computed: true,
     title: "Telemetry Ingestion Key",
     description: "Secret Telemetry Ingestion Key",
   })

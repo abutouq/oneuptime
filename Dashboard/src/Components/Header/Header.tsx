@@ -10,7 +10,7 @@ import UserProfile from "./UserProfile";
 import Route from "Common/Types/API/Route";
 import SubscriptionPlan from "Common/Types/Billing/SubscriptionPlan";
 import OneUptimeDate from "Common/Types/Date";
-import { VoidFunction } from "Common/Types/FunctionTypes";
+import { PromiseVoidFunction, VoidFunction } from "Common/Types/FunctionTypes";
 import IconProp from "Common/Types/Icon/IconProp";
 import Button, { ButtonStyleType } from "Common/UI/Components/Button/Button";
 import Header from "Common/UI/Components/Header/Header";
@@ -20,7 +20,7 @@ import HeaderAlert, {
 import HeaderModelAlert from "Common/UI/Components/HeaderAlert/HeaderModelAlert";
 import HeaderAlertGroup from "Common/UI/Components/HeaderAlert/HeaderAlertGroup";
 import { SizeProp } from "Common/UI/Components/Icon/Icon";
-import { BILLING_ENABLED, getAllEnvVars } from "Common/UI/Config";
+import { APP_API_URL, BILLING_ENABLED, getAllEnvVars } from "Common/UI/Config";
 import Navigation from "Common/UI/Utils/Navigation";
 import User from "Common/UI/Utils/User";
 import Incident from "Common/Models/DatabaseModels/Incident";
@@ -33,9 +33,23 @@ import React, {
   useState,
 } from "react";
 import Realtime from "Common/UI/Utils/Realtime";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import ModelEventType from "Common/Types/Realtime/ModelEventType";
 import Alert from "Common/Models/DatabaseModels/Alert";
+import ObjectID from "Common/Types/ObjectID";
+import OnCallDutyPolicyEscalationRuleUser from "Common/Models/DatabaseModels/OnCallDutyPolicyEscalationRuleUser";
+import OnCallDutyPolicyEscalationRuleTeam from "Common/Models/DatabaseModels/OnCallDutyPolicyEscalationRuleTeam";
+import OnCallDutyPolicyEscalationRuleSchedule from "Common/Models/DatabaseModels/OnCallDutyPolicyEscalationRuleSchedule";
+import HTTPResponse from "Common/Types/API/HTTPResponse";
+import HTTPErrorResponse from "Common/Types/API/HTTPErrorResponse";
+import { JSONObject } from "Common/Types/JSON";
+import API from "Common/Utils/API";
+import OnCallDutyPolicy from "Common/Models/DatabaseModels/OnCallDutyPolicy";
+import ModelAPI from "Common/UI/Utils/ModelAPI/ModelAPI";
+import URL from "Common/Types/API/URL";
+import DatabaseBaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import ConfirmModal from "Common/UI/Components/Modal/ConfirmModal";
+import CurrentOnCallPolicyModal from "../OnCallPolicy/CurrentOnCallPolicyModal";
 
 export interface ComponentProps {
   projects: Array<Project>;
@@ -63,13 +77,16 @@ const DashboardHeader: FunctionComponent<ComponentProps> = (
     setActiveAlertToggleRefresh(OneUptimeDate.getCurrentDate().toString());
   };
 
+  const [showCurrentOnCallPolicyModal, setShowCurrentOnCallPolicyModal] =
+    useState<boolean>(false);
+
   const realtimeIncidentCountRefresh: () => VoidFunction = (): VoidFunction => {
     const stopListeningOnCreate: VoidFunction =
       Realtime.listenToModelEvent<Incident>(
         {
           eventType: ModelEventType.Create,
           modelType: Incident,
-          tenantId: DashboardNavigation.getProjectId()!,
+          tenantId: ProjectUtil.getCurrentProjectId()!,
         },
         () => {
           refreshIncidentCount();
@@ -81,7 +98,7 @@ const DashboardHeader: FunctionComponent<ComponentProps> = (
         {
           eventType: ModelEventType.Update,
           modelType: Incident,
-          tenantId: DashboardNavigation.getProjectId()!,
+          tenantId: ProjectUtil.getCurrentProjectId()!,
         },
         () => {
           refreshIncidentCount();
@@ -93,7 +110,7 @@ const DashboardHeader: FunctionComponent<ComponentProps> = (
         {
           eventType: ModelEventType.Delete,
           modelType: Incident,
-          tenantId: DashboardNavigation.getProjectId()!,
+          tenantId: ProjectUtil.getCurrentProjectId()!,
         },
         () => {
           refreshIncidentCount();
@@ -116,7 +133,7 @@ const DashboardHeader: FunctionComponent<ComponentProps> = (
         {
           eventType: ModelEventType.Create,
           modelType: Alert,
-          tenantId: DashboardNavigation.getProjectId()!,
+          tenantId: ProjectUtil.getCurrentProjectId()!,
         },
         () => {
           refreshAlertCount();
@@ -128,7 +145,7 @@ const DashboardHeader: FunctionComponent<ComponentProps> = (
         {
           eventType: ModelEventType.Update,
           modelType: Alert,
-          tenantId: DashboardNavigation.getProjectId()!,
+          tenantId: ProjectUtil.getCurrentProjectId()!,
         },
         () => {
           refreshAlertCount();
@@ -140,7 +157,7 @@ const DashboardHeader: FunctionComponent<ComponentProps> = (
         {
           eventType: ModelEventType.Delete,
           modelType: Alert,
-          tenantId: DashboardNavigation.getProjectId()!,
+          tenantId: ProjectUtil.getCurrentProjectId()!,
         },
         () => {
           refreshAlertCount();
@@ -167,6 +184,152 @@ const DashboardHeader: FunctionComponent<ComponentProps> = (
       realtimeAlertStop();
     };
   }, []);
+
+  const [
+    currentOnCallDutyEscalationPolicyUser,
+    setCurrentOnCallDutyEscalationPolicyUser,
+  ] = useState<Array<OnCallDutyPolicyEscalationRuleUser>>([]);
+  const [
+    currentOnCallDutyEscalationPolicyTeam,
+    setCurrentOnCallDutyEscalationPolicyTeam,
+  ] = useState<Array<OnCallDutyPolicyEscalationRuleTeam>>([]);
+
+  const [
+    currentOnCallDutyEscalationPolicySchedule,
+    setCurrentOnCallDutyEscalationPolicySchedule,
+  ] = useState<Array<OnCallDutyPolicyEscalationRuleSchedule>>([]);
+
+  const [onCallDutyPolicyFetchError, setOnCallDutyPolicyFetchError] = useState<
+    string | null
+  >(null);
+
+  const [currentOnCallPolicies, setCurrentOnCallPolicies] = useState<
+    Array<OnCallDutyPolicy>
+  >([]);
+
+  const fetchCurrentOnCallDutyPolicies: PromiseVoidFunction =
+    async (): Promise<void> => {
+      try {
+        const projectId: ObjectID | null = ProjectUtil.getCurrentProjectId();
+
+        if (projectId) {
+          const response: HTTPResponse<JSONObject> | HTTPErrorResponse =
+            await API.get<JSONObject>(
+              URL.fromString(APP_API_URL.toString()).addRoute(
+                `/${
+                  new OnCallDutyPolicy().crudApiPath
+                }/current-on-duty-escalation-policies`,
+              ),
+              {},
+              ModelAPI.getCommonHeaders(),
+            );
+
+          if (response.isFailure()) {
+            throw response;
+          }
+
+          const result: JSONObject = response.jsonData as JSONObject;
+
+          const escalationRulesByUser: Array<OnCallDutyPolicyEscalationRuleUser> =
+            DatabaseBaseModel.fromJSONArray(
+              result["escalationRulesByUser"] as Array<JSONObject>,
+              OnCallDutyPolicyEscalationRuleUser,
+            ) as Array<OnCallDutyPolicyEscalationRuleUser>;
+
+          const escalationRulesByTeam: Array<OnCallDutyPolicyEscalationRuleTeam> =
+            DatabaseBaseModel.fromJSONArray(
+              result["escalationRulesByTeam"] as Array<JSONObject>,
+              OnCallDutyPolicyEscalationRuleTeam,
+            ) as Array<OnCallDutyPolicyEscalationRuleTeam>;
+
+          const escalationRulesBySchedule: Array<OnCallDutyPolicyEscalationRuleSchedule> =
+            DatabaseBaseModel.fromJSONArray(
+              result["escalationRulesBySchedule"] as Array<JSONObject>,
+              OnCallDutyPolicyEscalationRuleSchedule,
+            ) as Array<OnCallDutyPolicyEscalationRuleSchedule>;
+
+          setCurrentOnCallDutyEscalationPolicyUser(escalationRulesByUser);
+          setCurrentOnCallDutyEscalationPolicyTeam(escalationRulesByTeam);
+          setCurrentOnCallDutyEscalationPolicySchedule(
+            escalationRulesBySchedule,
+          );
+
+          // now get the current on call schedules fron escalationRulesBySchedule
+          const currentOnCallPolicies: Array<OnCallDutyPolicy> = [];
+
+          for (const escalationRule of escalationRulesBySchedule) {
+            const onCallPolicy: OnCallDutyPolicy | undefined =
+              escalationRule.onCallDutyPolicy;
+
+            if (onCallPolicy) {
+              // check if the onCallPolicy is already in the currentOnCallSchedules
+              const onCallPolicyIndex: number = currentOnCallPolicies.findIndex(
+                (schedule: OnCallDutyPolicy) => {
+                  return (
+                    schedule.id?.toString() === onCallPolicy.id?.toString()
+                  );
+                },
+              );
+
+              if (onCallPolicyIndex === -1) {
+                currentOnCallPolicies.push(onCallPolicy);
+              }
+            }
+          }
+
+          // do the same for users and teams.
+          for (const escalationRule of escalationRulesByUser) {
+            const onCallPolicy: OnCallDutyPolicy | undefined =
+              escalationRule.onCallDutyPolicy;
+            if (onCallPolicy) {
+              // check if the onCallPolicy is already in the currentOnCallSchedules
+              const onCallPolicyIndex: number = currentOnCallPolicies.findIndex(
+                (schedule: OnCallDutyPolicy) => {
+                  return (
+                    schedule.id?.toString() === onCallPolicy.id?.toString()
+                  );
+                },
+              );
+              if (onCallPolicyIndex === -1) {
+                currentOnCallPolicies.push(onCallPolicy);
+              }
+            }
+          }
+
+          // do the same for teams.
+
+          for (const escalationRule of escalationRulesByTeam) {
+            const onCallPolicy: OnCallDutyPolicy | undefined =
+              escalationRule.onCallDutyPolicy;
+            if (onCallPolicy) {
+              // check if the onCallPolicy is already in the currentOnCallSchedules
+              const onCallPolicyIndex: number = currentOnCallPolicies.findIndex(
+                (schedule: OnCallDutyPolicy) => {
+                  return (
+                    schedule.id?.toString() === onCallPolicy.id?.toString()
+                  );
+                },
+              );
+              if (onCallPolicyIndex === -1) {
+                currentOnCallPolicies.push(onCallPolicy);
+              }
+            }
+          }
+
+          setCurrentOnCallPolicies(currentOnCallPolicies);
+        }
+      } catch {
+        setOnCallDutyPolicyFetchError(
+          "Something isnt right, we are unable to fetch on-call policies that you are on duty for. Reload the page to try again.",
+        );
+      }
+    };
+
+  useEffect(() => {
+    fetchCurrentOnCallDutyPolicies().catch(() => {
+      // ignore this.
+    });
+  }, [props.selectedProject]);
 
   const showAddCardButton: boolean = Boolean(
     BILLING_ENABLED &&
@@ -198,6 +361,19 @@ const DashboardHeader: FunctionComponent<ComponentProps> = (
 
   return (
     <>
+      {onCallDutyPolicyFetchError ? (
+        <ConfirmModal
+          description={onCallDutyPolicyFetchError}
+          title={`Error loading on-call policies`}
+          onSubmit={() => {
+            setOnCallDutyPolicyFetchError(null);
+          }}
+          submitButtonText={`Close`}
+          submitButtonType={ButtonStyleType.NORMAL}
+        />
+      ) : (
+        <></>
+      )}
       <Header
         leftComponents={
           <>
@@ -228,7 +404,11 @@ const DashboardHeader: FunctionComponent<ComponentProps> = (
                     isMultiTenantRequest: true,
                   }}
                   onClick={() => {
-                    Navigation.navigate(RouteMap[PageMap.PROJECT_INVITATIONS]!);
+                    Navigation.navigate(
+                      RouteUtil.populateRouteParams(
+                        RouteMap[PageMap.PROJECT_INVITATIONS]!,
+                      ),
+                    );
                   }}
                 />
 
@@ -249,7 +429,11 @@ const DashboardHeader: FunctionComponent<ComponentProps> = (
                     isMultiTenantRequest: true,
                   }}
                   onClick={() => {
-                    Navigation.navigate(RouteMap[PageMap.NEW_INCIDENTS]!);
+                    Navigation.navigate(
+                      RouteUtil.populateRouteParams(
+                        RouteMap[PageMap.NEW_INCIDENTS]!,
+                      ),
+                    );
                   }}
                 />
 
@@ -267,7 +451,9 @@ const DashboardHeader: FunctionComponent<ComponentProps> = (
                   pluralName="Alerts"
                   tooltip="View all active alerts"
                   onClick={() => {
-                    Navigation.navigate(RouteMap[PageMap.ALERTS]!);
+                    Navigation.navigate(
+                      RouteUtil.populateRouteParams(RouteMap[PageMap.ALERTS]!),
+                    );
                   }}
                 />
 
@@ -277,12 +463,17 @@ const DashboardHeader: FunctionComponent<ComponentProps> = (
                     tooltip="Your trial ends soon"
                     alertType={HeaderAlertType.INFO}
                     onClick={() => {
-                      Navigation.navigate(RouteMap[PageMap.SETTINGS_BILLING]!);
+                      Navigation.navigate(
+                        RouteUtil.populateRouteParams(
+                          RouteMap[PageMap.SETTINGS_BILLING]!,
+                        ),
+                      );
                     }}
                     title={`${OneUptimeDate.getNumberOfDaysBetweenDatesInclusive(
                       OneUptimeDate.getCurrentDate(),
                       props.selectedProject!.trialEndsAt!,
-                    )} ${
+                    )}`}
+                    suffix={`${
                       OneUptimeDate.getNumberOfDaysBetweenDatesInclusive(
                         OneUptimeDate.getCurrentDate(),
                         props.selectedProject!.trialEndsAt!,
@@ -291,6 +482,25 @@ const DashboardHeader: FunctionComponent<ComponentProps> = (
                         : "day"
                     }`}
                   />
+                )}
+
+                {props.selectedProject && currentOnCallPolicies.length > 0 ? (
+                  <HeaderAlert
+                    icon={IconProp.Call}
+                    tooltip="On-call policies you are currently on duty for"
+                    alertType={HeaderAlertType.SUCCESS}
+                    onClick={() => {
+                      setShowCurrentOnCallPolicyModal(true);
+                    }}
+                    title={`${currentOnCallPolicies.length}`}
+                    suffix={`${
+                      currentOnCallPolicies.length > 1
+                        ? "On-Call Policies"
+                        : "On-Call Policy"
+                    }`}
+                  />
+                ) : (
+                  <></>
                 )}
               </HeaderAlertGroup>
             </div>
@@ -345,6 +555,23 @@ const DashboardHeader: FunctionComponent<ComponentProps> = (
           </>
         }
       />
+      {showCurrentOnCallPolicyModal && (
+        <CurrentOnCallPolicyModal
+          showModal={showCurrentOnCallPolicyModal}
+          onClose={() => {
+            setShowCurrentOnCallPolicyModal(false);
+          }}
+          currentOnCallDutyEscalationPolicyUsers={
+            currentOnCallDutyEscalationPolicyUser
+          }
+          currentOnCallDutyEscalationPolicyTeams={
+            currentOnCallDutyEscalationPolicyTeam
+          }
+          currentOnCallDutyEscalationPolicySchedules={
+            currentOnCallDutyEscalationPolicySchedule
+          }
+        />
+      )}
     </>
   );
 };

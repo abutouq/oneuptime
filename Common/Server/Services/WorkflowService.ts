@@ -8,13 +8,14 @@ import Route from "../../Types/API/Route";
 import URL from "../../Types/API/URL";
 import { JSONObject } from "../../Types/JSON";
 import ObjectID from "../../Types/ObjectID";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 import {
   ComponentType,
   NodeDataProp,
   NodeType,
 } from "../../Types/Workflow/Component";
-import API from "Common/Utils/API";
-import Model from "Common/Models/DatabaseModels/Workflow";
+import API from "../../Utils/API";
+import Model from "../../Models/DatabaseModels/Workflow";
 import logger from "../Utils/Logger";
 
 export class Service extends DatabaseService<Model> {
@@ -22,6 +23,7 @@ export class Service extends DatabaseService<Model> {
     super(Model);
   }
 
+  @CaptureSpan()
   protected override async onUpdateSuccess(
     onUpdate: OnUpdate<Model>,
     _updatedItemIds: ObjectID[],

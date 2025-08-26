@@ -1,5 +1,5 @@
 import SpanStatusElement from "../Span/SpanStatusElement";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import SortOrder from "Common/Types/BaseDatabase/SortOrder";
 import ExceptionInstance from "Common/Models/AnalyticsModels/ExceptionInstance";
 import AnalyticsModelTable from "Common/UI/Components/ModelTable/AnalyticsModelTable";
@@ -18,6 +18,7 @@ const OccouranceTable: FunctionComponent<ComponentProps> = (
     <Fragment>
       <div className="rounded">
         <AnalyticsModelTable<ExceptionInstance>
+          userPreferencesKey="exception-instance-table"
           modelType={ExceptionInstance}
           id="traces-table"
           isDeleteable={false}
@@ -33,7 +34,7 @@ const OccouranceTable: FunctionComponent<ComponentProps> = (
               "View all the traces that are related to this exception.",
           }}
           query={{
-            projectId: DashboardNavigation.getProjectId()!,
+            projectId: ProjectUtil.getCurrentProjectId()!,
             fingerprint: props.exceptionFingerprint,
           }}
           showViewIdButton={true}

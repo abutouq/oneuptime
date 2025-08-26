@@ -1,7 +1,7 @@
 import ErrorMessage from "../ErrorMessage/ErrorMessage";
 import Pill from "../Pill/Pill";
-import { Black } from "Common/Types/BrandColors";
-import { ReturnValue } from "Common/Types/Workflow/Component";
+import { Black } from "../../../Types/BrandColors";
+import { ReturnValue } from "../../../Types/Workflow/Component";
 import React, { FunctionComponent, ReactElement } from "react";
 
 export interface ComponentProps {
@@ -18,7 +18,7 @@ const ComponentReturnValueViewer: FunctionComponent<ComponentProps> = (
       <h2 className="text-base font-medium text-gray-500">{props.name}</h2>
       <p className="text-sm font-medium text-gray-400">{props.description}</p>
       {props.returnValues && props.returnValues.length === 0 && (
-        <ErrorMessage error={"This component does not return any value."} />
+        <ErrorMessage message={"This component does not return any value."} />
       )}
       <div className="mt-3">
         {props.returnValues &&

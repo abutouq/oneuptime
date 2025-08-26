@@ -62,7 +62,9 @@ helm repo update
 helm upgrade my-oneuptime oneuptime/oneuptime -f values.yaml
 ```
 
-## Uninstall Helm Chart
+## Uninstall OneUptime 
+
+To uninstall/delete the `my-oneuptime` deployment:
 
 ```console
 helm uninstall my-oneuptime
@@ -72,56 +74,53 @@ helm uninstall my-oneuptime
 
 The following table lists the configurable parameters of the OneUptime chart and their default values.
 
-| Parameter | Description | Default | Change Required |
-| --------- | ----------- | ------- | --------------- |
-| `global.storageClass` | Storage class to be used for all persistent volumes | `nil` | 🚨 |
-| `host` | Hostname for the ingress | `localhost` | 🚨 |
-| `httpProtocol` | If the server is hosted with SSL/TLS cert then change this value to https | `http` | 🚨 |
-| `oneuptimeSecret` | Value used to define ONEUPTIME_SECRET | `nil` | |
-| `encryptionSecret` | Value used to define ENCRYPTION_SECRET | `nil` | |
-| `global.clusterDomain` | Kubernetes Cluster Domain | `cluster.local` |  |
-| `image.registry` | Docker image registry | `docker.io` |  |
-| `image.repository` | Docker image repository | `oneuptime` | |
-| `image.tag` | Docker image tag | `release` |
-| `image.pullPolicy` | Docker image pull policy | `IfNotPresent` | |
-| `image.restartPolicy` | Docker image restart policy | `Always` | |
-| `autoScaling.enabled` | Enable autoscaling | `false` | |
-| `autoScaling.minReplicas` | Minimum number of replicas | `1` | |
-| `autoScaling.maxReplicas` | Maximum number of replicas | `100` | |
-| `autoScaling.targetCPUUtilizationPercentage` | Target CPU utilization percentage | `80` | |
-| `autoScaling.targetMemoryUtilizationPercentage` | Target memory utilization percentage | `80` | |
-| `nodeEnvironment` | Node environment (please dont change this unless you're doing local development) | `production` | |
-| `nginx.service.type` | nginx service type | `LoadBalancer` | |
-| `nginx.service.loadBalancerIP` | nginx service load balancer IP | `nil` | |
-| `deployment.replicaCount` | Number of replicas | `1` | |
-| `probes.<key>.name` | Probe name | `<key>` | |
-| `probes.<key>.description` | Probe description | `nil` | |
-| `probes.<key>.key` | Probe key. Please set this to long random string to secure your probes. | `nil` | |
-| `probes.<key>.monitoringWorkers` | Number of threads / parallel processes you need to monitor your resources | `3` | |
-| `probes.<key>.monitorFetchLimit` | Number of resources to be monitored in parallel | `10` | |
-| `probes.<key>.syntheticMonitorScriptTimeoutInMs` | Timeout for synthetic monitor script | `60000` | |
-| `probes.<key>.customCodeMonitorScriptTimeoutInMs` | Timeout for custom code monitor script | `60000` | |
-| `statusPage.cnameRecord` | CNAME record for the status page | `nil` | |
-| `internalSmtp.sendingDomain` | Domain to send emails from  | `nil` |  |
-| `internalSmtp.dkimPrivateKey` | DKIM Private Key that is set for sending domain | `nil` |  |
-| `internalSmtp.dkimPublicKey` | DKIM Public Key that is set for sending domain | `nil` |  |
-| `internalSmtp.email` | Email address to send emails from | `nil` |  |
-| `internalSmtp.name` | Name to send emails from | `nil` |  |
-| `logLevel` | Can be one of the following - INFO, WARN, ERROR, DEBUG | `INFO` |  |
-| `incidents.disableAutomaticCreation` | Disable incident creation (use this when your team is overloaded with incidents or in emergencies) | `false` |  |
-| `alerts.disableAutomaticCreation` | Disable alert creation (use this when your team is overloaded with alerts or in emergencies) | `false` |  |
-| `podSecurityContext` | Pod Security Context. Please refer to Kubernetes docuemntation to set these. This chart depends on other bitnami charts. You will have to set security context for those as well | `{}` |  |
-| `conatinerSecurityContext` | Container Security Context. Please refer to kubernetes documentation to set these. This chart depends on other bitnami charts. You will have to set security context for those as well | `{}` |  |
-| `nodeSelector` | Node Selector. Please refer to Kubernetes documentation on how to use them. | `{}` |  |
-| `tolerations` | Tolerations. Please refer to Kubernetes documentation on how to use them. | `[]` |  |
-| `affinity` | Affinity. Please refer to Kubernetes documentation on how to use them. | `{}` |  |
-| `extraTemplates` | Extra templates to be added to the deployment | `[]` |  |
-| `oneuptimeIngress.enabled` | Enable ingress | `true` |  |
-| `oneuptimeIngress.annotations` | Ingress annotations | `{}` |  |
-| `oneuptimeIngress.hosts` | Ingress hosts | `[]` |  |
-| `oneuptimeIngress.tls` | Ingress TLS. Please refer to values.yaml to set these | `[]` |  |
-| `oneuptimeIngress.className` | Ingress class name. Change this to your cloud providers ingress class | `nginx` |  |
-| `script.workflowScriptTimeoutInMs` | Timeout for workflow script | `5000` |  |
+| Parameter                                         | Description                                                                                                                                                                            | Default         | Change Required |
+|---------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------|-----------------|
+| `global.storageClass`                             | Storage class to be used for all persistent volumes                                                                                                                                    | `nil`           | 🚨              |
+| `host`                                            | Hostname for the ingress                                                                                                                                                               | `localhost`     | 🚨              |
+| `httpProtocol`                                    | If the server is hosted with SSL/TLS cert then change this value to https                                                                                                              | `http`          | 🚨              |
+| `oneuptimeSecret`                                 | Value used to define ONEUPTIME_SECRET                                                                                                                                                  | `nil`           |                 |
+| `encryptionSecret`                                | Value used to define ENCRYPTION_SECRET                                                                                                                                                 | `nil`           |                 |
+| `global.clusterDomain`                            | Kubernetes Cluster Domain                                                                                                                                                              | `cluster.local` |                 |
+| `image.registry`                                  | Docker image registry                                                                                                                                                                  | `docker.io`     |                 |
+| `image.repository`                                | Docker image repository                                                                                                                                                                | `oneuptime`     |                 |
+| `image.tag`                                       | Docker image tag                                                                                                                                                                       | `release`       |
+| `image.pullPolicy`                                | Docker image pull policy                                                                                                                                                               | `IfNotPresent`  |                 |
+| `image.restartPolicy`                             | Docker image restart policy                                                                                                                                                            | `Always`        |                 |
+| `autoscaling.enabled`                             | Enable autoscaling                                                                                                                                                                     | `false`         |                 |
+| `autoscaling.minReplicas`                         | Minimum number of replicas                                                                                                                                                             | `1`             |                 |
+| `autoscaling.maxReplicas`                         | Maximum number of replicas                                                                                                                                                             | `100`           |                 |
+| `autoscaling.targetCPUUtilizationPercentage`      | Target CPU utilization percentage                                                                                                                                                      | `80`            |                 |
+| `autoscaling.targetMemoryUtilizationPercentage`   | Target memory utilization percentage                                                                                                                                                   | `80`            |                 |
+| `nodeEnvironment`                                 | Node environment (please dont change this unless you're doing local development)                                                                                                       | `production`    |                 |
+| `nginx.service.type`                              | nginx service type                                                                                                                                                                     | `LoadBalancer`  |                 |
+| `nginx.service.loadBalancerIP`                    | nginx service load balancer IP                                                                                                                                                         | `nil`           |                 |
+| `deployment.replicaCount`                         | Number of replicas                                                                                                                                                                     | `1`             |                 |
+| `probes.<key>.name`                               | Probe name                                                                                                                                                                             | `<key>`         |                 |
+| `probes.<key>.description`                        | Probe description                                                                                                                                                                      | `nil`           |                 |
+| `probes.<key>.key`                                | Probe key. Please set this to long random string to secure your probes.                                                                                                                | `nil`           |                 |
+| `probes.<key>.monitoringWorkers`                  | Number of threads / parallel processes you need to monitor your resources                                                                                                              | `3`             |                 |
+| `probes.<key>.monitorFetchLimit`                  | Number of resources to be monitored in parallel                                                                                                                                        | `10`            |                 |
+| `probes.<key>.syntheticMonitorScriptTimeoutInMs`  | Timeout for synthetic monitor script                                                                                                                                                   | `60000`         |                 |
+| `probes.<key>.customCodeMonitorScriptTimeoutInMs` | Timeout for custom code monitor script                                                                                                                                                 | `60000`         |                 |
+| `probes.<key>.additionalContainers`               | Additional containers to add to the probe pod                                                                                                                                          | `nil`           |                 |
+| `probes.<key>.resources`                          | Pod resources (limits, requests)                                                                                                                                                       | `nil`           |                 |
+| `statusPage.cnameRecord`                          | CNAME record for the status page                                                                                                                                                       | `nil`           |                 |
+| `logLevel`                                        | Can be one of the following - INFO, WARN, ERROR, DEBUG                                                                                                                                 | `INFO`          |                 |
+| `incidents.disableAutomaticCreation`              | Disable incident creation (use this when your team is overloaded with incidents or in emergencies)                                                                                     | `false`         |                 |
+| `alerts.disableAutomaticCreation`                 | Disable alert creation (use this when your team is overloaded with alerts or in emergencies)                                                                                           | `false`         |                 |
+| `podSecurityContext`                              | Pod Security Context. Please refer to Kubernetes docuemntation to set these. This chart depends on other bitnami charts. You will have to set security context for those as well       | `{}`            |                 |
+| `containerSecurityContext`                        | Container Security Context. Please refer to kubernetes documentation to set these. This chart depends on other bitnami charts. You will have to set security context for those as well | `{}`            |                 |
+| `nodeSelector`                                    | Node Selector. Please refer to Kubernetes documentation on how to use them.                                                                                                            | `{}`            |                 |
+| `tolerations`                                     | Tolerations. Please refer to Kubernetes documentation on how to use them.                                                                                                              | `[]`            |                 |
+| `affinity`                                        | Affinity. Please refer to Kubernetes documentation on how to use them.                                                                                                                 | `{}`            |                 |
+| `extraTemplates`                                  | Extra templates to be added to the deployment                                                                                                                                          | `[]`            |                 |
+| `oneuptimeIngress.enabled`                        | Enable ingress                                                                                                                                                                         | `true`          |                 |
+| `oneuptimeIngress.annotations`                    | Ingress annotations                                                                                                                                                                    | `{}`            |                 |
+| `oneuptimeIngress.hosts`                          | Ingress hosts                                                                                                                                                                          | `[]`            |                 |
+| `oneuptimeIngress.tls`                            | Ingress TLS. Please refer to values.yaml to set these                                                                                                                                  | `[]`            |                 |
+| `oneuptimeIngress.className`                      | Ingress class name. Change this to your cloud providers ingress class                                                                                                                  | `nginx`         |                 |
+| `script.workflowScriptTimeoutInMs`                | Timeout for workflow script                                                                                                                                                            | `5000`          |                 |
 
 
 ## Setting up TLS/SSL Certificates
@@ -308,11 +307,11 @@ postgresql:
 
 Please do the same for Redis and Clickhouse.
 
-- [ ] Please make sure you have a backups enabled for your PVCs. This is outside the scope of this chart. Please refer to your cloud provider's documentation on how to enable backups for PVCs.
-- [ ] Please make sure you have static passwords for your database passswords (for redis, clickhouse and postgres). You can refer to Bitnami documentation on how to set static passwords for these databases. 
+- [ ] Please make sure you have backups enabled for your PVCs. This is outside the scope of this chart. Please refer to your cloud provider's documentation on how to enable backups for PVCs.
+- [ ] Please make sure you have static passwords for your database passwords (for redis, clickhouse and postgres). You can refer to Bitnami documentation on how to set static passwords for these databases. 
 - [ ] Please set `oneuptimeSecret` and `encryptionSecret` (or setup in `externalSecrets` section) to a long random string. You can use a password generator to generate these strings.
 - [ ] Please set `probes.<key>.key` to a long random string. This is used to secure your probes.
-- [ ] Please regularly update OneUptime. We release updates every day. We recommend you to update the software aleast once a week if you're running OneUptime production. 
+- [ ] Please regularly update OneUptime. We release updates every day. We recommend you to update the software at least once a week if you're running OneUptime production. 
 
 ## Releases 
 
@@ -327,6 +326,14 @@ We use these charts as dependencies. You dont need to install them separately. P
 | `postgresql` | PostgreSQL database | https://charts.bitnami.com/bitnami |
 | `redis` | Redis database | https://charts.bitnami.com/bitnami |
 | `clickhouse` | Clickhouse database | https://charts.bitnami.com/bitnami |
+
+## Uninstalling OneUptime
+
+To uninstall/delete the `my-oneuptime` deployment:
+
+```console
+helm uninstall my-oneuptime
+```
 
 ## Contributing
 

@@ -76,6 +76,8 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
 @Entity({
   name: "MonitorStatus",
 })
+@Index(["projectId", "isOperationalState"])
+@Index(["projectId", "isOfflineState"])
 export default class MonitorStatus extends BaseModel {
   @ColumnAccessControl({
     create: [
@@ -192,6 +194,7 @@ export default class MonitorStatus extends BaseModel {
     required: true,
     unique: true,
     type: TableColumnType.Slug,
+    computed: true,
     title: "Slug",
     description: "Friendly globally unique name for your object",
   })
@@ -314,6 +317,7 @@ export default class MonitorStatus extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -418,6 +422,7 @@ export default class MonitorStatus extends BaseModel {
     canReadOnRelationQuery: true,
     title: "Is Operational State",
     description: "Is this monitor in operational state?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -451,6 +456,7 @@ export default class MonitorStatus extends BaseModel {
     canReadOnRelationQuery: true,
     title: "Is Offline State",
     description: "Is this monitor in offline state?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,

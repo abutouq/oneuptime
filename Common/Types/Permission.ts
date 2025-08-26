@@ -16,6 +16,8 @@ enum Permission {
   // All users in the project will have this permission.
   ProjectUser = "ProjectUser",
 
+  AuthenticatedRequest = "AuthenticatedRequest", // Authenticated request - could be API, User, MCP server or any other authenticated request.
+
   // Users who are in the project but do not have SSO authorization.
   UnAuthorizedSsoUser = "UnAuthorizedSsoUser",
 
@@ -140,6 +142,8 @@ enum Permission {
   ReadSmsLog = "ReadSmsLog",
   ReadEmailLog = "ReadEmailLog",
   ReadCallLog = "ReadCallLog",
+  ReadPushLog = "ReadPushLog",
+  ReadWorkspaceNotificationLog = "ReadWorkspaceNotificationLog",
 
   CreateIncidentOwnerTeam = "CreateIncidentOwnerTeam",
   DeleteIncidentOwnerTeam = "DeleteIncidentOwnerTeam",
@@ -240,6 +244,16 @@ enum Permission {
   DeleteMonitorOwnerUser = "DeleteMonitorOwnerUser",
   EditMonitorOwnerUser = "EditMonitorOwnerUser",
   ReadMonitorOwnerUser = "ReadMonitorOwnerUser",
+
+  CreateOnCallDutyPolicyOwnerTeam = "CreateOnCallDutyPolicyOwnerTeam",
+  DeleteOnCallDutyPolicyOwnerTeam = "DeleteOnCallDutyPolicyOwnerTeam",
+  EditOnCallDutyPolicyOwnerTeam = "EditOnCallDutyPolicyOwnerTeam",
+  ReadOnCallDutyPolicyOwnerTeam = "ReadOnCallDutyPolicyOwnerTeam",
+
+  CreateOnCallDutyPolicyOwnerUser = "CreateOnCallDutyPolicyOwner",
+  DeleteOnCallDutyPolicyOwnerUser = "DeleteOnCallDutyPolicyOwnerUser",
+  EditOnCallDutyPolicyOwnerUser = "EditOnCallDutyPolicyOwnerUser",
+  ReadOnCallDutyPolicyOwnerUser = "ReadOnCallDutyPolicyOwnerUser",
 
   CreateMonitorGroupOwnerTeam = "CreateMonitorGroupOwnerTeam",
   DeleteMonitorGroupOwnerTeam = "DeleteMonitorGroupOwnerTeam",
@@ -420,6 +434,26 @@ enum Permission {
   ReadIncidentStateTimeline = "ReadIncidentStateTimeline",
   DeleteIncidentStateTimeline = "DeleteIncidentStateTimeline",
 
+  CreateIncidentFeed = "CreateIncidentFeed",
+  EditIncidentFeed = "EditIncidentFeed",
+  ReadIncidentFeed = "ReadIncidentFeed",
+
+  CreateOnCallDutyPolicyFeed = "CreateOnCallDutyPolicyFeed",
+  EditOnCallDutyPolicyFeed = "EditOnCallDutyPolicyFeed",
+  ReadOnCallDutyPolicyFeed = "ReadOnCallDutyPolicyFeed",
+
+  CreateMonitorFeed = "CreateMonitorFeed",
+  EditMonitorFeed = "EditMonitorFeed",
+  ReadMonitorFeed = "ReadMonitorFeed",
+
+  CreateScheduledMaintenanceFeed = "CreateScheduledMaintenanceFeed",
+  EditScheduledMaintenanceFeed = "EditScheduledMaintenanceFeed",
+  ReadScheduledMaintenanceFeed = "ReadScheduledMaintenanceFeed",
+
+  CreateAlertFeed = "CreateAlertFeed",
+  EditAlertFeed = "EditAlertFeed",
+  ReadAlertFeed = "ReadAlertFeed",
+
   // Incident Status Permissions (Owner + Admin Permission by default)
   CreateMonitorStatusTimeline = "CreateMonitorStatusTimeline",
   EditMonitorStatusTimeline = "EditMonitorStatusTimeline",
@@ -437,6 +471,12 @@ enum Permission {
   EditStatusPageAnnouncement = "EditStatusPageAnnouncement",
   ReadStatusPageAnnouncement = "ReadStatusPageAnnouncement",
   DeleteStatusPageAnnouncement = "DeleteStatusPageAnnouncement",
+
+  // Status Page Announcement Template Permissions (Owner + Admin Permission by default)
+  CreateStatusPageAnnouncementTemplate = "CreateStatusPageAnnouncementTemplate",
+  EditStatusPageAnnouncementTemplate = "EditStatusPageAnnouncementTemplate",
+  ReadStatusPageAnnouncementTemplate = "ReadStatusPageAnnouncementTemplate",
+  DeleteStatusPageAnnouncementTemplate = "DeleteStatusPageAnnouncementTemplate",
 
   // Resource Permissions (Team Permission)
   CreateIncidentInternalNote = "CreateIncidentInternalNote",
@@ -489,12 +529,20 @@ enum Permission {
 
   ReadProjectOnCallDutyPolicyExecutionLogTimeline = "ReadProjectOnCallDutyPolicyExecutionLogTimeline",
   ReadProjectOnCallDutyPolicyExecutionLog = "ReadProjectOnCallDutyPolicyExecutionLog",
+  CreateProjectOnCallDutyPolicyExecutionLog = "CreateProjectOnCallDutyPolicyExecutionLog",
 
   // Resource Permissions (Team Permission)
   CreateProjectOnCallDutyPolicyEscalationRule = "CreateProjectOnCallDutyPolicyEscalationRule",
   EditProjectOnCallDutyPolicyEscalationRule = "EditProjectOnCallDutyPolicyEscalationRule",
   DeleteProjectOnCallDutyPolicyEscalationRule = "DeleteProjectOnCallDutyPolicyEscalationRule",
   ReadProjectOnCallDutyPolicyEscalationRule = "ReadProjectOnCallDutyPolicyEscalationRule",
+
+  CreateOnCallDutyPolicyUserOverride = "CreateOnCallDutyPolicyUserOverride",
+  EditOnCallDutyPolicyUserOverride = "EditOnCallDutyPolicyUserOverride",
+  DeleteOnCallDutyPolicyUserOverride = "DeleteOnCallDutyPolicyUserOverride",
+  ReadOnCallDutyPolicyUserOverride = "ReadOnCallDutyPolicyUserOverride",
+
+  ReadOnCallDutyPolicyTimeLog = "ReadOnCallDutyPolicyTimeLog",
 
   // Resource Permissions (Team Permission)
   CreateProjectOnCallDutyPolicyEscalationRuleUser = "CreateProjectOnCallDutyPolicyEscalationRuleUser",
@@ -592,6 +640,11 @@ enum Permission {
   DeleteTableView = "DeleteTableView",
   EditTableView = "EditTableView",
   ReadTableView = "ReadTableView",
+
+  CreateWorkspaceNotificationRule = "CreateWorkspaceNotificationRule",
+  DeleteWorkspaceNotificationRule = "DeleteWorkspaceNotificationRule",
+  EditWorkspaceNotificationRule = "EditWorkspaceNotificationRule",
+  ReadWorkspaceNotificationRule = "ReadWorkspaceNotificationRule",
 }
 
 export class PermissionHelper {
@@ -1025,6 +1078,35 @@ export class PermissionHelper {
       },
 
       {
+        permission: Permission.CreateWorkspaceNotificationRule,
+        title: "Create Workspace Notification Rule",
+        description: "This permission can create alert states this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.DeleteWorkspaceNotificationRule,
+        title: "Delete Workspace Notification Rule",
+        description: "This permission can delete alert states of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.EditWorkspaceNotificationRule,
+        title: "Edit Workspace Notification Rule",
+        description: "This permission can edit alert states of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.ReadWorkspaceNotificationRule,
+        title: "Read Workspace Notification Rule",
+        description: "This permission can read alert states of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+
+      {
         permission: Permission.CreateIncidentStateTimeline,
         title: "Create Incident State Timeline",
         description:
@@ -1053,6 +1135,131 @@ export class PermissionHelper {
         title: "Read Incident State Timeline",
         description:
           "This permission can read incident state history of an incident in this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+
+      {
+        permission: Permission.CreateMonitorFeed,
+        title: "Create Monitor Feed",
+        description:
+          "This permission can create log of an monitor in this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.EditMonitorFeed,
+        title: "Edit Monitor Feed",
+        description:
+          "This permission can edit log of an monitor in this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.ReadMonitorFeed,
+        title: "Read Monitor Feed",
+        description:
+          "This permission can read log of an monitor in this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+
+      {
+        permission: Permission.CreateIncidentFeed,
+        title: "Create Incident Feed",
+        description:
+          "This permission can create log of an incident in this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.EditIncidentFeed,
+        title: "Edit Incident Feed",
+        description:
+          "This permission can edit log of an incident in this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.ReadIncidentFeed,
+        title: "Read Incident Feed",
+        description:
+          "This permission can read log of an incident in this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+
+      {
+        permission: Permission.CreateOnCallDutyPolicyFeed,
+        title: "Create On Call Duty Policy Feed",
+        description:
+          "This permission can create log of an on-call policy in this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.EditOnCallDutyPolicyFeed,
+        title: "Edit On Call Duty Policy Feed",
+        description:
+          "This permission can edit log of an on-call policy in this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.ReadOnCallDutyPolicyFeed,
+        title: "Read On Call Duty Policy Feed",
+        description:
+          "This permission can read log of an on-call policy in this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+
+      {
+        permission: Permission.CreateAlertFeed,
+        title: "Create Alert Feed",
+        description:
+          "This permission can create log of an alert in this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.EditAlertFeed,
+        title: "Edit Alert Feed",
+        description:
+          "This permission can edit log of an alert in this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.ReadAlertFeed,
+        title: "Read Alert Feed",
+        description:
+          "This permission can read log of an alert in this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+
+      {
+        permission: Permission.CreateScheduledMaintenanceFeed,
+        title: "Create Scheduled Maintenance Log",
+        description:
+          "This permission can create log of a scheduled maintenance in this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.EditScheduledMaintenanceFeed,
+        title: "Edit Scheduled Maintenance Log",
+        description:
+          "This permission can edit log of an scheduled maintenance in this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.ReadScheduledMaintenanceFeed,
+        title: "Read Scheduled Maintenance Log",
+        description:
+          "This permission can read log of an scheduled maintenance in this project.",
         isAssignableToTenant: true,
         isAccessControlPermission: false,
       },
@@ -1198,34 +1405,100 @@ export class PermissionHelper {
       },
 
       {
-        permission: Permission.CreateStatusPageAnnouncement,
-        title: "Create Monitor Status",
+        permission: Permission.CreateStatusPageAnnouncementTemplate,
+        title: "Create Status Page Announcement Template",
         description:
-          "This permission can create monitor statuses this project.",
+          "This permission can create Status Page Announcement Templates in this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.DeleteStatusPageAnnouncementTemplate,
+        title: "Delete Status Page Announcement Template",
+        description:
+          "This permission can delete Status Page Announcement Templates of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.EditStatusPageAnnouncementTemplate,
+        title: "Edit Status Page Announcement Template",
+        description:
+          "This permission can edit Status Page Announcement Templates of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.ReadStatusPageAnnouncementTemplate,
+        title: "Read Status Page Announcement Template",
+        description:
+          "This permission can read Status Page Announcement Templates of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+
+      {
+        permission: Permission.CreateStatusPageAnnouncement,
+        title: "Create Status Page Announcement",
+        description:
+          "This permission can create Status Page Announcements in this project.",
         isAssignableToTenant: true,
         isAccessControlPermission: false,
       },
       {
         permission: Permission.DeleteStatusPageAnnouncement,
-        title: "Delete Monitor Status",
+        title: "Delete Status Page Announcement",
         description:
-          "This permission can delete monitor statuses of this project.",
+          "This permission can delete Status Page Announcements of this project.",
         isAssignableToTenant: true,
         isAccessControlPermission: false,
       },
       {
         permission: Permission.EditStatusPageAnnouncement,
-        title: "Edit Monitor Status",
+        title: "Edit Status Page Announcement",
         description:
-          "This permission can edit monitor statuses of this project.",
+          "This permission can edit Status Page Announcements of this project.",
         isAssignableToTenant: true,
         isAccessControlPermission: false,
       },
       {
         permission: Permission.ReadStatusPageAnnouncement,
-        title: "Read Monitor Status",
+        title: "Read Status Page Announcement",
         description:
-          "This permission can read monitor statuses of this project.",
+          "This permission can read Status Page Announcements of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+
+      {
+        permission: Permission.CreateStatusPageAnnouncementTemplate,
+        title: "Create Status Page Announcement Template",
+        description:
+          "This permission can create Status Page Announcement Templates in this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.DeleteStatusPageAnnouncementTemplate,
+        title: "Delete Status Page Announcement Template",
+        description:
+          "This permission can delete Status Page Announcement Templates of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.EditStatusPageAnnouncementTemplate,
+        title: "Edit Status Page Announcement Template",
+        description:
+          "This permission can edit Status Page Announcement Templates of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.ReadStatusPageAnnouncementTemplate,
+        title: "Read Status Page Announcement Template",
+        description:
+          "This permission can read Status Page Announcement Templates of this project.",
         isAssignableToTenant: true,
         isAccessControlPermission: false,
       },
@@ -2052,8 +2325,14 @@ export class PermissionHelper {
       {
         permission: Permission.ReadProjectOnCallDutyPolicyExecutionLog,
         title: "Read On-Call Duty Policy Execution Log",
-        description:
-          "This permission can read teams in on-call duty execution log.",
+        description: "This permission can read on-call duty execution log.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.CreateProjectOnCallDutyPolicyExecutionLog,
+        title: "Create On-Call Duty Policy Execution Log",
+        description: "This permission can create on-call duty execution log.",
         isAssignableToTenant: true,
         isAccessControlPermission: false,
       },
@@ -2219,6 +2498,48 @@ export class PermissionHelper {
         title: "Read On-Call Duty Policy Escalation Rule",
         description:
           "This permission can read on-call duty escalation rule of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+
+      {
+        permission: Permission.ReadOnCallDutyPolicyTimeLog,
+        title: "Create On-Call Policy Time Log",
+        description:
+          "This permission can read on-call policy time log this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+
+      {
+        permission: Permission.CreateOnCallDutyPolicyUserOverride,
+        title: "Create On-Call Duty Policy User Override",
+        description:
+          "This permission can create on-call duty policy user override this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.DeleteOnCallDutyPolicyUserOverride,
+        title: "Delete On-Call Duty Policy User Override",
+        description:
+          "This permission can delete on-call duty policy user override of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.EditOnCallDutyPolicyUserOverride,
+        title: "Edit On-Call Duty Policy User Override",
+        description:
+          "This permission can edit on-call duty policy user override of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.ReadOnCallDutyPolicyUserOverride,
+        title: "Read On-Call Duty Policy User Override",
+        description:
+          "This permission can read on-call duty policy user override of this project.",
         isAssignableToTenant: true,
         isAccessControlPermission: false,
       },
@@ -2680,6 +3001,24 @@ export class PermissionHelper {
         permission: Permission.ReadCallLog,
         title: "Read Call Log",
         description: "This permission can read Call Logs of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+
+      {
+        permission: Permission.ReadPushLog,
+        title: "Read Push Log",
+        description:
+          "This permission can read Push Notification Logs of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+
+      {
+        permission: Permission.ReadWorkspaceNotificationLog,
+        title: "Read Workspace Notification Log",
+        description:
+          "This permission can read Workspace Notification Logs (Slack / Microsoft Teams) of this project.",
         isAssignableToTenant: true,
         isAccessControlPermission: false,
       },
@@ -3853,6 +4192,72 @@ export class PermissionHelper {
         title: "Read Monitor Group Team Owner",
         description:
           "This permission can read Monitor Group Team Owner of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+
+      {
+        permission: Permission.CreateOnCallDutyPolicyOwnerUser,
+        title: "Create On Call Duty Policy User Owner",
+        description:
+          "This permission can create On Call Duty Policy User Owner this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.DeleteOnCallDutyPolicyOwnerUser,
+        title: "Delete On Call Duty Policy User Owner",
+        description:
+          "This permission can delete On Call Duty Policy User Owner of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.EditOnCallDutyPolicyOwnerUser,
+        title: "Edit On Call Duty Policy User Owner",
+        description:
+          "This permission can edit On Call Duty Policy User Owner of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.ReadOnCallDutyPolicyOwnerUser,
+        title: "Read On Call Duty Policy User Owner",
+        description:
+          "This permission can read On Call Duty Policy User Owner of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+
+      {
+        permission: Permission.CreateOnCallDutyPolicyOwnerTeam,
+        title: "Create On Call Duty Policy Team Owner",
+        description:
+          "This permission can create On Call Duty Policy Team Owner this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.DeleteOnCallDutyPolicyOwnerTeam,
+        title: "Delete On Call Duty Policy Team Owner",
+        description:
+          "This permission can delete On Call Duty Policy Team Owner of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.EditOnCallDutyPolicyOwnerTeam,
+        title: "Edit On Call Duty Policy Team Owner",
+        description:
+          "This permission can edit On Call Duty Policy Team Owner of this project.",
+        isAssignableToTenant: true,
+        isAccessControlPermission: false,
+      },
+      {
+        permission: Permission.ReadOnCallDutyPolicyOwnerTeam,
+        title: "Read On Call Duty Policy Team Owner",
+        description:
+          "This permission can read On Call Duty Policy Team Owner of this project.",
         isAssignableToTenant: true,
         isAccessControlPermission: false,
       },

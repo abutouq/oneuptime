@@ -107,6 +107,7 @@ class UserTwoFactorAuth extends BaseModel {
     isDefaultValueColumn: true,
     description:
       "Is this two factor authentication verified and validated (has user entered the tokent to verify it)",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -124,6 +125,7 @@ class UserTwoFactorAuth extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })

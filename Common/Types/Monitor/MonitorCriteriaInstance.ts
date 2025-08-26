@@ -1,20 +1,23 @@
 import DatabaseProperty from "../Database/DatabaseProperty";
 import BadDataException from "../Exception/BadDataException";
+import FilterCondition from "../Filter/FilterCondition";
 import { JSONObject, ObjectType } from "../JSON";
 import JSONFunctions from "../JSONFunctions";
 import ObjectID from "../ObjectID";
 import Typeof from "../Typeof";
-import { CriteriaAlert } from "./CriteriaAlert";
+import { CriteriaAlert, CriteriaAlertSchema } from "./CriteriaAlert";
 import {
   CheckOn,
   CriteriaFilter,
-  FilterCondition,
   FilterType,
   EvaluateOverTimeType,
+  CriteriaFilterUtil,
+  CriteriaFilterSchema,
 } from "./CriteriaFilter";
-import { CriteriaIncident } from "./CriteriaIncident";
+import { CriteriaIncident, CriteriaIncidentSchema } from "./CriteriaIncident";
 import MonitorType from "./MonitorType";
 import { FindOperator } from "typeorm";
+import Zod, { ZodSchema } from "../../Utils/Schema/Zod";
 
 export interface MonitorCriteriaInstanceType {
   monitorStatusId: ObjectID | undefined;
@@ -699,19 +702,19 @@ export default class MonitorCriteriaInstance extends DatabaseProperty {
     monitorType: MonitorType,
   ): string | null {
     if (!value.data) {
-      return "Monitor Step is required";
+      return `Monitor Step is required.`;
     }
 
     if (value.data.filters.length === 0) {
-      return "Monitor Criteria filter is required";
+      return `Filter is required for criteria "${value.data.name}"`;
     }
 
     if (!value.data.name) {
-      return "Monitor Criteria name is required";
+      return `Name is required for criteria "${value.data.name}"`;
     }
 
     if (!value.data.description) {
-      return "Monitor Criteria description is required";
+      return `Description is required for criteria "${value.data.name}"`;
     }
 
     for (const incident of value.data.incidents) {
@@ -720,21 +723,39 @@ export default class MonitorCriteriaInstance extends DatabaseProperty {
       }
 
       if (!incident.title) {
-        return "Monitor Criteria incident title is required";
+        return `Incident title is required for criteria "${value.data.name}"`;
       }
 
       if (!incident.description) {
-        return "Monitor Criteria incident description is required";
+        return `Incident description is required for criteria "${value.data.name}"`;
       }
 
       if (!incident.incidentSeverityId) {
-        return "Monitor Criteria incident severity is required";
+        return `Incident severity is required for criteria "${value.data.name}"`;
+      }
+    }
+
+    for (const alert of value.data.alerts) {
+      if (!alert) {
+        continue;
+      }
+
+      if (!alert.title) {
+        return `Alert title is required for criteria "${value.data.name}"`;
+      }
+
+      if (!alert.description) {
+        return `Alert description is required for criteria "${value.data.name}"`;
+      }
+
+      if (!alert.alertSeverityId) {
+        return `Alert severity is required for criteria "${value.data.name}"`;
       }
     }
 
     for (const filter of value.data.filters) {
       if (!filter.checkOn) {
-        return "Monitor Criteria filter check on is required";
+        return `Filter Type is required for criteria "${value.data.name}"`;
       }
 
       if (
@@ -742,7 +763,7 @@ export default class MonitorCriteriaInstance extends DatabaseProperty {
         filter.checkOn !== CheckOn.IsOnline &&
         filter.checkOn !== CheckOn.ResponseTime
       ) {
-        return "Ping  Monitor cannot have filter criteria: " + filter.checkOn;
+        return "Ping Monitor cannot have filter type: " + filter.checkOn;
       }
 
       if (
@@ -750,6 +771,17 @@ export default class MonitorCriteriaInstance extends DatabaseProperty {
         !filter.serverMonitorOptions?.diskPath
       ) {
         return "Disk Path is required for Disk Usage Percent";
+      }
+
+      if (
+        CriteriaFilterUtil.hasValueField({
+          checkOn: filter.checkOn,
+          filterType: filter.filterType,
+        })
+      ) {
+        if (!filter.value && filter.value !== 0) {
+          return `Value is required for criteria "${value.data.name}" on filter type: ${filter.checkOn}`;
+        }
       }
     }
 
@@ -986,6 +1018,53 @@ export default class MonitorCriteriaInstance extends DatabaseProperty {
     }) as any;
 
     return monitorCriteriaInstance;
+  }
+
+  public static override getSchema(): ZodSchema {
+    return Zod.object({
+      _type: Zod.literal(ObjectType.MonitorCriteriaInstance),
+      value: Zod.object({
+        id: Zod.string(),
+        monitorStatusId: Zod.any(),
+        filterCondition: Zod.any(),
+        filters: Zod.array(CriteriaFilterSchema),
+        incidents: Zod.array(CriteriaIncidentSchema),
+        alerts: Zod.array(CriteriaAlertSchema),
+        name: Zod.string(),
+        description: Zod.string(),
+        changeMonitorStatus: Zod.boolean().optional(),
+        createIncidents: Zod.boolean().optional(),
+        createAlerts: Zod.boolean().optional(),
+      }).openapi({
+        type: "object",
+        example: {
+          id: "id",
+          monitorStatusId: "statusId",
+          filterCondition: "All",
+          filters: [],
+          incidents: [],
+          alerts: [],
+          name: "Criteria Name",
+          description: "Description",
+        },
+      }),
+    }).openapi({
+      type: "object",
+      description: "MonitorCriteriaInstance object",
+      example: {
+        _type: ObjectType.MonitorCriteriaInstance,
+        value: {
+          id: "id",
+          monitorStatusId: "statusId",
+          filterCondition: "All",
+          filters: [],
+          incidents: [],
+          alerts: [],
+          name: "Criteria Name",
+          description: "Description",
+        },
+      },
+    });
   }
 
   public static isValid(_json: JSONObject): boolean {

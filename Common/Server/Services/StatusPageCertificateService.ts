@@ -7,13 +7,15 @@ import Protocol from "../../Types/API/Protocol";
 import Route from "../../Types/API/Route";
 import URL from "../../Types/API/URL";
 import { JSONObject } from "../../Types/JSON";
-import API from "Common/Utils/API";
+import API from "../../Utils/API";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export class StatusPageCertificateService extends BaseService {
   public constructor() {
     super();
   }
 
+  @CaptureSpan()
   public async add(domain: string): Promise<HTTPResponse<EmptyResponseData>> {
     const body: JSONObject = {
       domain: domain,
@@ -27,6 +29,7 @@ export class StatusPageCertificateService extends BaseService {
     );
   }
 
+  @CaptureSpan()
   public async remove(
     domain: string,
   ): Promise<HTTPResponse<EmptyResponseData>> {
@@ -42,6 +45,7 @@ export class StatusPageCertificateService extends BaseService {
     );
   }
 
+  @CaptureSpan()
   public async get(domain: string): Promise<HTTPResponse<JSONObject>> {
     const body: JSONObject = {
       domain: domain,

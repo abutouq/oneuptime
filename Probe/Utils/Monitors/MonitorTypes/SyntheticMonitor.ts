@@ -93,6 +93,7 @@ export default class SyntheticMonitor {
             timeout: PROBE_SYNTHETIC_MONITOR_SCRIPT_TIMEOUT_IN_MS,
             args: {},
             context: {
+              browser: pageAndBrowser.browser,
               page: pageAndBrowser.page,
               screenSizeType: options.screenSizeType,
               browserType: options.browserType,
@@ -102,8 +103,9 @@ export default class SyntheticMonitor {
 
         const endTime: [number, number] = process.hrtime(startTime);
 
-        const executionTimeInMS: number =
-          (endTime[0] * 1000000000 + endTime[1]) / 1000000;
+        const executionTimeInMS: number = Math.ceil(
+          (endTime[0] * 1000000000 + endTime[1]) / 1000000,
+        );
 
         scriptResult.executionTimeInMS = executionTimeInMS;
 
@@ -143,7 +145,12 @@ export default class SyntheticMonitor {
       }
 
       if (pageAndBrowser?.browser) {
-        await pageAndBrowser.browser.close();
+        try {
+          await pageAndBrowser.browser.close();
+        } catch (err) {
+          // if the browser is already closed, ignore the error
+          logger.error(err);
+        }
       }
 
       return scriptResult;

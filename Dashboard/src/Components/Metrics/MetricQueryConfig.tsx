@@ -6,16 +6,16 @@ import Button, {
   ButtonSize,
   ButtonStyleType,
 } from "Common/UI/Components/Button/Button";
-import MetricNameAndUnit from "./Types/MetricNameAndUnit";
 import MetricQueryConfigData from "Common/Types/Metrics/MetricQueryConfigData";
 import MetricAliasData from "Common/Types/Metrics/MetricAliasData";
 import MetricQueryData from "Common/Types/Metrics/MetricQueryData";
 import { GetReactElementFunction } from "Common/UI/Types/FunctionTypes";
+import MetricType from "Common/Models/DatabaseModels/MetricType";
 
 export interface ComponentProps {
   data: MetricQueryConfigData;
   onChange?: ((data: MetricQueryConfigData) => void) | undefined;
-  metricNameAndUnits: Array<MetricNameAndUnit>;
+  metricTypes: Array<MetricType>;
   telemetryAttributes: string[];
   onRemove?: (() => void) | undefined;
   error?: string | undefined;
@@ -37,8 +37,9 @@ const MetricGraphConfig: FunctionComponent<ComponentProps> = (
             onDataChanged={(data: MetricAliasData) => {
               props.onBlur?.();
               props.onFocus?.();
-              props.onChange &&
+              if (props.onChange) {
                 props.onChange({ ...props.data, metricAliasData: data });
+              }
             }}
             isFormula={false}
           />
@@ -49,10 +50,11 @@ const MetricGraphConfig: FunctionComponent<ComponentProps> = (
             onDataChanged={(data: MetricQueryData) => {
               props.onBlur?.();
               props.onFocus?.();
-              props.onChange &&
+              if (props.onChange) {
                 props.onChange({ ...props.data, metricQueryData: data });
+              }
             }}
-            metricNameAndUnits={props.metricNameAndUnits}
+            metricTypes={props.metricTypes}
             telemetryAttributes={props.telemetryAttributes}
           />
         )}
@@ -63,7 +65,7 @@ const MetricGraphConfig: FunctionComponent<ComponentProps> = (
               onClick={() => {
                 props.onBlur?.();
                 props.onFocus?.();
-                return props.onRemove && props.onRemove();
+                return props.onRemove?.();
               }}
               buttonSize={ButtonSize.Small}
               buttonStyle={ButtonStyleType.DANGER_OUTLINE}

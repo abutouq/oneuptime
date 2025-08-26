@@ -49,6 +49,7 @@ const CustomCallSMSTable: FunctionComponent = (): ReactElement => {
       <ModelTable<ProjectCallSMSConfig>
         modelType={ProjectCallSMSConfig}
         id="call-sms-table"
+        userPreferencesKey="call-sms-table"
         actionButtons={[
           {
             title: "Send Test SMS",
@@ -170,14 +171,31 @@ const CustomCallSMSTable: FunctionComponent = (): ReactElement => {
           },
           {
             field: {
-              twilioPhoneNumber: true,
+              twilioPrimaryPhoneNumber: true,
             },
-            title: "Twilio Phone Number",
+            title: "Twilio Primary Phone Number",
             stepId: "twilio-info",
             fieldType: FormFieldSchemaType.Phone,
             required: true,
             description: "You can find this in your Twilio console.",
             placeholder: "",
+            validation: {
+              minLength: 2,
+            },
+          },
+
+          // add twilioSecondaryPhoneNumbers
+          {
+            field: {
+              twilioSecondaryPhoneNumbers: true,
+            },
+            title: "Twilio Secondary Phone Numbers",
+            stepId: "twilio-info",
+            fieldType: FormFieldSchemaType.LongText,
+            required: false,
+            description:
+              "If you have multiple phone numbers, add them here. These numbers will be used to send SMS and make calls if the country code matches instead of primary phone number. If the country code does not match, then primary phone number will be used.",
+            placeholder: "+441234567890, +461234567890",
             validation: {
               minLength: 2,
             },
@@ -195,7 +213,7 @@ const CustomCallSMSTable: FunctionComponent = (): ReactElement => {
           },
           {
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
             field: {
               description: true,
             },
@@ -208,10 +226,17 @@ const CustomCallSMSTable: FunctionComponent = (): ReactElement => {
             },
           },
           {
-            title: "Twilio Phone Number",
+            title: "Twilio Primary Phone Number",
             type: FieldType.Phone,
             field: {
-              twilioPhoneNumber: true,
+              twilioPrimaryPhoneNumber: true,
+            },
+          },
+          {
+            title: "Twilio Secondary Primary Phone Numbers",
+            type: FieldType.LongText,
+            field: {
+              twilioSecondaryPhoneNumbers: true,
             },
           },
         ]}
@@ -229,7 +254,7 @@ const CustomCallSMSTable: FunctionComponent = (): ReactElement => {
             },
             noValueMessage: "-",
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
           {
             field: {
@@ -240,10 +265,17 @@ const CustomCallSMSTable: FunctionComponent = (): ReactElement => {
           },
           {
             field: {
-              twilioPhoneNumber: true,
+              twilioPrimaryPhoneNumber: true,
             },
-            title: "Twilio Phone Number",
+            title: "Primary Twilio Phone Number",
             type: FieldType.Phone,
+          },
+          {
+            field: {
+              twilioSecondaryPhoneNumbers: true,
+            },
+            title: "Secondary Twilio Phone Number",
+            type: FieldType.LongText,
           },
         ]}
       />

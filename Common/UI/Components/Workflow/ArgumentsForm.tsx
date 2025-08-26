@@ -4,10 +4,10 @@ import FormValues from "../Forms/Types/FormValues";
 import ComponentValuePickerModal from "./ComponentValuePickerModal";
 import { componentInputTypeToFormFieldType } from "./Utils";
 import VariableModal from "./VariableModal";
-import Dictionary from "Common/Types/Dictionary";
-import { JSONObject } from "Common/Types/JSON";
-import ObjectID from "Common/Types/ObjectID";
-import { Argument, NodeDataProp } from "Common/Types/Workflow/Component";
+import Dictionary from "../../../Types/Dictionary";
+import { JSONObject } from "../../../Types/JSON";
+import ObjectID from "../../../Types/ObjectID";
+import { Argument, NodeDataProp } from "../../../Types/Workflow/Component";
 import React, {
   FunctionComponent,
   ReactElement,
@@ -56,7 +56,7 @@ const ArgumentsForm: FunctionComponent<ComponentProps> = (
         {component.metadata.arguments &&
           component.metadata.arguments.length === 0 && (
             <ErrorMessage
-              error={"This component does not take any arguments."}
+              message={"This component does not take any arguments."}
             />
           )}
         {component.metadata.arguments &&

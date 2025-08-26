@@ -1,4 +1,4 @@
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageMap from "../../Utils/PageMap";
 import RouteMap, { RouteUtil } from "../../Utils/RouteMap";
 import PageComponentProps from "../PageComponentProps";
@@ -49,7 +49,7 @@ import React, {
 } from "react";
 import useAsyncEffect from "use-async-effect";
 
-export interface ComponentProps extends PageComponentProps {}
+export type ComponentProps = PageComponentProps;
 
 const Settings: FunctionComponent<ComponentProps> = (
   _props: ComponentProps,
@@ -85,7 +85,7 @@ const Settings: FunctionComponent<ComponentProps> = (
     try {
       const project: Project | null = await ModelAPI.getItem<Project>({
         modelType: Project,
-        id: DashboardNavigation.getProjectId()!,
+        id: ProjectUtil.getCurrentProjectId()!,
         select: {
           reseller: {
             name: true,
@@ -161,7 +161,7 @@ const Settings: FunctionComponent<ComponentProps> = (
     <Fragment>
       {isLoading ? <PageLoader isVisible={true} /> : <></>}
 
-      {error ? <ErrorMessage error={error} /> : <></>}
+      {error ? <ErrorMessage message={error} /> : <></>}
 
       {!isLoading && !error ? (
         <div>
@@ -182,7 +182,7 @@ const Settings: FunctionComponent<ComponentProps> = (
                   validation: {
                     minLength: 6,
                   },
-                  fieldType: FormFieldSchemaType.RadioButton,
+                  fieldType: FormFieldSchemaType.OptionChooserButton,
                   radioButtonOptions: SubscriptionPlan.getSubscriptionPlans(
                     getAllEnvVars(),
                   ).map((plan: SubscriptionPlan): RadioButton => {
@@ -315,7 +315,7 @@ const Settings: FunctionComponent<ComponentProps> = (
                     },
                   },
                 ],
-                modelId: DashboardNavigation.getProjectId()!,
+                modelId: ProjectUtil.getCurrentProjectId()!,
               }}
             />
           )}
@@ -402,6 +402,7 @@ const Settings: FunctionComponent<ComponentProps> = (
           <ModelTable<BillingPaymentMethod>
             modelType={BillingPaymentMethod}
             id="payment-methods-table"
+            userPreferencesKey="billing-payment-methods-table"
             isDeleteable={true}
             isEditable={false}
             isCreateable={false}
@@ -425,13 +426,13 @@ const Settings: FunctionComponent<ComponentProps> = (
             }}
             noItemsMessage={"No payment methods found."}
             query={{
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             }}
             showRefreshButton={true}
             filters={[
               {
                 field: {
-                  type: true,
+                  paymentMethodType: true,
                 },
                 title: "Payment Method Type",
                 type: FieldType.Text,
@@ -447,7 +448,7 @@ const Settings: FunctionComponent<ComponentProps> = (
             columns={[
               {
                 field: {
-                  type: true,
+                  paymentMethodType: true,
                 },
                 title: "Payment Method Type",
                 type: FieldType.Text,
@@ -455,7 +456,7 @@ const Settings: FunctionComponent<ComponentProps> = (
                 getElement: (item: BillingPaymentMethod) => {
                   return (
                     <span>{`${Text.uppercaseFirstLetter(
-                      item["type"] as string,
+                      item.paymentMethodType as string,
                     )}`}</span>
                   );
                 },

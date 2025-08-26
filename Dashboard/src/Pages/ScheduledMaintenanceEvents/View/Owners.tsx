@@ -1,6 +1,5 @@
 import TeamElement from "../../../Components/Team/Team";
 import UserElement from "../../../Components/User/User";
-import DashboardNavigation from "../../../Utils/Navigation";
 import ProjectUser from "../../../Utils/ProjectUser";
 import PageComponentProps from "../../PageComponentProps";
 import BadDataException from "Common/Types/Exception/BadDataException";
@@ -14,6 +13,7 @@ import ScheduledMaintenanceOwnerUser from "Common/Models/DatabaseModels/Schedule
 import Team from "Common/Models/DatabaseModels/Team";
 import User from "Common/Models/DatabaseModels/User";
 import React, { Fragment, FunctionComponent, ReactElement } from "react";
+import ProjectUtil from "Common/UI/Utils/Project";
 
 const ScheduledMaintenanceOwners: FunctionComponent<
   PageComponentProps
@@ -26,6 +26,7 @@ const ScheduledMaintenanceOwners: FunctionComponent<
         modelType={ScheduledMaintenanceOwnerTeam}
         id="table-scheduledMaintenance-owner-team"
         name="ScheduledMaintenance > Owner Team"
+        userPreferencesKey="scheduled-maintenance-owner-team-table"
         singularName="Team"
         isDeleteable={true}
         createVerb={"Add"}
@@ -34,13 +35,13 @@ const ScheduledMaintenanceOwners: FunctionComponent<
         showViewIdButton={true}
         query={{
           scheduledMaintenanceId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(
           item: ScheduledMaintenanceOwnerTeam,
         ): Promise<ScheduledMaintenanceOwnerTeam> => {
           item.scheduledMaintenanceId = modelId;
-          item.projectId = DashboardNavigation.getProjectId()!;
+          item.projectId = ProjectUtil.getCurrentProjectId()!;
           return Promise.resolve(item);
         }}
         cardProps={{
@@ -78,7 +79,7 @@ const ScheduledMaintenanceOwners: FunctionComponent<
             title: "Team",
             filterEntityType: Team,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -125,6 +126,7 @@ const ScheduledMaintenanceOwners: FunctionComponent<
         modelType={ScheduledMaintenanceOwnerUser}
         id="table-scheduledMaintenance-owner-team"
         name="ScheduledMaintenance > Owner Team"
+        userPreferencesKey="scheduled-maintenance-owner-user-table"
         isDeleteable={true}
         singularName="User"
         isCreateable={true}
@@ -133,13 +135,13 @@ const ScheduledMaintenanceOwners: FunctionComponent<
         createVerb={"Add"}
         query={{
           scheduledMaintenanceId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(
           item: ScheduledMaintenanceOwnerUser,
         ): Promise<ScheduledMaintenanceOwnerUser> => {
           item.scheduledMaintenanceId = modelId;
-          item.projectId = DashboardNavigation.getProjectId()!;
+          item.projectId = ProjectUtil.getCurrentProjectId()!;
           return Promise.resolve(item);
         }}
         cardProps={{
@@ -161,7 +163,7 @@ const ScheduledMaintenanceOwners: FunctionComponent<
             placeholder: "Select User",
             fetchDropdownOptions: async () => {
               return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-                DashboardNavigation.getProjectId()!,
+                ProjectUtil.getCurrentProjectId()!,
               );
             },
           },
@@ -178,7 +180,7 @@ const ScheduledMaintenanceOwners: FunctionComponent<
             filterEntityType: User,
             fetchFilterDropdownOptions: async () => {
               return await ProjectUser.fetchProjectUsersAsDropdownOptions(
-                DashboardNavigation.getProjectId()!,
+                ProjectUtil.getCurrentProjectId()!,
               );
             },
             filterDropdownField: {

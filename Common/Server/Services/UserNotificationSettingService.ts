@@ -9,6 +9,7 @@ import TeamMemberService from "./TeamMemberService";
 import UserCallService from "./UserCallService";
 import UserEmailService from "./UserEmailService";
 import UserSmsService from "./UserSmsService";
+import PushNotificationService from "./PushNotificationService";
 import { CallRequestMessage } from "../../Types/Call/CallRequest";
 import { LIMIT_PER_PROJECT } from "../../Types/Database/LimitMax";
 import { EmailEnvelope } from "../../Types/Email/EmailMessage";
@@ -17,16 +18,19 @@ import NotificationSettingEventType from "../../Types/NotificationSetting/Notifi
 import ObjectID from "../../Types/ObjectID";
 import PositiveNumber from "../../Types/PositiveNumber";
 import { SMSMessage } from "../../Types/SMS/SMS";
-import UserCall from "Common/Models/DatabaseModels/UserCall";
-import UserEmail from "Common/Models/DatabaseModels/UserEmail";
-import UserNotificationSetting from "Common/Models/DatabaseModels/UserNotificationSetting";
-import UserSMS from "Common/Models/DatabaseModels/UserSMS";
+import PushNotificationMessage from "../../Types/PushNotification/PushNotificationMessage";
+import UserCall from "../../Models/DatabaseModels/UserCall";
+import UserEmail from "../../Models/DatabaseModels/UserEmail";
+import UserNotificationSetting from "../../Models/DatabaseModels/UserNotificationSetting";
+import UserSMS from "../../Models/DatabaseModels/UserSMS";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export class Service extends DatabaseService<UserNotificationSetting> {
   public constructor() {
     super(UserNotificationSetting);
   }
 
+  @CaptureSpan()
   public async sendUserNotification(data: {
     userId: ObjectID;
     projectId: ObjectID;
@@ -34,6 +38,18 @@ export class Service extends DatabaseService<UserNotificationSetting> {
     emailEnvelope: EmailEnvelope;
     smsMessage: SMSMessage;
     callRequestMessage: CallRequestMessage;
+    pushNotificationMessage: PushNotificationMessage;
+    incidentId?: ObjectID | undefined;
+    alertId?: ObjectID | undefined;
+    scheduledMaintenanceId?: ObjectID | undefined;
+    statusPageId?: ObjectID | undefined;
+    statusPageAnnouncementId?: ObjectID | undefined;
+    teamId?: ObjectID | undefined;
+    // OnCall-related fields
+    onCallPolicyId?: ObjectID | undefined;
+    onCallPolicyEscalationRuleId?: ObjectID | undefined;
+    onCallDutyPolicyExecutionLogTimelineId?: ObjectID | undefined;
+    onCallScheduleId?: ObjectID | undefined;
   }): Promise<void> {
     if (!data.projectId) {
       throw new BadDataException(
@@ -52,6 +68,7 @@ export class Service extends DatabaseService<UserNotificationSetting> {
           alertByEmail: true,
           alertBySMS: true,
           alertByCall: true,
+          alertByPush: true,
         },
         props: {
           isRoot: true,
@@ -85,6 +102,19 @@ export class Service extends DatabaseService<UserNotificationSetting> {
             },
             {
               projectId: data.projectId,
+              incidentId: data.incidentId,
+              alertId: data.alertId,
+              scheduledMaintenanceId: data.scheduledMaintenanceId,
+              statusPageId: data.statusPageId,
+              statusPageAnnouncementId: data.statusPageAnnouncementId,
+              userId: data.userId,
+              teamId: data.teamId,
+              // OnCall-related fields
+              onCallPolicyId: data.onCallPolicyId,
+              onCallPolicyEscalationRuleId: data.onCallPolicyEscalationRuleId,
+              onCallDutyPolicyExecutionLogTimelineId:
+                data.onCallDutyPolicyExecutionLogTimelineId,
+              onCallScheduleId: data.onCallScheduleId,
             },
           ).catch((err: Error) => {
             logger.error(err);
@@ -117,6 +147,19 @@ export class Service extends DatabaseService<UserNotificationSetting> {
             },
             {
               projectId: data.projectId,
+              incidentId: data.incidentId,
+              alertId: data.alertId,
+              scheduledMaintenanceId: data.scheduledMaintenanceId,
+              statusPageId: data.statusPageId,
+              statusPageAnnouncementId: data.statusPageAnnouncementId,
+              userId: data.userId,
+              teamId: data.teamId,
+              // OnCall-related fields
+              onCallPolicyId: data.onCallPolicyId,
+              onCallPolicyEscalationRuleId: data.onCallPolicyEscalationRuleId,
+              onCallDutyPolicyExecutionLogTimelineId:
+                data.onCallDutyPolicyExecutionLogTimelineId,
+              onCallScheduleId: data.onCallScheduleId,
             },
           ).catch((err: Error) => {
             logger.error(err);
@@ -149,15 +192,53 @@ export class Service extends DatabaseService<UserNotificationSetting> {
             },
             {
               projectId: data.projectId,
+              incidentId: data.incidentId,
+              alertId: data.alertId,
+              scheduledMaintenanceId: data.scheduledMaintenanceId,
+              statusPageId: data.statusPageId,
+              statusPageAnnouncementId: data.statusPageAnnouncementId,
+              userId: data.userId,
+              teamId: data.teamId,
+              // OnCall-related fields
+              onCallPolicyId: data.onCallPolicyId,
+              onCallPolicyEscalationRuleId: data.onCallPolicyEscalationRuleId,
+              onCallDutyPolicyExecutionLogTimelineId:
+                data.onCallDutyPolicyExecutionLogTimelineId,
+              onCallScheduleId: data.onCallScheduleId,
             },
           ).catch((err: Error) => {
             logger.error(err);
           });
         }
       }
+
+      if (notificationSettings.alertByPush) {
+        logger.debug(
+          `Sending push notification to user ${data.userId.toString()} for event ${data.eventType}`,
+        );
+        PushNotificationService.sendPushNotificationToUser(
+          data.userId,
+          data.projectId,
+          data.pushNotificationMessage,
+          {
+            projectId: data.projectId,
+            userId: data.userId,
+            teamId: data.teamId,
+            // OnCall-related fields
+            onCallPolicyId: data.onCallPolicyId,
+            onCallPolicyEscalationRuleId: data.onCallPolicyEscalationRuleId,
+            onCallDutyPolicyExecutionLogTimelineId:
+              data.onCallDutyPolicyExecutionLogTimelineId,
+            onCallScheduleId: data.onCallScheduleId,
+          },
+        ).catch((err: Error) => {
+          logger.error(err);
+        });
+      }
     }
   }
 
+  @CaptureSpan()
   public async removeDefaultNotificationSettingsForUser(
     userId: ObjectID,
     projectId: ObjectID,
@@ -189,270 +270,148 @@ export class Service extends DatabaseService<UserNotificationSetting> {
     }
   }
 
+  @CaptureSpan()
   public async addDefaultNotificationSettingsForUser(
     userId: ObjectID,
     projectId: ObjectID,
   ): Promise<void> {
-    const probeOwnerAddedNotificationEvent: PositiveNumber = await this.countBy(
-      {
-        query: {
-          userId,
-          projectId,
-          eventType:
-            NotificationSettingEventType.SEND_PROBE_OWNER_ADDED_NOTIFICATION,
-        },
-        props: {
-          isRoot: true,
-        },
-      },
+    await this.addProbeOwnerNotificationSettings(userId, projectId);
+    await this.addIncidentNotificationSettings(userId, projectId);
+    await this.addMonitorNotificationSettings(userId, projectId);
+    await this.addOnCallNotificationSettings(userId, projectId);
+    await this.addAlertNotificationSettings(userId, projectId);
+  }
+
+  private async addProbeOwnerNotificationSettings(
+    userId: ObjectID,
+    projectId: ObjectID,
+  ): Promise<void> {
+    await this.addNotificationSettingIfNotExists(
+      userId,
+      projectId,
+      NotificationSettingEventType.SEND_PROBE_OWNER_ADDED_NOTIFICATION,
     );
 
-    if (probeOwnerAddedNotificationEvent.toNumber() === 0) {
-      const item: UserNotificationSetting = new UserNotificationSetting();
-      item.userId = userId;
-      item.projectId = projectId;
-      item.eventType =
-        NotificationSettingEventType.SEND_PROBE_OWNER_ADDED_NOTIFICATION;
-      item.alertByEmail = true;
+    await this.addNotificationSettingIfNotExists(
+      userId,
+      projectId,
+      NotificationSettingEventType.SEND_PROBE_STATUS_CHANGED_OWNER_NOTIFICATION,
+    );
+  }
 
-      await this.create({
-        data: item,
-        props: {
-          isRoot: true,
-        },
-      });
-    }
-
-    const probeStatusChangedNotificationEvent: PositiveNumber =
-      await this.countBy({
-        query: {
-          userId,
-          projectId,
-          eventType:
-            NotificationSettingEventType.SEND_PROBE_STATUS_CHANGED_OWNER_NOTIFICATION,
-        },
-        props: {
-          isRoot: true,
-        },
-      });
-
-    if (probeStatusChangedNotificationEvent.toNumber() === 0) {
-      const item: UserNotificationSetting = new UserNotificationSetting();
-      item.userId = userId;
-      item.projectId = projectId;
-      item.eventType =
-        NotificationSettingEventType.SEND_PROBE_STATUS_CHANGED_OWNER_NOTIFICATION;
-      item.alertByEmail = true;
-
-      await this.create({
-        data: item,
-        props: {
-          isRoot: true,
-        },
-      });
-    }
-
-    const incidentCreatedNotificationEvent: PositiveNumber = await this.countBy(
-      {
-        query: {
-          userId,
-          projectId,
-          eventType:
-            NotificationSettingEventType.SEND_INCIDENT_CREATED_OWNER_NOTIFICATION,
-        },
-        props: {
-          isRoot: true,
-        },
-      },
+  private async addIncidentNotificationSettings(
+    userId: ObjectID,
+    projectId: ObjectID,
+  ): Promise<void> {
+    await this.addNotificationSettingIfNotExists(
+      userId,
+      projectId,
+      NotificationSettingEventType.SEND_INCIDENT_CREATED_OWNER_NOTIFICATION,
     );
 
-    if (incidentCreatedNotificationEvent.toNumber() === 0) {
-      const item: UserNotificationSetting = new UserNotificationSetting();
-      item.userId = userId;
-      item.projectId = projectId;
-      item.eventType =
-        NotificationSettingEventType.SEND_INCIDENT_CREATED_OWNER_NOTIFICATION;
-      item.alertByEmail = true;
+    await this.addNotificationSettingIfNotExists(
+      userId,
+      projectId,
+      NotificationSettingEventType.SEND_INCIDENT_STATE_CHANGED_OWNER_NOTIFICATION,
+    );
+  }
 
-      await this.create({
-        data: item,
-        props: {
-          isRoot: true,
-        },
-      });
-    }
+  private async addMonitorNotificationSettings(
+    userId: ObjectID,
+    projectId: ObjectID,
+  ): Promise<void> {
+    await this.addNotificationSettingIfNotExists(
+      userId,
+      projectId,
+      NotificationSettingEventType.SEND_MONITOR_STATUS_CHANGED_OWNER_NOTIFICATION,
+    );
 
-    const alertCreatedNotificationEvent: PositiveNumber = await this.countBy({
+    await this.addNotificationSettingIfNotExists(
+      userId,
+      projectId,
+      NotificationSettingEventType.SEND_MONITOR_NOTIFICATION_WHEN_NO_PROBES_ARE_MONITORING_THE_MONITOR,
+    );
+
+    await this.addNotificationSettingIfNotExists(
+      userId,
+      projectId,
+      NotificationSettingEventType.SEND_MONITOR_NOTIFICATION_WHEN_PORBE_STATUS_CHANGES,
+    );
+  }
+
+  public async addOnCallNotificationSettings(
+    userId: ObjectID,
+    projectId: ObjectID,
+  ): Promise<void> {
+    await this.addNotificationSettingIfNotExists(
+      userId,
+      projectId,
+      NotificationSettingEventType.SEND_WHEN_USER_IS_ON_CALL_ROSTER,
+    );
+
+    await this.addNotificationSettingIfNotExists(
+      userId,
+      projectId,
+      NotificationSettingEventType.SEND_WHEN_USER_IS_NEXT_ON_CALL_ROSTER,
+    );
+
+    await this.addNotificationSettingIfNotExists(
+      userId,
+      projectId,
+      NotificationSettingEventType.SEND_WHEN_USER_IS_ADDED_TO_ON_CALL_POLICY,
+    );
+
+    await this.addNotificationSettingIfNotExists(
+      userId,
+      projectId,
+      NotificationSettingEventType.SEND_WHEN_USER_IS_REMOVED_FROM_ON_CALL_POLICY,
+    );
+
+    await this.addNotificationSettingIfNotExists(
+      userId,
+      projectId,
+      NotificationSettingEventType.SEND_WHEN_USER_IS_NO_LONGER_ACTIVE_ON_ON_CALL_ROSTER,
+    );
+  }
+
+  private async addAlertNotificationSettings(
+    userId: ObjectID,
+    projectId: ObjectID,
+  ): Promise<void> {
+    await this.addNotificationSettingIfNotExists(
+      userId,
+      projectId,
+      NotificationSettingEventType.SEND_ALERT_CREATED_OWNER_NOTIFICATION,
+    );
+
+    await this.addNotificationSettingIfNotExists(
+      userId,
+      projectId,
+      NotificationSettingEventType.SEND_ALERT_STATE_CHANGED_OWNER_NOTIFICATION,
+    );
+  }
+
+  private async addNotificationSettingIfNotExists(
+    userId: ObjectID,
+    projectId: ObjectID,
+    eventType: NotificationSettingEventType,
+  ): Promise<void> {
+    const existingNotification: PositiveNumber = await this.countBy({
       query: {
         userId,
         projectId,
-        eventType:
-          NotificationSettingEventType.SEND_ALERT_CREATED_OWNER_NOTIFICATION,
+        eventType,
       },
       props: {
         isRoot: true,
       },
     });
 
-    if (alertCreatedNotificationEvent.toNumber() === 0) {
+    if (existingNotification.toNumber() === 0) {
       const item: UserNotificationSetting = new UserNotificationSetting();
       item.userId = userId;
       item.projectId = projectId;
-      item.eventType =
-        NotificationSettingEventType.SEND_ALERT_CREATED_OWNER_NOTIFICATION;
-      item.alertByEmail = true;
-
-      await this.create({
-        data: item,
-        props: {
-          isRoot: true,
-        },
-      });
-    }
-
-    // check monitor state changed notification
-    const monitorStateChangedNotificationEvent: PositiveNumber =
-      await this.countBy({
-        query: {
-          userId,
-          projectId,
-          eventType:
-            NotificationSettingEventType.SEND_MONITOR_STATUS_CHANGED_OWNER_NOTIFICATION,
-        },
-        props: {
-          isRoot: true,
-        },
-      });
-
-    if (monitorStateChangedNotificationEvent.toNumber() === 0) {
-      const item: UserNotificationSetting = new UserNotificationSetting();
-      item.userId = userId;
-      item.projectId = projectId;
-      item.eventType =
-        NotificationSettingEventType.SEND_MONITOR_STATUS_CHANGED_OWNER_NOTIFICATION;
-      item.alertByEmail = true;
-
-      await this.create({
-        data: item,
-        props: {
-          isRoot: true,
-        },
-      });
-    }
-
-    // SEND_MONITOR_NOTIFICATION_WHEN_NO_PROBES_ARE_MONITORING_THE_MONITOR
-
-    const monitorNoProbesNotificationEvent: PositiveNumber = await this.countBy(
-      {
-        query: {
-          userId,
-          projectId,
-          eventType:
-            NotificationSettingEventType.SEND_MONITOR_NOTIFICATION_WHEN_NO_PROBES_ARE_MONITORING_THE_MONITOR,
-        },
-        props: {
-          isRoot: true,
-        },
-      },
-    );
-
-    if (monitorNoProbesNotificationEvent.toNumber() === 0) {
-      const item: UserNotificationSetting = new UserNotificationSetting();
-      item.userId = userId;
-      item.projectId = projectId;
-      item.eventType =
-        NotificationSettingEventType.SEND_MONITOR_NOTIFICATION_WHEN_NO_PROBES_ARE_MONITORING_THE_MONITOR;
-      item.alertByEmail = true;
-
-      await this.create({
-        data: item,
-        props: {
-          isRoot: true,
-        },
-      });
-    }
-
-    // SEND_MONITOR_NOTIFICATION_WHEN_PORBE_STATUS_CHANGES
-
-    const monitorProbeStatusChangedNotificationEvent: PositiveNumber =
-      await this.countBy({
-        query: {
-          userId,
-          projectId,
-          eventType:
-            NotificationSettingEventType.SEND_MONITOR_NOTIFICATION_WHEN_PORBE_STATUS_CHANGES,
-        },
-        props: {
-          isRoot: true,
-        },
-      });
-
-    if (monitorProbeStatusChangedNotificationEvent.toNumber() === 0) {
-      const item: UserNotificationSetting = new UserNotificationSetting();
-      item.userId = userId;
-      item.projectId = projectId;
-      item.eventType =
-        NotificationSettingEventType.SEND_MONITOR_NOTIFICATION_WHEN_PORBE_STATUS_CHANGES;
-      item.alertByEmail = true;
-
-      await this.create({
-        data: item,
-        props: {
-          isRoot: true,
-        },
-      });
-    }
-
-    // check incident state changed notification
-    const incidentStateChangedNotificationEvent: PositiveNumber =
-      await this.countBy({
-        query: {
-          userId,
-          projectId,
-          eventType:
-            NotificationSettingEventType.SEND_INCIDENT_STATE_CHANGED_OWNER_NOTIFICATION,
-        },
-        props: {
-          isRoot: true,
-        },
-      });
-
-    if (incidentStateChangedNotificationEvent.toNumber() === 0) {
-      const item: UserNotificationSetting = new UserNotificationSetting();
-      item.userId = userId;
-      item.projectId = projectId;
-      item.eventType =
-        NotificationSettingEventType.SEND_INCIDENT_STATE_CHANGED_OWNER_NOTIFICATION;
-      item.alertByEmail = true;
-
-      await this.create({
-        data: item,
-        props: {
-          isRoot: true,
-        },
-      });
-    }
-
-    // check alert state changed notification
-    const alertStateChangedNotificationEvent: PositiveNumber =
-      await this.countBy({
-        query: {
-          userId,
-          projectId,
-          eventType:
-            NotificationSettingEventType.SEND_ALERT_STATE_CHANGED_OWNER_NOTIFICATION,
-        },
-        props: {
-          isRoot: true,
-        },
-      });
-
-    if (alertStateChangedNotificationEvent.toNumber() === 0) {
-      const item: UserNotificationSetting = new UserNotificationSetting();
-      item.userId = userId;
-      item.projectId = projectId;
-      item.eventType =
-        NotificationSettingEventType.SEND_ALERT_STATE_CHANGED_OWNER_NOTIFICATION;
+      item.eventType = eventType;
       item.alertByEmail = true;
 
       await this.create({
@@ -464,6 +423,7 @@ export class Service extends DatabaseService<UserNotificationSetting> {
     }
   }
 
+  @CaptureSpan()
   protected override async onBeforeCreate(
     createBy: CreateBy<UserNotificationSetting>,
   ): Promise<OnCreate<UserNotificationSetting>> {

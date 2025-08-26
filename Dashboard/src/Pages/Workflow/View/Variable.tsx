@@ -1,4 +1,3 @@
-import DashboardNavigation from "../../../Utils/Navigation";
 import PageComponentProps from "../../PageComponentProps";
 import ObjectID from "Common/Types/ObjectID";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
@@ -7,6 +6,7 @@ import FieldType from "Common/UI/Components/Types/FieldType";
 import Navigation from "Common/UI/Utils/Navigation";
 import WorkflowVariable from "Common/Models/DatabaseModels/WorkflowVariable";
 import React, { Fragment, FunctionComponent, ReactElement } from "react";
+import ProjectUtil from "Common/UI/Utils/Project";
 
 const Workflows: FunctionComponent<PageComponentProps> = (): ReactElement => {
   const modelId: ObjectID = Navigation.getLastParamAsObjectID(1);
@@ -22,6 +22,7 @@ const Workflows: FunctionComponent<PageComponentProps> = (): ReactElement => {
         showViewIdButton={true}
         name="Workflows"
         isViewable={false}
+        userPreferencesKey="workflow-variable-table"
         cardProps={{
           title: "Workflow Variables",
           description:
@@ -29,7 +30,7 @@ const Workflows: FunctionComponent<PageComponentProps> = (): ReactElement => {
         }}
         query={{
           workflowId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         onBeforeCreate={(item: WorkflowVariable): Promise<WorkflowVariable> => {
           item.workflowId = modelId;
@@ -92,7 +93,7 @@ const Workflows: FunctionComponent<PageComponentProps> = (): ReactElement => {
           },
           {
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
             field: {
               description: true,
             },
@@ -126,7 +127,7 @@ const Workflows: FunctionComponent<PageComponentProps> = (): ReactElement => {
             },
             noValueMessage: "-",
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
           {
             field: {

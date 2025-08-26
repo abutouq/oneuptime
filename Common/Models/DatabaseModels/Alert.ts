@@ -36,6 +36,7 @@ import {
   ManyToOne,
 } from "typeorm";
 import { TelemetryQuery } from "../../Types/Telemetry/TelemetryQuery";
+import NotificationRuleWorkspaceChannel from "../../Types/Workspace/NotificationRules/NotificationRuleWorkspaceChannel";
 
 @EnableDocumentation()
 @AccessControlColumn("labels")
@@ -216,7 +217,7 @@ export default class Alert extends BaseModel {
     type: TableColumnType.Markdown,
     title: "Description",
     description:
-      "Short description of this alert. This is in markdown and will be visible on the status page.",
+      "Short description of this alert. This will be visible on the status page. This is in markdown.",
   })
   @Column({
     nullable: true,
@@ -298,6 +299,7 @@ export default class Alert extends BaseModel {
     manyToOneRelationColumn: "deletedByUserId",
     type: TableColumnType.Entity,
     title: "Deleted by User",
+    modelType: User,
     description:
       "Relation to User who deleted this object (if this object was deleted by a User)",
   })
@@ -569,11 +571,13 @@ export default class Alert extends BaseModel {
   @TableColumn({
     type: TableColumnType.ObjectID,
     required: true,
+    isDefaultValueColumn: true,
     title: "Current Alert State ID",
     description: "Current Alert State ID",
   })
   @Column({
     type: ColumnType.ObjectID,
+
     nullable: false,
     transformer: ObjectID.getDatabaseTransformer(),
   })
@@ -757,12 +761,7 @@ export default class Alert extends BaseModel {
   public customFields?: JSONObject = undefined;
 
   @ColumnAccessControl({
-    create: [
-      Permission.ProjectOwner,
-      Permission.ProjectAdmin,
-      Permission.ProjectMember,
-      Permission.CreateAlert,
-    ],
+    create: [],
     read: [
       Permission.ProjectOwner,
       Permission.ProjectAdmin,
@@ -774,10 +773,13 @@ export default class Alert extends BaseModel {
   @Index()
   @TableColumn({
     type: TableColumnType.Boolean,
+    computed: true,
+    hideColumnInDocumentation: true,
     required: true,
     isDefaultValueColumn: true,
     title: "Are Owners Notified Of Alert Creation?",
     description: "Are owners notified of when this alert is created?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -935,6 +937,7 @@ export default class Alert extends BaseModel {
     title: "Is created automatically?",
     description:
       "Is this alert created by OneUptime Probe or Workers automatically (and not created manually by a user)?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -1006,4 +1009,53 @@ export default class Alert extends BaseModel {
     nullable: true,
   })
   public telemetryQuery?: TelemetryQuery = undefined;
+
+  @ColumnAccessControl({
+    create: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.CreateAlert,
+    ],
+    read: [
+      Permission.ProjectOwner,
+      Permission.ProjectAdmin,
+      Permission.ProjectMember,
+      Permission.ReadAlert,
+    ],
+    update: [],
+  })
+  @Index()
+  @TableColumn({
+    isDefaultValueColumn: false,
+    required: false,
+    type: TableColumnType.Number,
+    computed: true,
+    title: "Alert Number",
+    description: "Alert Number",
+  })
+  @Column({
+    type: ColumnType.Number,
+    nullable: true,
+  })
+  public alertNumber?: number = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [],
+    update: [],
+  })
+  @TableColumn({
+    isDefaultValueColumn: false,
+    required: false,
+    type: TableColumnType.JSON,
+    title: "Post Updates To Workspace Channel Name",
+    description: "Post Updates To Workspace Channel Name",
+  })
+  @Column({
+    type: ColumnType.JSON,
+    nullable: true,
+  })
+  public postUpdatesToWorkspaceChannels?: Array<NotificationRuleWorkspaceChannel> =
+    undefined;
 }

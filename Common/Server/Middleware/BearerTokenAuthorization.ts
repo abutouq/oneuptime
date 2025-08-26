@@ -5,10 +5,12 @@ import {
   OneUptimeRequest,
 } from "../Utils/Express";
 import JSONWebToken from "../Utils/JsonWebToken";
-import NotAuthorizedException from "Common/Types/Exception/NotAuthorizedException";
-import { JSONObject } from "Common/Types/JSON";
+import NotAuthorizedException from "../../Types/Exception/NotAuthorizedException";
+import { JSONObject } from "../../Types/JSON";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export default class BearerTokenAuthorization {
+  @CaptureSpan()
   public static async isAuthorizedBearerToken(
     req: ExpressRequest,
     _res: ExpressResponse,

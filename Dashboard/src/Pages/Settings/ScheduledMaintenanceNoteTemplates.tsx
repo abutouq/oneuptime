@@ -1,4 +1,4 @@
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import { RouteUtil } from "../../Utils/RouteMap";
 import PageComponentProps from "../PageComponentProps";
 import FormFieldSchemaType from "Common/UI/Components/Forms/Types/FormFieldSchemaType";
@@ -20,6 +20,7 @@ const ScheduledMaintenanceNoteTemplates: FunctionComponent<
         isEditable={false}
         isCreateable={true}
         isViewable={true}
+        userPreferencesKey="scheduled-maintenance-note-templates-table"
         cardProps={{
           title:
             "Public or Private Note Templates for Scheduled Maintenance Events",
@@ -28,7 +29,7 @@ const ScheduledMaintenanceNoteTemplates: FunctionComponent<
         }}
         noItemsMessage={"No note templates found."}
         query={{
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
         }}
         showViewIdButton={true}
         formSteps={[
@@ -96,7 +97,7 @@ const ScheduledMaintenanceNoteTemplates: FunctionComponent<
               templateDescription: true,
             },
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
         ]}
         columns={[
@@ -112,7 +113,7 @@ const ScheduledMaintenanceNoteTemplates: FunctionComponent<
               templateDescription: true,
             },
             title: "Description",
-            type: FieldType.Text,
+            type: FieldType.LongText,
           },
         ]}
       />

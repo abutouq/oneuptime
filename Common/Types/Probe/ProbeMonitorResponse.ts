@@ -10,6 +10,7 @@ import ObjectID from "../ObjectID";
 import Port from "../Port";
 
 export default interface ProbeMonitorResponse {
+  projectId: ObjectID;
   isOnline?: boolean | undefined;
   monitorDestination?: URL | IP | Hostname | undefined;
   monitorDestinationPort?: Port | undefined;
@@ -25,4 +26,6 @@ export default interface ProbeMonitorResponse {
   syntheticMonitorResponse?: Array<SyntheticMonitorResponse> | undefined;
   customCodeMonitorResponse?: CustomCodeMonitorResponse | undefined;
   monitoredAt: Date;
+  isTimeout?: boolean | undefined;
+  ingestedAt?: Date | undefined;
 }

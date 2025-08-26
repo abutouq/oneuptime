@@ -11,10 +11,25 @@ export function getMonitorBreadcrumbs(path: string): Array<Link> | undefined {
       "Monitors",
       "Inoperational",
     ]),
+    //slack connection
+    ...BuildBreadcrumbLinksByTitles(
+      PageMap.MONITORS_WORKSPACE_CONNECTION_SLACK,
+      ["Project", "Monitors", "Slack"],
+    ),
+    // ms teams connection
+    ...BuildBreadcrumbLinksByTitles(
+      PageMap.MONITORS_WORKSPACE_CONNECTION_MICROSOFT_TEAMS,
+      ["Project", "Monitors", "Microsoft Teams"],
+    ),
     ...BuildBreadcrumbLinksByTitles(PageMap.MONITORS_DISABLED, [
       "Project",
       "Monitors",
       "Disabled",
+    ]),
+    ...BuildBreadcrumbLinksByTitles(PageMap.MONITOR_CREATE, [
+      "Project",
+      "Monitors",
+      "Create New Monitor",
     ]),
     ...BuildBreadcrumbLinksByTitles(PageMap.MONITOR_VIEW, [
       "Project",
@@ -62,6 +77,12 @@ export function getMonitorBreadcrumbs(path: string): Array<Link> | undefined {
       "Monitors",
       "View Monitor",
       "Probes",
+    ]),
+    ...BuildBreadcrumbLinksByTitles(PageMap.MONITOR_VIEW_LOGS, [
+      "Project",
+      "Monitors",
+      "View Monitor",
+      "Monitoring Logs",
     ]),
     ...BuildBreadcrumbLinksByTitles(PageMap.MONITOR_VIEW_CUSTOM_FIELDS, [
       "Project",

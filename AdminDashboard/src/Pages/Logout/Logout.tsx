@@ -16,7 +16,7 @@ const Logout: FunctionComponent = (): ReactElement => {
 
   const logout: PromiseVoidFunction = async (): Promise<void> => {
     UiAnalytics.logout();
-    await UserUtil.logout();
+    UserUtil.logout();
     Navigation.navigate(ACCOUNTS_URL);
   };
 
@@ -41,7 +41,7 @@ const Logout: FunctionComponent = (): ReactElement => {
       ]}
     >
       {!error ? <PageLoader isVisible={true} /> : <></>}
-      {error ? <ErrorMessage error={error} /> : <></>}
+      {error ? <ErrorMessage message={error} /> : <></>}
     </Page>
   );
 };

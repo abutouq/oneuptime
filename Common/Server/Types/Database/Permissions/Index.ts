@@ -5,10 +5,12 @@ import CreatePermission from "./CreatePermission";
 import DeletePermission from "./DeletePermission";
 import ReadPermission, { CheckReadPermissionType } from "./ReadPermission";
 import UpdatePermission from "./UpdatePermission";
-import BaseModel from "Common/Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
-import DatabaseCommonInteractionProps from "Common/Types/BaseDatabase/DatabaseCommonInteractionProps";
+import BaseModel from "../../../../Models/DatabaseModels/DatabaseBaseModel/DatabaseBaseModel";
+import DatabaseCommonInteractionProps from "../../../../Types/BaseDatabase/DatabaseCommonInteractionProps";
+import CaptureSpan from "../../../Utils/Telemetry/CaptureSpan";
 
 export default class ModelPermission {
+  @CaptureSpan()
   public static async checkDeletePermissionByModel<
     TBaseModel extends BaseModel,
   >(data: {
@@ -19,6 +21,7 @@ export default class ModelPermission {
     return DeletePermission.checkDeletePermissionByModel(data);
   }
 
+  @CaptureSpan()
   public static async checkUpdatePermissionByModel<
     TBaseModel extends BaseModel,
   >(data: {
@@ -29,6 +32,7 @@ export default class ModelPermission {
     return UpdatePermission.checkUpdatePermissionByModel(data);
   }
 
+  @CaptureSpan()
   public static async checkDeleteQueryPermission<TBaseModel extends BaseModel>(
     modelType: { new (): TBaseModel },
     query: Query<TBaseModel>,
@@ -37,6 +41,7 @@ export default class ModelPermission {
     return DeletePermission.checkDeletePermission(modelType, query, props);
   }
 
+  @CaptureSpan()
   public static async checkUpdateQueryPermissions<TBaseModel extends BaseModel>(
     modelType: { new (): TBaseModel },
     query: Query<TBaseModel>,
@@ -51,6 +56,7 @@ export default class ModelPermission {
     );
   }
 
+  @CaptureSpan()
   public static checkCreatePermissions<TBaseModel extends BaseModel>(
     modelType: { new (): TBaseModel },
     data: TBaseModel,
@@ -59,6 +65,7 @@ export default class ModelPermission {
     return CreatePermission.checkCreatePermissions(modelType, data, props);
   }
 
+  @CaptureSpan()
   public static async checkReadQueryPermission<TBaseModel extends BaseModel>(
     modelType: { new (): TBaseModel },
     query: Query<TBaseModel>,

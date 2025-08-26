@@ -17,7 +17,6 @@ import Port from "../../Types/Port";
 import { Column, Entity } from "typeorm";
 
 export enum EmailServerType {
-  Internal = "Internal",
   Sendgrid = "Sendgrid",
   CustomSMTP = "Custom SMTP",
 }
@@ -49,6 +48,7 @@ export default class GlobalConfig extends GlobalConfigModel {
     type: TableColumnType.Boolean,
     title: "Disable Signup",
     description: "Should we disable new user sign up to this server?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -232,17 +232,35 @@ export default class GlobalConfig extends GlobalConfigModel {
   })
   @TableColumn({
     type: TableColumnType.Phone,
-    title: "Twilio Phone Number",
-    description: "Phone Number for your Twilio account",
+    title: "Twilio Primary Phone Number",
+    description: "Secondary Phone Number for your Twilio account",
   })
   @Column({
     type: ColumnType.Phone,
     length: ColumnLength.Phone,
     nullable: true,
-    unique: true,
+    unique: false,
     transformer: Phone.getDatabaseTransformer(),
   })
-  public twilioPhoneNumber?: Phone = undefined;
+  public twilioPrimaryPhoneNumber?: Phone = undefined;
+
+  @ColumnAccessControl({
+    create: [],
+    read: [],
+    update: [],
+  })
+  @TableColumn({
+    type: TableColumnType.LongText,
+    title: "Twilio Secondary Phone Numbers",
+    description: "Secondary Phone Number for your Twilio account",
+  })
+  @Column({
+    type: ColumnType.LongText,
+    length: ColumnLength.LongText,
+    nullable: true,
+    unique: false,
+  })
+  public twilioSecondaryPhoneNumbers?: string = undefined; // phone numbers separated by comma
 
   @ColumnAccessControl({
     create: [],
@@ -321,6 +339,7 @@ export default class GlobalConfig extends GlobalConfigModel {
     type: TableColumnType.Boolean,
     title: "Is Master API Key Enabled",
     description: "Is Master API Key Enabled?",
+    defaultValue: false,
   })
   @Column({
     type: ColumnType.Boolean,
@@ -337,6 +356,7 @@ export default class GlobalConfig extends GlobalConfigModel {
   })
   @TableColumn({
     type: TableColumnType.ObjectID,
+    computed: true,
     title: "Master API Key",
     description:
       "This API key has root access to all the resources in all the projects on OneUptime.",

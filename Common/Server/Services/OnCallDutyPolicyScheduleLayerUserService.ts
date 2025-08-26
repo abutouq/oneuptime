@@ -9,13 +9,16 @@ import LIMIT_MAX from "../../Types/Database/LimitMax";
 import BadDataException from "../../Types/Exception/BadDataException";
 import ObjectID from "../../Types/ObjectID";
 import PositiveNumber from "../../Types/PositiveNumber";
-import Model from "Common/Models/DatabaseModels/OnCallDutyPolicyScheduleLayerUser";
+import Model from "../../Models/DatabaseModels/OnCallDutyPolicyScheduleLayerUser";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
+import OnCallDutyPolicyScheduleService from "./OnCallDutyPolicyScheduleService";
 
 export class Service extends DatabaseService<Model> {
   public constructor() {
     super(Model);
   }
 
+  @CaptureSpan()
   protected override async onBeforeCreate(
     createBy: CreateBy<Model>,
   ): Promise<OnCreate<Model>> {
@@ -58,6 +61,7 @@ export class Service extends DatabaseService<Model> {
     };
   }
 
+  @CaptureSpan()
   protected override async onDeleteSuccess(
     onDelete: OnDelete<Model>,
     _itemIdsBeforeDelete: ObjectID[],
@@ -76,6 +80,12 @@ export class Service extends DatabaseService<Model> {
           resource.onCallDutyPolicyScheduleLayerId,
           false,
         );
+
+        if (resource.onCallDutyPolicyScheduleId) {
+          await OnCallDutyPolicyScheduleService.refreshCurrentUserIdAndHandoffTimeInSchedule(
+            resource.onCallDutyPolicyScheduleId,
+          );
+        }
       }
     }
 
@@ -85,6 +95,7 @@ export class Service extends DatabaseService<Model> {
     };
   }
 
+  @CaptureSpan()
   protected override async onBeforeDelete(
     deleteBy: DeleteBy<Model>,
   ): Promise<OnDelete<Model>> {
@@ -105,6 +116,7 @@ export class Service extends DatabaseService<Model> {
         select: {
           order: true,
           onCallDutyPolicyScheduleLayerId: true,
+          onCallDutyPolicyScheduleId: true,
         },
       });
     }
@@ -115,6 +127,62 @@ export class Service extends DatabaseService<Model> {
     };
   }
 
+  protected override async onCreateSuccess(
+    _onCreate: OnCreate<Model>,
+    createdItem: Model,
+  ): Promise<Model> {
+    const resource: Model | null = await this.findOneById({
+      id: createdItem.id!,
+      select: {
+        onCallDutyPolicyScheduleId: true,
+      },
+      props: {
+        isRoot: true,
+      },
+    });
+
+    if (!resource || !resource.onCallDutyPolicyScheduleId) {
+      return createdItem;
+    }
+
+    await OnCallDutyPolicyScheduleService.refreshCurrentUserIdAndHandoffTimeInSchedule(
+      resource.onCallDutyPolicyScheduleId,
+    );
+
+    return createdItem;
+  }
+
+  protected override async onUpdateSuccess(
+    _onUpdate: OnUpdate<Model>,
+    updatedItemIds: Array<ObjectID>,
+  ): Promise<OnUpdate<Model>> {
+    for (const item of updatedItemIds) {
+      const resource: Model | null = await this.findOneById({
+        id: item,
+        select: {
+          onCallDutyPolicyScheduleId: true,
+        },
+        props: {
+          isRoot: true,
+        },
+      });
+
+      if (!resource || !resource.onCallDutyPolicyScheduleId) {
+        continue;
+      }
+
+      await OnCallDutyPolicyScheduleService.refreshCurrentUserIdAndHandoffTimeInSchedule(
+        resource.onCallDutyPolicyScheduleId,
+      );
+    }
+
+    return {
+      updateBy: _onUpdate.updateBy,
+      carryForward: null,
+    };
+  }
+
+  @CaptureSpan()
   protected override async onBeforeUpdate(
     updateBy: UpdateBy<Model>,
   ): Promise<OnUpdate<Model>> {

@@ -458,14 +458,37 @@ export default class API {
     // get url from error
     const url: string = error?.config?.url || "";
 
-    throw new APIException(
-      `Error occurred while making request to ${url}.`,
-      error,
-    );
+    const errorMessage: string = error.message || error.toString();
+
+    throw new APIException(`Request failed to ${url}. ${errorMessage}`, error);
   }
 
   public static getFriendlyErrorMessage(error: AxiosError | Error): string {
-    const errorString: string = error.message || error.toString();
+    let errorString: string = error.message || error.toString();
+
+    if (error instanceof APIException) {
+      errorString = `${error.message?.toString()} ${error.error?.message || error.error?.toString() || ""}`;
+    }
+
+    // Handle AggregateError by extracting the underlying error messages
+    if (
+      error &&
+      (error as any).name === "AggregateError" &&
+      (error as any).errors
+    ) {
+      const aggregateErrors: Error[] = (error as any).errors as Error[];
+      const errorMessages: string[] = aggregateErrors
+        .map((err: Error) => {
+          return err.message || err.toString();
+        })
+        .filter((msg: string) => {
+          return msg && msg.trim().length > 0;
+        });
+
+      if (errorMessages.length > 0) {
+        errorString = errorMessages.join("; ");
+      }
+    }
 
     if (errorString.toLocaleLowerCase().includes("network error")) {
       return "Network Error.";

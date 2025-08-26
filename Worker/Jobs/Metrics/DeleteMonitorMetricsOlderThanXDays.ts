@@ -3,8 +3,8 @@ import RunCron from "../../Utils/Cron";
 import { EVERY_DAY } from "Common/Utils/CronTime";
 import logger from "Common/Server/Utils/Logger";
 import MetricService from "Common/Server/Services/MetricService";
-import QueryHelper from "Common/Server/Types/Database/QueryHelper";
 import { ServiceType } from "Common/Models/AnalyticsModels/Metric";
+import LessThan from "Common/Types/BaseDatabase/LessThan";
 
 RunCron(
   "Metric:DeleteMonitorMetricsOlderThanXDays",
@@ -18,9 +18,7 @@ RunCron(
 
     await MetricService.deleteBy({
       query: {
-        createdAt: QueryHelper.lessThan(
-          OneUptimeDate.getSomeDaysAgo(olderThanDays),
-        ),
+        createdAt: new LessThan(OneUptimeDate.getSomeDaysAgo(olderThanDays)),
         serviceType: ServiceType.Monitor,
       },
       props: {

@@ -45,8 +45,10 @@ import MonitorOwnerTeamService from "./MonitorOwnerTeamService";
 import MonitorOwnerUserService from "./MonitorOwnerUserService";
 import MonitorProbeService from "./MonitorProbeService";
 import MonitorSecretService from "./MonitorSecretService";
+
 // Monitors
 import MonitorService from "./MonitorService";
+import MonitorFeedService from "./MonitorFeedService";
 import MonitorStatusService from "./MonitorStatusService";
 import MonitorStatusTimelineService from "./MonitorStatusTimelineService";
 import NotificationService from "./NotificationService";
@@ -92,6 +94,7 @@ import SmsLogService from "./SmsLogService";
 import SmsService from "./SmsService";
 import SpanService from "./SpanService";
 import StatusPageAnnouncementService from "./StatusPageAnnouncementService";
+import StatusPageAnnouncementTemplateService from "./StatusPageAnnouncementTemplateService";
 import StatusPageCustomFieldService from "./StatusPageCustomFieldService";
 import StatusPageDomainService from "./StatusPageDomainService";
 import StatusPageFooterLinkService from "./StatusPageFooterLinkService";
@@ -125,7 +128,7 @@ import WorkflowLogService from "./WorkflowLogService";
 // Workflows.
 import WorkflowService from "./WorkflowService";
 import WorkflowVariablesService from "./WorkflowVariableService";
-import AnalyticsBaseModel from "Common/Models/AnalyticsModels/AnalyticsBaseModel/AnalyticsBaseModel";
+import AnalyticsBaseModel from "../../Models/AnalyticsModels/AnalyticsBaseModel/AnalyticsBaseModel";
 import CopilotPullRequestService from "./CopilotPullRequestService";
 import ServiceCatalogDependencyService from "./ServiceCatalogDependencyService";
 import TelemetryAttributeService from "./TelemetryAttributeService";
@@ -147,8 +150,24 @@ import AlertOwnerUserService from "./AlertOwnerUserService";
 import AlertSeverityService from "./AlertSeverityService";
 import AlertNoteTemplateService from "./AlertNoteTemplateService";
 import TableViewService from "./TableViewService";
+import ScheduledMaintenanceFeedService from "./ScheduledMaintenanceFeedService";
+import AlertFeedService from "./AlertFeedService";
+import IncidentFeedService from "./IncidentFeedService";
+
+import MonitorTestService from "./MonitorTestService";
+import WorkspaceProjectAuthTokenService from "./WorkspaceProjectAuthTokenService";
+import WorkspaceUserAuthTokenService from "./WorkspaceUserAuthTokenService";
+import WorkspaceSettingService from "./WorkspaceSettingService";
+import WorkspaceNotificationRuleService from "./WorkspaceNotificationRuleService";
+import WorkspaceNotificationLogService from "./WorkspaceNotificationLogService";
+import OnCallDutyPolicyUserOverrideService from "./OnCallDutyPolicyUserOverrideService";
+
+import MonitorLogService from "./MonitorLogService";
+
+import OnCallDutyPolicyTimeLogService from "./OnCallDutyPolicyTimeLogService";
 
 const services: Array<BaseService> = [
+  OnCallDutyPolicyTimeLogService,
   AcmeCertificateService,
   PromoCodeService,
 
@@ -186,6 +205,7 @@ const services: Array<BaseService> = [
   IncidentSeverityService,
   IncidentStateService,
   IncidentStateTimelineService,
+  IncidentFeedService,
 
   LabelService,
 
@@ -198,6 +218,7 @@ const services: Array<BaseService> = [
   MonitorStatusService,
   MonitorStatusTimelineService,
   MonitorSecretService,
+  MonitorFeedService,
 
   NotificationService,
 
@@ -208,6 +229,7 @@ const services: Array<BaseService> = [
   OnCallDutyPolicyExecutionLogService,
   OnCallDutyPolicyExecutionLogTimelineService,
   OnCallDutyPolicyService,
+  OnCallDutyPolicyUserOverrideService,
 
   ProjectService,
   ProjectSmtpConfigService,
@@ -222,12 +244,14 @@ const services: Array<BaseService> = [
   ScheduledMaintenanceService,
   ScheduledMaintenanceStateService,
   ScheduledMaintenanceStateTimelineService,
+  ScheduledMaintenanceFeedService,
 
   ShortLinkService,
   SmsLogService,
   SmsService,
 
   StatusPageAnnouncementService,
+  StatusPageAnnouncementTemplateService,
   StatusPageCustomFieldService,
   StatusPageDomainService,
   StatusPageFooterLinkService,
@@ -306,7 +330,16 @@ const services: Array<BaseService> = [
   AlertOwnerUserService,
   AlertSeverityService,
   AlertNoteTemplateService,
+  AlertFeedService,
+
   TableViewService,
+  MonitorTestService,
+
+  WorkspaceProjectAuthTokenService,
+  WorkspaceUserAuthTokenService,
+  WorkspaceSettingService,
+  WorkspaceNotificationRuleService,
+  WorkspaceNotificationLogService,
 ];
 
 export const AnalyticsServices: Array<
@@ -317,6 +350,7 @@ export const AnalyticsServices: Array<
   MetricService,
   TelemetryAttributeService,
   ExceptionInstanceService,
+  MonitorLogService,
 ];
 
 export default services;

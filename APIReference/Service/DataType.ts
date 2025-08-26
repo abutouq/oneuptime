@@ -1,3 +1,4 @@
+import { IsBillingEnabled } from "Common/Server/EnvironmentConfig";
 import { CodeExamplesPath, ViewsPath } from "../Utils/Config";
 import ResourceUtil, { ModelDocumentation } from "../Utils/Resources";
 import LocalCache from "Common/Server/Infrastructure/LocalCache";
@@ -87,6 +88,36 @@ export default class ServiceHandler {
       },
     );
 
+    pageData.includesCode = await LocalCache.getOrSetString(
+      "data-type",
+      "includes",
+      async () => {
+        return await LocalFile.read(
+          `${CodeExamplesPath}/DataTypes/Includes.md`,
+        );
+      },
+    );
+
+    pageData.lessThanOrNullCode = await LocalCache.getOrSetString(
+      "data-type",
+      "less-than-or-equal",
+      async () => {
+        return await LocalFile.read(
+          `${CodeExamplesPath}/DataTypes/LessThanOrNull.md`,
+        );
+      },
+    );
+
+    pageData.greaterThanOrNullCode = await LocalCache.getOrSetString(
+      "data-type",
+      "less-than-or-equal",
+      async () => {
+        return await LocalFile.read(
+          `${CodeExamplesPath}/DataTypes/LessThanOrNull.md`,
+        );
+      },
+    );
+
     pageData.isNullCode = await LocalCache.getOrSetString(
       "data-type",
       "is-null",
@@ -117,6 +148,7 @@ export default class ServiceHandler {
     return res.render(`${ViewsPath}/pages/index`, {
       page: "data-types",
       pageTitle: "Data Types",
+      enableGoogleTagManager: IsBillingEnabled,
       pageDescription:
         "Data Types that can be used to interact with OneUptime API",
       resources: Resources,

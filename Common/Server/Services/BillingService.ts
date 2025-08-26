@@ -15,6 +15,7 @@ import BadDataException from "../../Types/Exception/BadDataException";
 import ProductType from "../../Types/MeteredPlan/ProductType";
 import ObjectID from "../../Types/ObjectID";
 import Stripe from "stripe";
+import CaptureSpan from "../Utils/Telemetry/CaptureSpan";
 
 export type SubscriptionItem = Stripe.SubscriptionItem;
 
@@ -37,6 +38,7 @@ export interface Invoice {
   customerId: string | undefined;
   invoiceDate: Date;
   invoiceNumber: string | undefined;
+  paymentIntentId?: string | undefined;
 }
 
 export class BillingService extends BaseService {
@@ -49,6 +51,7 @@ export class BillingService extends BaseService {
   });
 
   // returns billing id of the customer.
+  @CaptureSpan()
   public async createCustomer(data: {
     name: string;
     id: ObjectID;
@@ -68,6 +71,7 @@ export class BillingService extends BaseService {
     return customer.id;
   }
 
+  @CaptureSpan()
   public async updateCustomerName(id: string, newName: string): Promise<void> {
     if (!this.isBillingEnabled()) {
       throw new BadDataException(Errors.BillingService.BILLING_NOT_ENABLED);
@@ -76,6 +80,7 @@ export class BillingService extends BaseService {
     await this.stripe.customers.update(id, { name: newName });
   }
 
+  @CaptureSpan()
   public async deleteCustomer(id: string): Promise<void> {
     if (!this.isBillingEnabled()) {
       throw new BadDataException(Errors.BillingService.BILLING_NOT_ENABLED);
@@ -92,6 +97,7 @@ export class BillingService extends BaseService {
     return SubscriptionStatusUtil.isSubscriptionActive(status);
   }
 
+  @CaptureSpan()
   public async subscribeToMeteredPlan(data: {
     projectId: ObjectID;
     customerId: string;
@@ -149,6 +155,7 @@ export class BillingService extends BaseService {
     return BillingPrivateKey.startsWith("sk_test");
   }
 
+  @CaptureSpan()
   public async generateCouponCode(data: {
     name: string;
     metadata?: Dictionary<string> | undefined;
@@ -168,6 +175,7 @@ export class BillingService extends BaseService {
     return coupon.id;
   }
 
+  @CaptureSpan()
   public async subscribeToPlan(data: {
     projectId: ObjectID;
     customerId: string;
@@ -247,6 +255,7 @@ export class BillingService extends BaseService {
     };
   }
 
+  @CaptureSpan()
   public async changeQuantity(
     subscriptionId: string,
     quantity: number,
@@ -285,6 +294,7 @@ export class BillingService extends BaseService {
     });
   }
 
+  @CaptureSpan()
   public async addOrUpdateMeteredPricingOnSubscription(
     subscriptionId: string,
     serverMeteredPlan: ServerMeteredPlan,
@@ -351,6 +361,7 @@ export class BillingService extends BaseService {
     // complete.
   }
 
+  @CaptureSpan()
   public async isPromoCodeValid(promoCode: string): Promise<boolean> {
     if (!this.isBillingEnabled()) {
       throw new BadDataException(Errors.BillingService.BILLING_NOT_ENABLED);
@@ -371,6 +382,7 @@ export class BillingService extends BaseService {
     }
   }
 
+  @CaptureSpan()
   public async removeSubscriptionItem(
     subscriptionId: string,
     subscriptionItemId: string,
@@ -406,6 +418,7 @@ export class BillingService extends BaseService {
     );
   }
 
+  @CaptureSpan()
   public async getSubscriptionItems(
     subscriptionId: string,
   ): Promise<Array<SubscriptionItem>> {
@@ -423,6 +436,7 @@ export class BillingService extends BaseService {
     return subscription.items.data;
   }
 
+  @CaptureSpan()
   public async changePlan(data: {
     projectId: ObjectID;
     subscriptionId: string;
@@ -518,6 +532,7 @@ export class BillingService extends BaseService {
     return value;
   }
 
+  @CaptureSpan()
   public async deletePaymentMethod(
     customerId: string,
     paymentMethodId: string,
@@ -538,6 +553,7 @@ export class BillingService extends BaseService {
     await this.stripe.paymentMethods.detach(paymentMethodId);
   }
 
+  @CaptureSpan()
   public async hasPaymentMethods(customerId: string): Promise<boolean> {
     if ((await this.getPaymentMethods(customerId)).length > 0) {
       return true;
@@ -546,6 +562,7 @@ export class BillingService extends BaseService {
     return false;
   }
 
+  @CaptureSpan()
   public async setDefaultPaymentMethod(
     customerId: string,
     paymentMethodId: string,
@@ -557,6 +574,7 @@ export class BillingService extends BaseService {
     });
   }
 
+  @CaptureSpan()
   public async getPaymentMethods(
     customerId: string,
   ): Promise<Array<PaymentMethod>> {
@@ -643,6 +661,7 @@ export class BillingService extends BaseService {
     return paymentMethods;
   }
 
+  @CaptureSpan()
   public async getSetupIntentSecret(customerId: string): Promise<string> {
     const setupIntent: Stripe.Response<Stripe.SetupIntent> =
       await this.stripe.setupIntents.create({
@@ -656,6 +675,7 @@ export class BillingService extends BaseService {
     return setupIntent.client_secret;
   }
 
+  @CaptureSpan()
   public async cancelSubscription(subscriptionId: string): Promise<void> {
     if (!this.isBillingEnabled()) {
       throw new BadDataException(Errors.BillingService.BILLING_NOT_ENABLED);
@@ -667,6 +687,7 @@ export class BillingService extends BaseService {
     }
   }
 
+  @CaptureSpan()
   public async getSubscriptionStatus(
     subscriptionId: string,
   ): Promise<SubscriptionStatus> {
@@ -675,6 +696,7 @@ export class BillingService extends BaseService {
     return subscription.status as SubscriptionStatus;
   }
 
+  @CaptureSpan()
   public async getSubscription(
     subscriptionId: string,
   ): Promise<Stripe.Subscription> {
@@ -688,6 +710,77 @@ export class BillingService extends BaseService {
     return subscription;
   }
 
+  @CaptureSpan()
+  public async getInvoice(
+    customerId: string,
+    invoiceId: string,
+  ): Promise<Invoice> {
+    if (!this.isBillingEnabled()) {
+      throw new BadDataException(Errors.BillingService.BILLING_NOT_ENABLED);
+    }
+
+    logger.debug("Getting invoice");
+    logger.debug(invoiceId);
+    logger.debug(customerId);
+
+    const invoice: Stripe.Response<Stripe.Invoice> =
+      await this.stripe.invoices.retrieve(invoiceId);
+
+    if (!invoice) {
+      throw new BadDataException(Errors.BillingService.INVOICE_NOT_FOUND);
+    }
+
+    return {
+      id: invoice.id!,
+      amount: invoice.amount_due,
+      currencyCode: invoice.currency,
+      subscriptionId: invoice.subscription?.toString() || undefined,
+      status: invoice.status?.toString() || "Unknown",
+      downloadableLink: invoice.invoice_pdf?.toString() || "",
+      customerId: invoice.customer?.toString() || "",
+      invoiceDate: invoice.created
+        ? new Date(invoice.created * 1000)
+        : OneUptimeDate.getCurrentDate(),
+      invoiceNumber: invoice.number || undefined,
+      paymentIntentId: invoice.payment_intent?.toString() || undefined,
+    };
+  }
+
+  @CaptureSpan()
+  public async getPaymentIntentClientSecret(
+    paymentIntentId: string,
+  ): Promise<string> {
+    const paymentIntent: Stripe.Response<Stripe.PaymentIntent> =
+      await this.stripe.paymentIntents.retrieve(paymentIntentId);
+
+    if (!paymentIntent.client_secret) {
+      throw new APIException(Errors.BillingService.CLIENT_SECRET_MISSING);
+    }
+
+    return paymentIntent.client_secret;
+  }
+
+  @CaptureSpan()
+  public async getPaymentIntentIdFromInvoice(
+    invoiceId: string,
+  ): Promise<string> {
+    const invoice: Stripe.Response<Stripe.Invoice> =
+      await this.stripe.invoices.retrieve(invoiceId);
+
+    if (!invoice) {
+      throw new BadDataException(Errors.BillingService.INVOICE_NOT_FOUND);
+    }
+
+    if (!invoice.payment_intent) {
+      throw new BadDataException(
+        Errors.BillingService.PAYMENT_INTENT_NOT_FOUND,
+      );
+    }
+
+    return invoice.payment_intent.toString();
+  }
+
+  @CaptureSpan()
   public async getInvoices(customerId: string): Promise<Array<Invoice>> {
     const invoices: Stripe.ApiList<Stripe.Invoice> =
       await this.stripe.invoices.list({
@@ -709,6 +802,7 @@ export class BillingService extends BaseService {
             ? new Date(invoice.created * 1000)
             : OneUptimeDate.getCurrentDate(),
           invoiceNumber: invoice.number || undefined,
+          paymentIntent: invoice.payment_intent?.toString() || undefined,
         };
       },
     );
@@ -721,6 +815,7 @@ export class BillingService extends BaseService {
     return billingInvoices;
   }
 
+  @CaptureSpan()
   public async generateInvoiceAndChargeCustomer(
     customerId: string,
     itemText: string,
@@ -754,6 +849,7 @@ export class BillingService extends BaseService {
     }
   }
 
+  @CaptureSpan()
   public async voidInvoice(invoiceId: string): Promise<Stripe.Invoice> {
     const invoice: Stripe.Invoice =
       await this.stripe.invoices.voidInvoice(invoiceId);
@@ -761,6 +857,7 @@ export class BillingService extends BaseService {
     return invoice;
   }
 
+  @CaptureSpan()
   public async payInvoice(
     customerId: string,
     invoiceId: string,

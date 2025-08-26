@@ -28,6 +28,17 @@ const DashboardSideMenu: FunctionComponent<ComponentProps> = (
           }}
           icon={IconProp.Info}
         />
+
+        <SideMenuItem
+          link={{
+            title: "Description",
+            to: RouteUtil.populateRouteParams(
+              RouteMap[PageMap.SCHEDULED_MAINTENANCE_VIEW_DESCRIPTION] as Route,
+              { modelId: props.modelId },
+            ),
+          }}
+          icon={IconProp.Chat}
+        />
         <SideMenuItem
           link={{
             title: "Owners",
@@ -49,6 +60,21 @@ const DashboardSideMenu: FunctionComponent<ComponentProps> = (
             ),
           }}
           icon={IconProp.List}
+        />
+      </SideMenuSection>
+
+      <SideMenuSection title="Notification Logs">
+        <SideMenuItem
+          link={{
+            title: "Notification Logs",
+            to: RouteUtil.populateRouteParams(
+              RouteMap[
+                PageMap.SCHEDULED_MAINTENANCE_VIEW_NOTIFICATION_LOGS
+              ] as Route,
+              { modelId: props.modelId },
+            ),
+          }}
+          icon={IconProp.Bell}
         />
       </SideMenuSection>
 
@@ -87,6 +113,17 @@ const DashboardSideMenu: FunctionComponent<ComponentProps> = (
             ),
           }}
           icon={IconProp.TableCells}
+        />
+
+        <SideMenuItem
+          link={{
+            title: "Settings",
+            to: RouteUtil.populateRouteParams(
+              RouteMap[PageMap.SCHEDULED_MAINTENANCE_VIEW_SETTINGS] as Route,
+              { modelId: props.modelId },
+            ),
+          }}
+          icon={IconProp.Settings}
         />
 
         <SideMenuItem

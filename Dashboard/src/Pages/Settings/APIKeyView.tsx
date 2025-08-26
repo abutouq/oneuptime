@@ -1,5 +1,5 @@
 import LabelsElement from "../../Components/Label/Labels";
-import DashboardNavigation from "../../Utils/Navigation";
+import ProjectUtil from "Common/UI/Utils/Project";
 import PageMap from "../../Utils/PageMap";
 import RouteMap, { RouteUtil } from "../../Utils/RouteMap";
 import PageComponentProps from "../PageComponentProps";
@@ -77,11 +77,12 @@ const APIKeyView: FunctionComponent<PageComponentProps> = (
       <ModelTable<ApiKeyPermission>
         modelType={ApiKeyPermission}
         id="api-key-permission-table"
+        userPreferencesKey="api-key-permission-table"
         isDeleteable={true}
         name="Settings > API Key > Permissions"
         query={{
           apiKeyId: modelId,
-          projectId: DashboardNavigation.getProjectId()!,
+          projectId: ProjectUtil.getCurrentProjectId()!,
           isBlockPermission: permissionType === PermissionType.BlockPermissions,
         }}
         onBeforeCreate={(item: ApiKeyPermission): Promise<ApiKeyPermission> => {
@@ -172,7 +173,7 @@ const APIKeyView: FunctionComponent<PageComponentProps> = (
             type: FieldType.EntityArray,
             filterEntityType: Label,
             filterQuery: {
-              projectId: DashboardNavigation.getProjectId()!,
+              projectId: ProjectUtil.getCurrentProjectId()!,
             },
             filterDropdownField: {
               label: "name",
@@ -345,6 +346,7 @@ const APIKeyView: FunctionComponent<PageComponentProps> = (
         title="Questions about Permissions?"
         description="Watch this 5 minute video to learn how permissions work in OneUptime."
         link={URL.fromString("https://youtu.be/TzmaTe4sbCI")}
+        hideOnMobile={true}
       />
 
       {/* Allow Permissions */}
