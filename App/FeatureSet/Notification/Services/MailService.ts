@@ -205,7 +205,7 @@ export default class MailService {
     },
   ): Transporter {
     const privateMailer: Transporter = nodemailer.createTransport({
-      host: emailServer.host.toString(),
+      host: "email-smtp.eu-central-1.amazonaws.com",
       port: emailServer.port.toNumber(),
       secure: emailServer.secure,
       auth:
